@@ -1,0 +1,230 @@
+# Resultados de compilación
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Archivos de caché de Visual Studio
+*.[Cc]ache
+!?*.[Cc]ache/
+
+# Otros
+ClientBin/
+~$*
+*~
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+orleans.codegen.cs
+
+# Archivos de firma con nombre seguro (incluirlos puede ser un riesgo de seguridad)
+*.snk
+
+# Archivos de respaldo e informes de conversión de formatos antiguos
+_UpgradeReport_Files/
+Backup*/
+UpgradeLog*.XML
+UpgradeLog*.htm
+UpgradeLog*.html
+
+# Archivos de caché de Visual Studio
+*.[Cc]ache
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Perfilador de Visual Studio
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Archivos de seguimiento de Visual Studio
+*.e2e
+
+# Espacio de trabajo local de TFS 2012
+$tf/
+
+# Herramienta de automatización de guías
+*.gpState
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# JustCode
+.JustCode
+
+# TeamCity
+_TeamCity*
+
+# DotCover
+*.dotCover
+
+# AxoCover
+.axoCover/*
+!.axoCover/settings.json
+
+# Coverlet
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# Resultados de cobertura de código de Visual Studio
+*.coverage
+*.coveragexml
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# MightyMoose
+*.mm.*
+AutoTest.Net/
+
+# Web workbench (sass)
+.sass-cache/
+
+# Carpeta de salida de InstallShield
+[Ee]xpress/
+
+# DocProject
+DocProject/buildhelp/
+DocProject/Help/*.HxT
+DocProject/Help/*.HxC
+DocProject/Help/*.hhc
+DocProject/Help/*.hhk
+DocProject/Help/*.hhp
+DocProject/Help/Html2
+DocProject/Help/html
+
+# Directorio de Click-Once
+publish/
+
+# Salida de publicación web
+*.[Pp]ublish.xml
+*.azurePubxml
+*.pubxml
+*.publishproj
+
+# Configuración de publicación de Microsoft Azure
+PublishScripts/
+
+# Paquetes NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+!**/[Pp]ackages/repositories.config
+
+# Salida de compilación de Windows Azure
+csx/
+*.build.csdef
+
+# Emulador de Microsoft Azure
+ecf/
+rcf/
+
+# Directorios y archivos de paquetes de aplicaciones de la Tienda Windows
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+*.appx
+*.appxbundle
+*.appxupload
+
+# Archivos de Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Archivos generados automáticamente por Mono
+mono_crash.*
+
+# Historial local de Visual Studio
+.localhistory/
+
+# Base de datos temporal de BeatPulse healthcheck
+healthchecksdb
+
+# Carpeta de respaldo de la herramienta de conversión de referencias de paquetes
+MigratedPackages/
+
+# Carpeta de trabajo de Ionide (herramientas F# para VS Code)
+.ionide/
+
+# Esquema XML generado automáticamente por Fody
+FodyWeavers.xsd
+
+# Archivos de VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Historial local de Visual Studio Code
+.history/
+
+# Cachés de archivos de imagen de Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Archivo de configuración de carpeta
+[Dd]esktop.ini
+
+# Papelera de reciclaje en recursos compartidos
+$RECYCLE.BIN/
+
+# Archivos del instalador de Windows
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Accesos directos de Windows
+*.lnk
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Archivos específicos de usuario
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# SQL Server Express LocalDB
+*.mdf
+*.ldf
+*.ndf
+
+# Registros
+log.txt
+*.log
