@@ -5,16 +5,24 @@ using MaterialSkin.Controls;
 using Microsoft.EntityFrameworkCore;
 using CapaDatos;
 using CapaEntidad;
+using CapaNegocio;
 
 namespace CapaPresentacion
 {
+    /// <summary>
+    /// Formulario principal del sistema después de iniciar sesión.
+    /// </summary>
     public partial class inicio : MaterialForm
     {
         private readonly AppDbContext _db;
-        private int indiceAnterior = 0;
+        private TabPage? _pestañaAnterior;
         private Usuario? _usuarioActual;
+        private bool _reconstruyendoNavegacion;
 
-        // Inyectamos el DbContext desde el contenedor DI
+        /// <summary>
+        /// Inicializa el formulario principal.
+        /// </summary>
+        /// <param name="db">Contexto de datos utilizado por el formulario.</param>
         public inicio(AppDbContext db)
         {
             InitializeComponent();
@@ -29,48 +37,116 @@ namespace CapaPresentacion
         }
 
         /// <summary>
-        /// Recibe el usuario autenticado desde el Login y configura la sesión
+        /// Establece el usuario autenticado y actualiza la navegación disponible.
         /// </summary>
+        /// <param name="usuario">Usuario autenticado que inicia la sesión.</param>
         public void EstablecerSesionUsuario(Usuario usuario)
         {
             _usuarioActual = usuario;
 
-            // Muestra en la barra del formulario el nombre del usuario y su Rol
             string nombreUsuario = $"{_usuarioActual.Nombre} {_usuarioActual.Apellido}".Trim();
             string rolDescripcion = _usuarioActual.Rol?.Descripcion ?? "Sin Rol";
 
             this.Text = $"Sistema de Ventas - Usuario: {nombreUsuario} ({rolDescripcion})";
 
-            // Aplica la restricción de pestañas según el ROL
             AplicarPermisosPorRol();
         }
 
         private void AplicarPermisosPorRol()
         {
-            if (_usuarioActual?.Rol == null) return;
+            TabPage? pestañaSeleccionada = materialTabControl1.SelectedTab;
+            if (pestañaSeleccionada != null && pestañaSeleccionada != tab_salir)
+                _pestañaAnterior = pestañaSeleccionada;
+            _reconstruyendoNavegacion = true;
 
-            string rol = _usuarioActual.Rol.Descripcion?.ToLower() ?? "";
-
-            // Oculta/Remueve pestañas según la jerarquía de roles
-            switch (rol)
+            try
             {
-                case "vendedor":
-                    // El vendedor solo opera Ventas y Clientes; se ocultan administración y reportes
-                    OcultarTabSiExiste("tab_usuarios");
-                    OcultarTabSiExiste("tab_compras");
-                    OcultarTabSiExiste("tab_proveedores");
-                    OcultarTabSiExiste("tab_reportes");
-                    break;
+                RestaurarNavegacionBase();
 
-                case "encargado":
-                    // El encargado gestiona Productos, Categorías, Compras y Reportes, pero no Usuarios del sistema
-                    OcultarTabSiExiste("tab_usuarios");
-                    break;
+                string? rol = _usuarioActual?.Rol?.Descripcion;
+                OcultarSiNoAutorizada("tab_usuarios", "Usuarios", rol);
+                OcultarSiNoAutorizada("tab_productos", "Productos", rol);
+                OcultarSiNoAutorizada("tab_ventas", "Ventas", rol);
+                OcultarSiNoAutorizada("tab_compras", "Compras", rol);
+                OcultarSiNoAutorizada("tab_clientes", "Clientes", rol);
+                OcultarSiNoAutorizada("tab_proveedores", "Proveedores", rol);
+                OcultarSiNoAutorizada("tab_reportes", "Reportes", rol);
 
-                case "administrador":
-                    // Acceso total a todas las pestañas
-                    break;
+                TabPage? pestañaASeleccionar = _pestañaAnterior;
+                if (pestañaASeleccionar == null ||
+                    !materialTabControl1.TabPages.Contains(pestañaASeleccionar))
+                {
+                    pestañaASeleccionar = ObtenerPestañaVisibleSegura();
+                }
+
+                if (pestañaASeleccionar != null)
+                    materialTabControl1.SelectedTab = pestañaASeleccionar;
+
+                ActualizarReferenciaPestañaAnterior();
             }
+            finally
+            {
+                _reconstruyendoNavegacion = false;
+            }
+        }
+
+        private void RestaurarNavegacionBase()
+        {
+            TabPage[] navegacionBase =
+            {
+                tab_inicio, tab_usuarios, tab_productos, tab_ventas, tab_compras,
+                tab_clientes, tab_proveedores, tab_reportes, tab_info, tab_salir
+            };
+
+            foreach (TabPage tab in navegacionBase)
+                materialTabControl1.TabPages.Remove(tab);
+
+            materialTabControl1.TabPages.AddRange(navegacionBase);
+            AsegurarReferenciaPestañaAnterior();
+        }
+
+        private void ActualizarReferenciaPestañaAnterior()
+        {
+            TabPage? seleccionada = materialTabControl1.SelectedTab;
+            if (seleccionada != null && seleccionada != tab_salir &&
+                materialTabControl1.TabPages.Contains(seleccionada))
+            {
+                _pestañaAnterior = seleccionada;
+                return;
+            }
+
+            if (_pestañaAnterior == null ||
+                !materialTabControl1.TabPages.Contains(_pestañaAnterior) ||
+                _pestañaAnterior == tab_salir)
+            {
+                _pestañaAnterior = ObtenerPestañaVisibleSegura();
+            }
+        }
+
+        private TabPage? ObtenerPestañaVisibleSegura()
+        {
+            foreach (TabPage tab in materialTabControl1.TabPages)
+            {
+                if (tab != tab_salir)
+                    return tab;
+            }
+
+            return null;
+        }
+
+        private void AsegurarReferenciaPestañaAnterior()
+        {
+            if (_pestañaAnterior == null ||
+                !materialTabControl1.TabPages.Contains(_pestañaAnterior) ||
+                _pestañaAnterior == tab_salir)
+            {
+                _pestañaAnterior = ObtenerPestañaVisibleSegura();
+            }
+        }
+
+        private void OcultarSiNoAutorizada(string nombreTab, string modulo, string? rol)
+        {
+            if (!PoliticaAcceso.TieneAcceso(rol, modulo)) OcultarTabSiExiste(nombreTab);
         }
 
         private void OcultarTabSiExiste(string nombreTab)
@@ -83,6 +159,9 @@ namespace CapaPresentacion
 
         private void materialTabControl1_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_reconstruyendoNavegacion)
+                return;
+
             if (materialTabControl1.SelectedTab == tab_salir)
             {
                 this.BeginInvoke(new Action(() =>
@@ -97,13 +176,22 @@ namespace CapaPresentacion
                     }
                     else
                     {
-                        materialTabControl1.SelectedIndex = indiceAnterior;
+                        TabPage? pestañaASeleccionar = _pestañaAnterior;
+                        if (pestañaASeleccionar == null ||
+                            !materialTabControl1.TabPages.Contains(pestañaASeleccionar))
+                        {
+                            pestañaASeleccionar = ObtenerPestañaVisibleSegura();
+                        }
+
+                        if (pestañaASeleccionar != null)
+                            materialTabControl1.SelectedTab = pestañaASeleccionar;
+                        ActualizarReferenciaPestañaAnterior();
                     }
                 }));
             }
             else
             {
-                indiceAnterior = materialTabControl1.SelectedIndex;
+                ActualizarReferenciaPestañaAnterior();
             }
         }
 
@@ -113,7 +201,6 @@ namespace CapaPresentacion
 
             try
             {
-                // Intentamos abrir la conexión directamente para capturar la excepción exacta
                 await _db.Database.OpenConnectionAsync();
                 await _db.Database.CloseConnectionAsync();
             }
@@ -125,7 +212,6 @@ namespace CapaPresentacion
 
         private void inicio_FormClosed(object sender, FormClosedEventArgs e)
         {
-            // Asegura cerrar el proceso si el usuario cierra el Form desde la 'X' superior
             Application.Exit();
         }
     }

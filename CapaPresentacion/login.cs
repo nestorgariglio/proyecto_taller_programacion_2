@@ -6,19 +6,25 @@ using CapaNegocio;
 
 namespace CapaPresentacion
 {
+    /// <summary>
+    /// Formulario de autenticación de usuarios.
+    /// </summary>
     public partial class login : MaterialForm
     {
         private readonly UsuarioNegocio _usuarioNegocio;
         private readonly inicio _inicioForm;
 
-        // Inyectamos la CapaNegocio y el formulario de inicio
+        /// <summary>
+        /// Inicializa el formulario de autenticación.
+        /// </summary>
+        /// <param name="usuarioNegocio">Servicio utilizado para validar las credenciales.</param>
+        /// <param name="inicioForm">Formulario que se muestra después de autenticar al usuario.</param>
         public login(UsuarioNegocio usuarioNegocio, inicio inicioForm)
         {
             InitializeComponent();
             _usuarioNegocio = usuarioNegocio;
             _inicioForm = inicioForm;
 
-            // Configuración visual de MaterialSkin
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
             materialSkinManager.Theme = MaterialSkinManager.Themes.DARK;
@@ -35,7 +41,7 @@ namespace CapaPresentacion
         private async void btn_ingresar_Click(object sender, EventArgs e)
         {
             string dni = textbox_dni.Text.Trim();
-            string clave = textbox_clave.Text.Trim(); // Asegurate de que el control de la contraseña se llame textbox_clave
+            string clave = textbox_clave.Text.Trim();
 
             if (string.IsNullOrEmpty(dni) || string.IsNullOrEmpty(clave))
             {
@@ -43,12 +49,10 @@ namespace CapaPresentacion
                 return;
             }
 
-            // Llamamos a la CapaNegocio para validar el usuario
             var respuesta = await _usuarioNegocio.ValidarIngresoAsync(dni, clave);
 
             if (respuesta.Resultado == ResultadoAutenticacion.Exito)
             {
-                // Enviamos los datos del usuario logueado a la pantalla de inicio
                 _inicioForm.EstablecerSesionUsuario(respuesta.Usuario!);
 
                 this.Hide();

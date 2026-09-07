@@ -2,12 +2,16 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using BC = BCrypt.Net.BCrypt;
 using Microsoft.EntityFrameworkCore;
 using CapaDatos;
 using CapaEntidad;
 
 namespace CapaNegocio
 {
+    /// <summary>
+    /// Resultado posible de un intento de autenticación.
+    /// </summary>
     public enum ResultadoAutenticacion
     {
         Exito,
@@ -18,6 +22,9 @@ namespace CapaNegocio
         FormatoInvalido
     }
 
+    /// <summary>
+    /// Contiene el resultado y los datos asociados a una autenticación.
+    /// </summary>
     public class RespuestaAutenticacion
     {
         public ResultadoAutenticacion Resultado { get; set; }
@@ -25,18 +32,30 @@ namespace CapaNegocio
         public string Mensaje { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// Contiene las operaciones de autenticación de usuarios.
+    /// </summary>
     public class UsuarioNegocio
     {
         private readonly AppDbContext _db;
 
+        /// <summary>
+        /// Inicializa una instancia con el contexto de datos utilizado para consultar usuarios.
+        /// </summary>
+        /// <param name="db">Contexto de persistencia de la aplicación.</param>
         public UsuarioNegocio(AppDbContext db)
         {
             _db = db;
         }
 
-        public async Task<RespuestaAutenticacion> ValidarIngresoAsync(string dniTexto, string clave)
+        /// <summary>
+        /// Valida las credenciales de un usuario y aplica las reglas de estado e intentos fallidos.
+        /// </summary>
+        /// <param name="dniTexto">DNI ingresado por el usuario.</param>
+        /// <param name="clave">Clave ingresada por el usuario.</param>
+        /// <returns>Resultado de la autenticación, con el usuario cuando el ingreso es exitoso.</returns>
+        public async Task<RespuestaAutenticacion> ValidarIngresoAsync(string? dniTexto, string? clave)
         {
-            // Validar formato numérico del DNI
             if (!int.TryParse(dniTexto, out int dni))
             {
                 return new RespuestaAutenticacion
@@ -59,7 +78,6 @@ namespace CapaNegocio
                 };
             }
 
-            // 1. Bloqueo si ya superó los 3 intentos fallidos
             if (usuario.IntentosFallidos >= 3)
             {
                 return new RespuestaAutenticacion
@@ -69,7 +87,6 @@ namespace CapaNegocio
                 };
             }
 
-            // 2. Control de Estado (1 = Activo, 0 = Inactivo)
             if (!usuario.Estado)
             {
                 return new RespuestaAutenticacion
@@ -79,8 +96,25 @@ namespace CapaNegocio
                 };
             }
 
-            // 3. Validación de Clave e incremento de intentos si es incorrecta
-            if (usuario.Clave != clave)
+            string? hashAlmacenado = usuario.Clave;
+            bool claveValida = false;
+
+            if (clave is not null
+                && !string.IsNullOrWhiteSpace(clave)
+                && hashAlmacenado is not null
+                && !string.IsNullOrWhiteSpace(hashAlmacenado))
+            {
+                try
+                {
+                    claveValida = BC.Verify(clave, hashAlmacenado);
+                }
+                catch (BCrypt.Net.SaltParseException)
+                {
+                    claveValida = false;
+                }
+            }
+
+            if (!claveValida)
             {
                 usuario.IntentosFallidos++;
                 await _db.SaveChangesAsync();
@@ -102,7 +136,6 @@ namespace CapaNegocio
                 };
             }
 
-            // 4. Éxito: Reiniciar contador de intentos fallidos
             if (usuario.IntentosFallidos > 0)
             {
                 usuario.IntentosFallidos = 0;

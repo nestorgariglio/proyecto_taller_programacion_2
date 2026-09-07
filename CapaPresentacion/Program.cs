@@ -26,10 +26,8 @@ namespace CapaPresentacion
                     services.AddDbContext<AppDbContext>(options =>
                         options.UseSqlServer(connectionString));
 
-                    // Registro de capas de negocio
                     services.AddTransient<UsuarioNegocio>();
 
-                    // Registro de formularios
                     services.AddTransient<login>();
                     services.AddTransient<inicio>();
                 })
