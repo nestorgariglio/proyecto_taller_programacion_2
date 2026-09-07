@@ -6,8 +6,15 @@ using CapaEntidad;
 
 namespace CapaDatos
 {
+    /// <summary>
+    /// Contexto de Entity Framework Core para las entidades del sistema.
+    /// </summary>
     public class AppDbContext : DbContext
     {
+        /// <summary>
+        /// Inicializa el contexto con la configuración indicada por la aplicación.
+        /// </summary>
+        /// <param name="options">Opciones de conexión y comportamiento del contexto.</param>
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }

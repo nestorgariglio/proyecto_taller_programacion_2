@@ -112,6 +112,7 @@
             btn_cancelar.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
             btn_cancelar.UseAccentColor = false;
             btn_cancelar.UseVisualStyleBackColor = true;
+            btn_cancelar.Click += btn_cancelar_Click;
             // 
             // textbox_dni
             // 

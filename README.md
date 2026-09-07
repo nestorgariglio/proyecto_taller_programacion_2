@@ -9,20 +9,21 @@ Sistema de gestión comercial de escritorio (WinForms, C#, .NET) orientado a com
 
 - **Lenguaje / Framework:** C# · .NET 10 (`net10.0-windows`) · Windows Forms
 - **IDE:** Visual Studio Community (compilación en Windows / Tiny10 VM)
-- **Base de datos:** SQL Server Express (motor relacional con transacciones ACID). Acceso vía **EF Core** (`Microsoft.EntityFrameworkCore.SqlServer`) + `BCrypt.Net-Next` para hash de claves.
-- **Arquitectura:** En capas — UI (WinForms) / Lógica de Negocio / Acceso a Datos (EF Core + repositorios DAO), manejo centralizado de excepciones y `log.txt`.
+- **Base de datos:** SQL Server Express, con acceso mediante **EF Core** (`Microsoft.EntityFrameworkCore.SqlServer`). Las claves se almacenan con `BCrypt.Net-Next` 4.2.0.
+- **Arquitectura:** En capas: interfaz WinForms, lógica de negocio y acceso a datos con EF Core.
 
 ## Estructura del proyecto
 
 ```
 proyecto_taller_programacion_2/
-├── .vs/                                        # Caché de Visual Studio (ignorado por git)
-├── proyecto_taller_programacion_2/
-│   ├── Program.cs                              # Punto de entrada
-│   ├── Form1.cs / Form1.Designer.cs            # Form inicial (template)
-│   └── proyecto_taller_programacion_2.csproj   # Proyecto WinForms (.NET 10)
-├── proyecto_taller_programacion_2.slnx         # Solución
-├── .gitignore
+├── CapaEntidad/                                # Entidades del dominio
+├── CapaDatos/                                  # EF Core, DbContext y migraciones
+├── CapaNegocio/                                # Lógica de negocio
+├── CapaPresentacion/                           # UI WinForms y configuración
+├── CapaNegocio.Tests/                          # Pruebas automatizadas
+├── scripts/seed-desarrollo.sql                 # Datos de desarrollo
+├── SistemaVentaStock.slnx                      # Solución principal
+├── global.json                                 # SDK fijado
 └── README.md
 ```
 
@@ -32,30 +33,52 @@ proyecto_taller_programacion_2/
 
 - Windows 10/11 con **Visual Studio Community 2022+** (workload ".NET Desktop Development").
 - **SQL Server Express** (o LocalDB para desarrollo liviano) instalado y accesible en LAN.
-- .NET SDK 10.
+- .NET SDK 10.0.400.
 
 ## Cómo compilar y ejecutar
 
-1. Abrir `proyecto_taller_programacion_2.slnx` en Visual Studio.
+1. Abrir `SistemaVentaStock.slnx` en Visual Studio.
 2. Restaurar paquetes NuGet (Build → Restore).
-3. Configurar la cadena de conexión a SQL Server en `App.config` (se agregará en el Sprint 1).
-4. Aplicar las migraciones EF Core (Package Manager Console → `Update-Database`) para crear el esquema y datos semilla.
-5. Compilar y ejecutar (F5).
+3. Configurar la cadena de conexión a SQL Server en `CapaPresentacion/appsettings.json`.
+4. Aplicar las migraciones EF Core para crear o actualizar el esquema de la base de datos; este paso no carga datos de desarrollo.
+5. Ejecutar `scripts/seed-desarrollo.sql` cuando se necesiten datos de desarrollo.
+6. Compilar y ejecutar (F5).
 
 > En Fedora el proyecto no se compila directamente (WinForms requiere Windows). Usá la VM con Tiny10 + Visual Studio como entorno de compilación.
+
+## Migraciones de EF Core
+
+Desde la raíz del repositorio, restaurá la herramienta local y aplicá las migraciones:
+
+```powershell
+dotnet tool restore
+dotnet ef database update --project CapaDatos --startup-project CapaDatos --context AppDbContext
+```
+
+La migración inicial ya está versionada en `CapaDatos/Migrations`, por lo que normalmente no hace falta volver a ejecutar `migrations add`. Si cambiás el modelo, creá una nueva con `dotnet ef migrations add NombreDescriptivo --project CapaDatos --startup-project CapaDatos --context AppDbContext --output-dir Migrations`. `database update` crea o actualiza el esquema, pero no carga datos de desarrollo.
+
+La factory de diseño usa preferentemente `ConnectionStrings__CadenaSQL` y, si no está definida, `CapaPresentacion/appsettings.json`.
+
+## Autenticación y seed de desarrollo
+
+Las claves de usuarios se almacenan como hashes BCrypt; `UsuarioNegocio` valida el ingreso con `BCrypt.Verify` y nunca compara la clave ingresada con texto plano. El proyecto de negocio declara directamente `BCrypt.Net-Next` 4.2.0, compatible con `net10.0`.
+
+`scripts/seed-desarrollo.sql` conserva la transacción y el upsert de roles y usuarios, y asigna hashes BCrypt válidos a los usuarios de desarrollo con DNI `90000001`, `90000002` y `90000003`. El script no contiene las claves de esos usuarios en texto plano; ejecutalo después de aplicar las migraciones para cargar los datos de prueba.
+
+Credenciales de desarrollo: `90000001 / Admin123!`, `90000002 / Encargado123!` y `90000003 / Vendedor123!`. Son ficticias y no deben reutilizarse fuera de la base local.
 
 ## Roadmap (6 sprints — 12 semanas)
 
 | Sprint | Foco | Entregables principales |
 |--------|------|--------------------------|
-| **1** | Arquitectura base, seguridad y roles | Esquema BD (8 tablas), Login con hash + bloqueo a 3 intentos, RBAC y menú dinámico |
-| **2** | Catálogos e inventario |ABM de Categorías y Productos (código de barras, precios, stock), búsqueda y alertas críticas |
+| **1** | Arquitectura base, seguridad y roles | Esquema BD inicial, login con hash + bloqueo a 3 intentos, RBAC y menú dinámico |
+| **2** | Catálogos e inventario | ABM de Categorías y Productos (código de barras, precios, stock), búsqueda y alertas críticas |
 | **3** | Terceros y compras | ABM Clientes/Proveedores, registro de Compras (cabecera + detalle) con incremento atómico de stock y actualización de precios |
 | **4** | POS y facturación | Interfaz POS por teclado/lector, validación estricta de stock (`SELECT … FOR UPDATE`), cálculo de vuelto, emisión de ticket |
 | **5** | Anulaciones y trazabilidad | Anulación de compras/ventas solo Admin con reversión de stock, bajas lógicas estrictas (`Estado = 0`), logs y rollback |
 | **6** | Reportes y pulido | Histórico filtrado por fechas/estado, reimpresión de tickets, pruebas LAN, documentación y manual de usuario |
 
-Roles: **Administrador** (gestión total + anulaciones), **Encargado de Compras** (catálogo, proveedores y compras), **Cajero** (POS y clientes).
+Roles: **Administrador** (gestión total + anulaciones), **Encargado** (catálogo, proveedores y compras), **Vendedor** (POS y clientes).
 
 ## Reglas de negocio clave
 

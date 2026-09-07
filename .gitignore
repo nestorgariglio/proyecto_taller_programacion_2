@@ -28,6 +28,7 @@ ClientBin/
 *.pfx
 *.publishsettings
 orleans.codegen.cs
+AGENT.md
 
 # Archivos de firma con nombre seguro (incluirlos puede ser un riesgo de seguridad)
 *.snk
