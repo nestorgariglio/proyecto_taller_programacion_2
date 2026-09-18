@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using MaterialSkin;
 using MaterialSkin.Controls;
 using CapaNegocio;
+using CapaNegocio.Enums;
 
 namespace CapaPresentacion
 {
@@ -24,6 +25,7 @@ namespace CapaPresentacion
             InitializeComponent();
             _usuarioNegocio = usuarioNegocio;
             _inicioForm = inicioForm;
+            _inicioForm.CierreSesionSolicitado += inicioForm_CierreSesionSolicitado;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -67,6 +69,16 @@ namespace CapaPresentacion
         private void btn_cancelar_Click(object sender, EventArgs e)
         {
             Application.Exit();
+        }
+
+        private void inicioForm_CierreSesionSolicitado(object? sender, EventArgs e)
+        {
+            _inicioForm.Hide();
+            textbox_dni.Clear();
+            textbox_clave.Clear();
+            Show();
+            Activate();
+            textbox_dni.Select();
         }
     }
 }

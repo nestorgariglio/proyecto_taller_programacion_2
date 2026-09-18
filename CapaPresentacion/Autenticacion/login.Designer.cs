@@ -174,6 +174,7 @@
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
+            AcceptButton = btn_ingresar;
             ClientSize = new Size(589, 260);
             Controls.Add(textbox_clave);
             Controls.Add(textbox_dni);

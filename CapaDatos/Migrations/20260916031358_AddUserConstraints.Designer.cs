@@ -4,6 +4,7 @@ using CapaDatos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CapaDatos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260916031358_AddUserConstraints")]
+    partial class AddUserConstraints
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -386,13 +389,6 @@ namespace CapaDatos.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("nombre");
 
-                    b.Property<string>("Sexo")
-                        .IsRequired()
-                        .HasMaxLength(1)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(1)")
-                        .HasColumnName("sexo");
-
                     b.HasKey("IdUsuario");
 
                     b.HasIndex("Correo")
@@ -404,10 +400,7 @@ namespace CapaDatos.Migrations
 
                     b.HasIndex("IdRol");
 
-                    b.ToTable("USUARIO", t =>
-                        {
-                            t.HasCheckConstraint("CK_USUARIO_SEXO", "[sexo] IN ('M', 'F')");
-                        });
+                    b.ToTable("USUARIO");
                 });
 
             modelBuilder.Entity("CapaEntidad.Venta", b =>

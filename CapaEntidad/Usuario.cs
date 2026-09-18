@@ -20,16 +20,19 @@ namespace CapaEntidad
         public int Dni { get; set; }
 
         [Column("nombre")]
-        public string? Nombre { get; set; }
+        public string Nombre { get; set; } = string.Empty;
 
         [Column("apellido")]
-        public string? Apellido { get; set; }
+        public string Apellido { get; set; } = string.Empty;
 
         [Column("correo")]
         public string? Correo { get; set; }
 
+        [Column("sexo")]
+        public string Sexo { get; set; } = string.Empty;
+
         [Column("clave")]
-        public string? Clave { get; set; }
+        public string Clave { get; set; } = string.Empty;
 
         [Column("estado")]
         public bool Estado { get; set; } = true;

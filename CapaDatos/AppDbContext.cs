@@ -30,5 +30,32 @@ namespace CapaDatos
         public DbSet<DetalleCompra> DetallesCompra { get; set; }
         public DbSet<Venta> Ventas { get; set; }
         public DbSet<DetalleVenta> DetallesVenta { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(usuario => usuario.Dni)
+                .IsUnique();
+
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(usuario => usuario.Correo)
+                .IsUnique()
+                .HasFilter("[correo] IS NOT NULL");
+
+            modelBuilder.Entity<Usuario>()
+                .Property(usuario => usuario.Sexo)
+                .HasMaxLength(1)
+                .IsUnicode(false)
+                .IsRequired();
+
+            modelBuilder.Entity<Usuario>()
+                .ToTable(tabla => tabla.HasCheckConstraint(
+                    "CK_USUARIO_SEXO",
+                    "[sexo] IN ('M', 'F')"
+                ));
+
+        }
     }
 }
