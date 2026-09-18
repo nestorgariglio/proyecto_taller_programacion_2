@@ -28,6 +28,7 @@ namespace CapaPresentacion
 
                     services.AddTransient<UsuarioNegocio>();
 
+                    services.AddTransient<GestionUsuariosControl>();
                     services.AddTransient<login>();
                     services.AddTransient<inicio>();
                 })

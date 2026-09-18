@@ -4,8 +4,8 @@ using MaterialSkin;
 using MaterialSkin.Controls;
 using Microsoft.EntityFrameworkCore;
 using CapaDatos;
-using CapaEntidad;
 using CapaNegocio;
+using CapaNegocio.DTOs.Usuarios;
 
 namespace CapaPresentacion
 {
@@ -15,18 +15,31 @@ namespace CapaPresentacion
     public partial class inicio : MaterialForm
     {
         private readonly AppDbContext _db;
+        private readonly GestionUsuariosControl _gestionUsuariosControl;
         private TabPage? _pestañaAnterior;
-        private Usuario? _usuarioActual;
+        private UsuarioRespuestaDto? _usuarioActual;
         private bool _reconstruyendoNavegacion;
+
+        /// <summary>
+        /// Se produce cuando el usuario solicita cerrar su sesión y volver al login.
+        /// </summary>
+        public event EventHandler? CierreSesionSolicitado;
 
         /// <summary>
         /// Inicializa el formulario principal.
         /// </summary>
         /// <param name="db">Contexto de datos utilizado por el formulario.</param>
-        public inicio(AppDbContext db)
+        /// <param name="gestionUsuariosControl">Control de gestión de usuarios.</param>
+        public inicio(
+            AppDbContext db,
+            GestionUsuariosControl gestionUsuariosControl)
         {
             InitializeComponent();
             _db = db;
+            _gestionUsuariosControl = gestionUsuariosControl;
+            _gestionUsuariosControl.Dock = DockStyle.Fill;
+            tab_usuarios.Controls.Add(_gestionUsuariosControl);
+            tab_usuarios.Enter += tab_usuarios_Enter;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -40,12 +53,12 @@ namespace CapaPresentacion
         /// Establece el usuario autenticado y actualiza la navegación disponible.
         /// </summary>
         /// <param name="usuario">Usuario autenticado que inicia la sesión.</param>
-        public void EstablecerSesionUsuario(Usuario usuario)
+        public void EstablecerSesionUsuario(UsuarioRespuestaDto usuario)
         {
             _usuarioActual = usuario;
 
             string nombreUsuario = $"{_usuarioActual.Nombre} {_usuarioActual.Apellido}".Trim();
-            string rolDescripcion = _usuarioActual.Rol?.Descripcion ?? "Sin Rol";
+            string rolDescripcion = _usuarioActual.RolDescripcion ?? "Sin Rol";
 
             this.Text = $"Sistema de Ventas - Usuario: {nombreUsuario} ({rolDescripcion})";
 
@@ -63,7 +76,7 @@ namespace CapaPresentacion
             {
                 RestaurarNavegacionBase();
 
-                string? rol = _usuarioActual?.Rol?.Descripcion;
+                string? rol = _usuarioActual?.RolDescripcion;
                 OcultarSiNoAutorizada("tab_usuarios", "Usuarios", rol);
                 OcultarSiNoAutorizada("tab_productos", "Productos", rol);
                 OcultarSiNoAutorizada("tab_ventas", "Ventas", rol);
@@ -167,7 +180,12 @@ namespace CapaPresentacion
                 this.BeginInvoke(new Action(() =>
                 {
                     MaterialDialog dialog = new MaterialDialog(
-                        this, "Cerrar Aplicación", "¿Está seguro que desea salir del sistema?", "SÍ", true, "NO"
+                        this,
+                        "Salir del sistema",
+                        "¿Desea cerrar la aplicación o cerrar la sesión?",
+                        "SALIR",
+                        true,
+                        "CERRAR SESIÓN"
                     );
 
                     if (dialog.ShowDialog(this) == DialogResult.OK)
@@ -176,22 +194,22 @@ namespace CapaPresentacion
                     }
                     else
                     {
-                        TabPage? pestañaASeleccionar = _pestañaAnterior;
-                        if (pestañaASeleccionar == null ||
-                            !materialTabControl1.TabPages.Contains(pestañaASeleccionar))
-                        {
-                            pestañaASeleccionar = ObtenerPestañaVisibleSegura();
-                        }
-
-                        if (pestañaASeleccionar != null)
-                            materialTabControl1.SelectedTab = pestañaASeleccionar;
-                        ActualizarReferenciaPestañaAnterior();
+                        _usuarioActual = null;
+                        CierreSesionSolicitado?.Invoke(this, EventArgs.Empty);
                     }
                 }));
             }
             else
             {
                 ActualizarReferenciaPestañaAnterior();
+            }
+        }
+
+        private async void tab_usuarios_Enter(object? sender, EventArgs e)
+        {
+            if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Usuarios"))
+            {
+                await _gestionUsuariosControl.CargarUsuariosAsync();
             }
         }
 

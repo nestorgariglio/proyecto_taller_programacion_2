@@ -488,6 +488,66 @@ public class UsuarioNegocioTests
         Assert.Null(respuesta.Usuario);
     }
 
+    [Fact]
+    public async Task ActivarUsuario_UsuarioInactivo_CambiaEstadoYPermiteIngreso()
+    {
+        await using var db = await CrearContextoConUsuarioParaCreacionAsync(
+            90000001,
+            "existente@correo.com");
+        var negocio = new UsuarioNegocio(db);
+        Usuario usuarioExistente = await db.Usuarios.SingleAsync();
+
+        usuarioExistente.IntentosFallidos = 3;
+        await db.SaveChangesAsync();
+        await negocio.DesactivarUsuarioAsync(usuarioExistente.IdUsuario);
+        RespuestaActivacion respuesta = await negocio.ActivarUsuarioAsync(
+            usuarioExistente.IdUsuario);
+
+        Assert.Equal(ResultadoActivacion.Exito, respuesta.Resultado);
+        Assert.NotNull(respuesta.Usuario);
+        Assert.True(respuesta.Usuario!.Estado);
+
+        Usuario? usuarioGuardado = await db.Usuarios
+            .SingleOrDefaultAsync(usuario => usuario.IdUsuario == usuarioExistente.IdUsuario);
+        Assert.NotNull(usuarioGuardado);
+        Assert.True(usuarioGuardado!.Estado);
+        Assert.Equal(0, usuarioGuardado.IntentosFallidos);
+
+        RespuestaAutenticacion respuestaIngreso = await negocio.ValidarIngresoAsync(
+            "90000001",
+            "ClaveExistente123!");
+        Assert.Equal(ResultadoAutenticacion.Exito, respuestaIngreso.Resultado);
+    }
+
+    [Fact]
+    public async Task ActivarUsuario_UsuarioYaActivo_DevuelveUsuarioYaActivo()
+    {
+        await using var db = await CrearContextoConUsuarioParaCreacionAsync(
+            90000001,
+            "existente@correo.com");
+        var negocio = new UsuarioNegocio(db);
+        Usuario usuarioExistente = await db.Usuarios.SingleAsync();
+
+        RespuestaActivacion respuesta = await negocio.ActivarUsuarioAsync(
+            usuarioExistente.IdUsuario);
+
+        Assert.Equal(ResultadoActivacion.UsuarioYaActivo, respuesta.Resultado);
+        Assert.NotNull(respuesta.Usuario);
+        Assert.True(respuesta.Usuario!.Estado);
+    }
+
+    [Fact]
+    public async Task ActivarUsuario_UsuarioNoEncontrado_DevuelveUsuarioNoEncontrado()
+    {
+        await using var db = await CrearContextoConRolAsync();
+        var negocio = new UsuarioNegocio(db);
+
+        RespuestaActivacion respuesta = await negocio.ActivarUsuarioAsync(999);
+
+        Assert.Equal(ResultadoActivacion.UsuarioNoEncontrado, respuesta.Resultado);
+        Assert.Null(respuesta.Usuario);
+    }
+
     private static async Task<AppDbContext> CrearContextoConUsuarioAsync(
         int dni, string descripcionRol, string? hashAlmacenado = null)
     {

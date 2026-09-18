@@ -534,5 +534,58 @@ namespace CapaNegocio
                 Mensaje = $"Usuario {usuario.Nombre} {usuario.Apellido} desactivado exitosamente."
             };
         }
+
+        /// <summary>
+        /// Activa un usuario inactivo sin crear un registro nuevo.
+        /// </summary>
+        /// <param name="idUsuario">Identificador del usuario que se desea activar.</param>
+        /// <returns>
+        /// Una respuesta con el resultado de la operación y los datos seguros del usuario afectado.
+        /// </returns>
+        public async Task<RespuestaActivacion> ActivarUsuarioAsync(int idUsuario)
+        {
+            if (idUsuario <= 0)
+            {
+                return new RespuestaActivacion
+                {
+                    Resultado = ResultadoActivacion.DatosInvalidos,
+                    Mensaje = "Debe indicar un usuario válido."
+                };
+            }
+
+            Usuario? usuario = await _db.Usuarios
+                .Include(u => u.Rol)
+                .FirstOrDefaultAsync(u => u.IdUsuario == idUsuario);
+
+            if (usuario is null)
+            {
+                return new RespuestaActivacion
+                {
+                    Resultado = ResultadoActivacion.UsuarioNoEncontrado,
+                    Mensaje = "El usuario indicado no existe."
+                };
+            }
+
+            if (usuario.Estado)
+            {
+                return new RespuestaActivacion
+                {
+                    Resultado = ResultadoActivacion.UsuarioYaActivo,
+                    Usuario = MapearUsuario(usuario),
+                    Mensaje = "El usuario ya se encuentra activo."
+                };
+            }
+
+            usuario.Estado = true;
+            usuario.IntentosFallidos = 0;
+            await _db.SaveChangesAsync();
+
+            return new RespuestaActivacion
+            {
+                Resultado = ResultadoActivacion.Exito,
+                Usuario = MapearUsuario(usuario),
+                Mensaje = $"Usuario {usuario.Nombre} {usuario.Apellido} activado exitosamente."
+            };
+        }
     }
 }
