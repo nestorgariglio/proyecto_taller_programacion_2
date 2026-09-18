@@ -6,6 +6,7 @@ using BC = BCrypt.Net.BCrypt;
 using Microsoft.EntityFrameworkCore;
 using CapaDatos;
 using CapaEntidad;
+using CapaNegocio.DTOs.Roles;
 using CapaNegocio.DTOs.Usuarios;
 using CapaNegocio.Enums;
 
@@ -191,6 +192,66 @@ namespace CapaNegocio
                 Resultado = ResultadoAutenticacion.Exito,
                 Usuario = MapearUsuario(usuario)
             };
+        }
+
+        /// <summary>
+        /// Obtiene los usuarios como datos seguros ordenados por apellido y nombre.
+        /// </summary>
+        /// <param name="incluirInactivos">
+        /// Indica si también deben incluirse los usuarios desactivados lógicamente.
+        /// </param>
+        /// <returns>
+        /// Colección de usuarios sin claves, incluyendo la descripción de cada rol.
+        /// </returns>
+        public async Task<IReadOnlyList<UsuarioRespuestaDto>> ListarUsuariosAsync(
+            bool incluirInactivos = true)
+        {
+            IQueryable<Usuario> consulta = _db.Usuarios
+                .AsNoTracking();
+
+            if (!incluirInactivos)
+            {
+                consulta = consulta.Where(usuario => usuario.Estado);
+            }
+
+            return await consulta
+                .OrderBy(usuario => usuario.Apellido)
+                .ThenBy(usuario => usuario.Nombre)
+                .Select(usuario => new UsuarioRespuestaDto
+                {
+                    IdUsuario = usuario.IdUsuario,
+                    Dni = usuario.Dni,
+                    Nombre = usuario.Nombre,
+                    Apellido = usuario.Apellido,
+                    Sexo = usuario.Sexo,
+                    Correo = usuario.Correo,
+                    IdRol = usuario.IdRol,
+                    RolDescripcion = usuario.Rol != null
+                        ? usuario.Rol.Descripcion
+                        : null,
+                    Estado = usuario.Estado
+                })
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Obtiene los roles disponibles ordenados por su descripción.
+        /// </summary>
+        /// <returns>
+        /// Colección de roles con su identificador y descripción.
+        /// </returns>
+        public async Task<IReadOnlyList<RolRespuestaDto>> ListarRolesAsync()
+        {
+            return await _db.Roles
+                .AsNoTracking()
+                .Where(rol => rol.Descripcion != null)
+                .OrderBy(rol => rol.Descripcion)
+                .Select(rol => new RolRespuestaDto
+                {
+                    IdRol = rol.IdRol,
+                    Descripcion = rol.Descripcion!
+                })
+                .ToListAsync();
         }
 
         /// <summary>

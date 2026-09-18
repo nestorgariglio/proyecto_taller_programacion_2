@@ -1,6 +1,7 @@
 using CapaDatos;
 using CapaEntidad;
 using CapaNegocio;
+using CapaNegocio.DTOs.Roles;
 using CapaNegocio.DTOs.Usuarios;
 using CapaNegocio.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +35,82 @@ public class UsuarioNegocioTests
         Assert.Equal(ResultadoAutenticacion.Exito, respuesta.Resultado);
         Assert.NotNull(respuesta.Usuario);
         Assert.Equal(descripcionRol, respuesta.Usuario.RolDescripcion);
+    }
+
+    [Fact]
+    public async Task ListarUsuarios_DevuelveDatosSegurosOrdenadosYConRol()
+    {
+        await using var db = await CrearContextoConUsuariosParaListadoAsync();
+        var negocio = new UsuarioNegocio(db);
+
+        IReadOnlyList<UsuarioRespuestaDto> usuarios =
+            await negocio.ListarUsuariosAsync();
+
+        Assert.Equal(3, usuarios.Count);
+        Assert.Collection(
+            usuarios,
+            usuario =>
+            {
+                Assert.Equal("Alvarez", usuario.Apellido);
+                Assert.Equal("Ana", usuario.Nombre);
+                Assert.Equal("Administrador", usuario.RolDescripcion);
+            },
+            usuario =>
+            {
+                Assert.Equal("Alvarez", usuario.Apellido);
+                Assert.Equal("Luis", usuario.Nombre);
+                Assert.Equal("Administrador", usuario.RolDescripcion);
+            },
+            usuario =>
+            {
+                Assert.Equal("Zeta", usuario.Apellido);
+                Assert.Equal("Zoe", usuario.Nombre);
+                Assert.Equal("Encargado", usuario.RolDescripcion);
+            });
+
+        Assert.Equal(90000002, usuarios[0].Dni);
+        Assert.Null(typeof(UsuarioRespuestaDto).GetProperty(nameof(Usuario.Clave)));
+    }
+
+    [Fact]
+    public async Task ListarUsuarios_SinInactivos_ExcluyeUsuariosDesactivados()
+    {
+        await using var db = await CrearContextoConUsuariosParaListadoAsync();
+        var negocio = new UsuarioNegocio(db);
+
+        IReadOnlyList<UsuarioRespuestaDto> usuariosActivos =
+            await negocio.ListarUsuariosAsync(incluirInactivos: false);
+
+        Assert.Equal(2, usuariosActivos.Count);
+        Assert.All(usuariosActivos, usuario => Assert.True(usuario.Estado));
+        Assert.DoesNotContain(usuariosActivos, usuario => usuario.Dni == 90000003);
+    }
+
+    [Fact]
+    public async Task ListarRoles_DevuelveRolesOrdenados()
+    {
+        await using var db = await CrearContextoConRolesParaListadoAsync();
+        var negocio = new UsuarioNegocio(db);
+
+        IReadOnlyList<RolRespuestaDto> roles = await negocio.ListarRolesAsync();
+
+        Assert.Collection(
+            roles,
+            rol =>
+            {
+                Assert.Equal("Administrador", rol.Descripcion);
+                Assert.Equal(1, rol.IdRol);
+            },
+            rol =>
+            {
+                Assert.Equal("Encargado", rol.Descripcion);
+                Assert.Equal(2, rol.IdRol);
+            },
+            rol =>
+            {
+                Assert.Equal("Vendedor", rol.Descripcion);
+                Assert.Equal(3, rol.IdRol);
+            });
     }
 
     [Fact]
@@ -447,6 +524,73 @@ public class UsuarioNegocioTests
         var db = new AppDbContext(options);
 
         db.Roles.Add(new Rol { Descripcion = "Administrador" });
+        await db.SaveChangesAsync();
+
+        return db;
+    }
+
+    private static async Task<AppDbContext> CrearContextoConUsuariosParaListadoAsync()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase($"UsuarioNegocioTests-{Guid.NewGuid()}")
+            .Options;
+        var db = new AppDbContext(options);
+
+        var rolAdministrador = new Rol { Descripcion = "Administrador" };
+        var rolEncargado = new Rol { Descripcion = "Encargado" };
+        db.Roles.AddRange(rolAdministrador, rolEncargado);
+        await db.SaveChangesAsync();
+
+        db.Usuarios.AddRange(
+            new Usuario
+            {
+                IdRol = rolEncargado.IdRol,
+                Dni = 90000001,
+                Nombre = "Zoe",
+                Apellido = "Zeta",
+                Sexo = "F",
+                Correo = "zoe@correo.com",
+                Clave = "hash",
+                Estado = true
+            },
+            new Usuario
+            {
+                IdRol = rolAdministrador.IdRol,
+                Dni = 90000002,
+                Nombre = "Ana",
+                Apellido = "Alvarez",
+                Sexo = "F",
+                Correo = "ana@correo.com",
+                Clave = "hash",
+                Estado = true
+            },
+            new Usuario
+            {
+                IdRol = rolAdministrador.IdRol,
+                Dni = 90000003,
+                Nombre = "Luis",
+                Apellido = "Alvarez",
+                Sexo = "M",
+                Correo = "luis@correo.com",
+                Clave = "hash",
+                Estado = false
+            });
+        await db.SaveChangesAsync();
+
+        return db;
+    }
+
+    private static async Task<AppDbContext> CrearContextoConRolesParaListadoAsync()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase($"UsuarioNegocioTests-{Guid.NewGuid()}")
+            .Options;
+        var db = new AppDbContext(options);
+
+        db.Roles.AddRange(
+            new Rol { IdRol = 3, Descripcion = "Vendedor" },
+            new Rol { IdRol = 1, Descripcion = "Administrador" },
+            new Rol { IdRol = 2, Descripcion = "Encargado" });
         await db.SaveChangesAsync();
 
         return db;
