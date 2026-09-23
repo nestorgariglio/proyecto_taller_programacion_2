@@ -32,6 +32,7 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(inicio));
             materialTabControl1 = new MaterialSkin.Controls.MaterialTabControl();
             tab_inicio = new TabPage();
+            imageList1 = new ImageList(components);
             tab_usuarios = new TabPage();
             tab_productos = new TabPage();
             tab_ventas = new TabPage();
@@ -41,7 +42,6 @@
             tab_reportes = new TabPage();
             tab_info = new TabPage();
             tab_salir = new TabPage();
-            imageList1 = new ImageList(components);
             materialTabControl1.SuspendLayout();
             SuspendLayout();
             // 
@@ -73,112 +73,13 @@
             // tab_inicio
             // 
             tab_inicio.ImageKey = "home.png";
-            tab_inicio.Location = new Point(4, 84);
+            tab_inicio.Location = new Point(4, 96);
             tab_inicio.Name = "tab_inicio";
             tab_inicio.Padding = new Padding(3);
-            tab_inicio.Size = new Size(1083, 498);
+            tab_inicio.Size = new Size(1083, 486);
             tab_inicio.TabIndex = 0;
             tab_inicio.Text = "Inicio";
             tab_inicio.UseVisualStyleBackColor = true;
-            // 
-            // tab_usuarios
-            // 
-            tab_usuarios.ImageKey = "users.png";
-            tab_usuarios.Location = new Point(4, 44);
-            tab_usuarios.Name = "tab_usuarios";
-            tab_usuarios.Padding = new Padding(3);
-            tab_usuarios.Size = new Size(1083, 538);
-            tab_usuarios.TabIndex = 1;
-            tab_usuarios.Text = "Usuarios";
-            tab_usuarios.UseVisualStyleBackColor = true;
-            // 
-            // tab_productos
-            // 
-            tab_productos.ImageKey = "products.png";
-            tab_productos.Location = new Point(4, 44);
-            tab_productos.Name = "tab_productos";
-            tab_productos.Padding = new Padding(3);
-            tab_productos.Size = new Size(1083, 538);
-            tab_productos.TabIndex = 2;
-            tab_productos.Text = "Productos";
-            tab_productos.UseVisualStyleBackColor = true;
-            // 
-            // tab_ventas
-            // 
-            tab_ventas.ImageKey = "sales.png";
-            tab_ventas.Location = new Point(4, 44);
-            tab_ventas.Name = "tab_ventas";
-            tab_ventas.Padding = new Padding(3);
-            tab_ventas.Size = new Size(1083, 538);
-            tab_ventas.TabIndex = 3;
-            tab_ventas.Text = "Ventas";
-            tab_ventas.UseVisualStyleBackColor = true;
-            // 
-            // tab_compras
-            // 
-            tab_compras.ImageKey = "shopping.png";
-            tab_compras.Location = new Point(4, 44);
-            tab_compras.Name = "tab_compras";
-            tab_compras.Padding = new Padding(3);
-            tab_compras.Size = new Size(1083, 538);
-            tab_compras.TabIndex = 4;
-            tab_compras.Text = "Compras";
-            tab_compras.UseVisualStyleBackColor = true;
-            // 
-            // tab_clientes
-            // 
-            tab_clientes.ImageKey = "customers.png";
-            tab_clientes.Location = new Point(4, 44);
-            tab_clientes.Name = "tab_clientes";
-            tab_clientes.Padding = new Padding(3);
-            tab_clientes.Size = new Size(1083, 538);
-            tab_clientes.TabIndex = 5;
-            tab_clientes.Text = "Clientes";
-            tab_clientes.UseVisualStyleBackColor = true;
-            // 
-            // tab_proveedores
-            // 
-            tab_proveedores.ImageKey = "supplier.png";
-            tab_proveedores.Location = new Point(4, 44);
-            tab_proveedores.Name = "tab_proveedores";
-            tab_proveedores.Padding = new Padding(3);
-            tab_proveedores.Size = new Size(1083, 538);
-            tab_proveedores.TabIndex = 6;
-            tab_proveedores.Text = "Proveedores";
-            tab_proveedores.UseVisualStyleBackColor = true;
-            // 
-            // tab_reportes
-            // 
-            tab_reportes.ImageKey = "charts.png";
-            tab_reportes.Location = new Point(4, 84);
-            tab_reportes.Name = "tab_reportes";
-            tab_reportes.Padding = new Padding(3);
-            tab_reportes.Size = new Size(1083, 498);
-            tab_reportes.TabIndex = 7;
-            tab_reportes.Text = "Reportes";
-            tab_reportes.UseVisualStyleBackColor = true;
-            // 
-            // tab_info
-            // 
-            tab_info.ImageKey = "info.png";
-            tab_info.Location = new Point(4, 84);
-            tab_info.Name = "tab_info";
-            tab_info.Padding = new Padding(3);
-            tab_info.Size = new Size(1083, 498);
-            tab_info.TabIndex = 8;
-            tab_info.Text = "Info";
-            tab_info.UseVisualStyleBackColor = true;
-            // 
-            // tab_salir
-            // 
-            tab_salir.ImageKey = "off.png";
-            tab_salir.Location = new Point(4, 84);
-            tab_salir.Name = "tab_salir";
-            tab_salir.Padding = new Padding(3);
-            tab_salir.Size = new Size(1083, 498);
-            tab_salir.TabIndex = 9;
-            tab_salir.Text = "Salir";
-            tab_salir.UseVisualStyleBackColor = true;
             // 
             // imageList1
             // 
@@ -196,9 +97,108 @@
             imageList1.Images.SetKeyName(8, "charts.png");
             imageList1.Images.SetKeyName(9, "off.png");
             // 
+            // tab_usuarios
+            // 
+            tab_usuarios.ImageKey = "users.png";
+            tab_usuarios.Location = new Point(4, 96);
+            tab_usuarios.Name = "tab_usuarios";
+            tab_usuarios.Padding = new Padding(3);
+            tab_usuarios.Size = new Size(1083, 486);
+            tab_usuarios.TabIndex = 1;
+            tab_usuarios.Text = "Usuarios";
+            tab_usuarios.UseVisualStyleBackColor = true;
+            // 
+            // tab_productos
+            // 
+            tab_productos.ImageKey = "products.png";
+            tab_productos.Location = new Point(4, 74);
+            tab_productos.Name = "tab_productos";
+            tab_productos.Padding = new Padding(3);
+            tab_productos.Size = new Size(1083, 508);
+            tab_productos.TabIndex = 2;
+            tab_productos.Text = "Productos";
+            tab_productos.UseVisualStyleBackColor = true;
+            // 
+            // tab_ventas
+            // 
+            tab_ventas.ImageKey = "sales.png";
+            tab_ventas.Location = new Point(4, 74);
+            tab_ventas.Name = "tab_ventas";
+            tab_ventas.Padding = new Padding(3);
+            tab_ventas.Size = new Size(1083, 508);
+            tab_ventas.TabIndex = 3;
+            tab_ventas.Text = "Ventas";
+            tab_ventas.UseVisualStyleBackColor = true;
+            // 
+            // tab_compras
+            // 
+            tab_compras.ImageKey = "shopping.png";
+            tab_compras.Location = new Point(4, 74);
+            tab_compras.Name = "tab_compras";
+            tab_compras.Padding = new Padding(3);
+            tab_compras.Size = new Size(1083, 508);
+            tab_compras.TabIndex = 4;
+            tab_compras.Text = "Compras";
+            tab_compras.UseVisualStyleBackColor = true;
+            // 
+            // tab_clientes
+            // 
+            tab_clientes.ImageKey = "customers.png";
+            tab_clientes.Location = new Point(4, 74);
+            tab_clientes.Name = "tab_clientes";
+            tab_clientes.Padding = new Padding(3);
+            tab_clientes.Size = new Size(1083, 508);
+            tab_clientes.TabIndex = 5;
+            tab_clientes.Text = "Clientes";
+            tab_clientes.UseVisualStyleBackColor = true;
+            // 
+            // tab_proveedores
+            // 
+            tab_proveedores.ImageKey = "supplier.png";
+            tab_proveedores.Location = new Point(4, 74);
+            tab_proveedores.Name = "tab_proveedores";
+            tab_proveedores.Padding = new Padding(3);
+            tab_proveedores.Size = new Size(1083, 508);
+            tab_proveedores.TabIndex = 6;
+            tab_proveedores.Text = "Proveedores";
+            tab_proveedores.UseVisualStyleBackColor = true;
+            // 
+            // tab_reportes
+            // 
+            tab_reportes.ImageKey = "charts.png";
+            tab_reportes.Location = new Point(4, 74);
+            tab_reportes.Name = "tab_reportes";
+            tab_reportes.Padding = new Padding(3);
+            tab_reportes.Size = new Size(1083, 508);
+            tab_reportes.TabIndex = 7;
+            tab_reportes.Text = "Reportes";
+            tab_reportes.UseVisualStyleBackColor = true;
+            // 
+            // tab_info
+            // 
+            tab_info.ImageKey = "info.png";
+            tab_info.Location = new Point(4, 74);
+            tab_info.Name = "tab_info";
+            tab_info.Padding = new Padding(3);
+            tab_info.Size = new Size(1083, 508);
+            tab_info.TabIndex = 8;
+            tab_info.Text = "Info";
+            tab_info.UseVisualStyleBackColor = true;
+            // 
+            // tab_salir
+            // 
+            tab_salir.ImageKey = "off.png";
+            tab_salir.Location = new Point(4, 74);
+            tab_salir.Name = "tab_salir";
+            tab_salir.Padding = new Padding(3);
+            tab_salir.Size = new Size(1083, 508);
+            tab_salir.TabIndex = 9;
+            tab_salir.Text = "Salir";
+            tab_salir.UseVisualStyleBackColor = true;
+            // 
             // inicio
             // 
-            AutoScaleDimensions = new SizeF(14F, 35F);
+            AutoScaleDimensions = new SizeF(17F, 41F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1097, 653);
             Controls.Add(materialTabControl1);

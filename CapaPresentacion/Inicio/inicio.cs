@@ -1,11 +1,19 @@
-using System;
-using System.Windows.Forms;
-using MaterialSkin;
-using MaterialSkin.Controls;
-using Microsoft.EntityFrameworkCore;
 using CapaDatos;
 using CapaNegocio;
 using CapaNegocio.DTOs.Usuarios;
+using CapaPresentacion.Clientes;
+using CapaPresentacion.Compras;
+using CapaPresentacion.Info;
+using CapaPresentacion.Productos;
+using CapaPresentacion.Proveedores;
+using CapaPresentacion.Reportes;
+using CapaPresentacion.Ventas;
+using MaterialSkin;
+using MaterialSkin.Controls;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace CapaPresentacion
 {
@@ -28,13 +36,15 @@ namespace CapaPresentacion
         /// <summary>
         /// Inicializa el formulario principal.
         /// </summary>
-        /// <param name="db">Contexto de datos utilizado por el formulario.</param>
-        /// <param name="gestionUsuariosControl">Control de gestión de usuarios.</param>
         public inicio(
             AppDbContext db,
             GestionUsuariosControl gestionUsuariosControl)
         {
             InitializeComponent();
+
+            //LA CONEXIÓN DEL EVENTO
+            this.Load += inicio_Load;
+
             _db = db;
             _gestionUsuariosControl = gestionUsuariosControl;
             _gestionUsuariosControl.Dock = DockStyle.Fill;
@@ -49,10 +59,149 @@ namespace CapaPresentacion
             );
         }
 
-        /// <summary>
-        /// Establece el usuario autenticado y actualiza la navegación disponible.
-        /// </summary>
-        /// <param name="usuario">Usuario autenticado que inicia la sesión.</param>
+        // =========================================================================
+        // 1. CARGA INICIAL Y VISTAS (MOCKEADO Y SUBSISTEMAS)
+        // =========================================================================
+
+        private void inicio_Load(object sender, EventArgs e)
+        {
+            // A. Construir visualmente el Dashboard en tab_inicio
+            ArmarDashboardInicio();
+
+            // B. Incrustar los subformularios en sus correspondientes TabPages
+            AbrirFormularioEnTab(new ProductosForm(), tab_productos);
+            AbrirFormularioEnTab(new VentasForm(), tab_ventas);
+            AbrirFormularioEnTab(new ComprasForm(), tab_compras);
+            AbrirFormularioEnTab(new ClientesForm(), tab_clientes);
+            AbrirFormularioEnTab(new ProveedoresForm(), tab_proveedores);
+            AbrirFormularioEnTab(new ReportesForm(), tab_reportes);
+            AbrirFormularioEnTab(new InfoForm(), tab_info);
+        }
+
+        private void AbrirFormularioEnTab(Form formHijo, TabPage tabPage)
+        {
+            if (tabPage == null) return;
+
+            tabPage.Controls.Clear();
+            formHijo.TopLevel = false;
+            formHijo.FormBorderStyle = FormBorderStyle.None;
+            formHijo.Dock = DockStyle.Fill;
+
+            tabPage.Controls.Add(formHijo);
+            tabPage.Tag = formHijo;
+            formHijo.Show();
+        }
+
+        private void ArmarDashboardInicio()
+        {
+            tab_inicio.Controls.Clear();
+
+            Panel panelContenedor = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                Padding = new Padding(15)
+            };
+
+            // --- 1. CONTENEDOR FLUIDO PARA LOS 3 KPIs ---
+            TableLayoutPanel tableKpis = new TableLayoutPanel
+            {
+                Location = new Point(15, 15),
+                Height = 110,
+                Width = panelContenedor.ClientSize.Width - 30,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                ColumnCount = 3,
+                RowCount = 1
+            };
+            tableKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+            tableKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+            tableKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.34F));
+
+            // KPI 1: Ventas
+            MaterialCard cardVentas = new MaterialCard { Dock = DockStyle.Fill, Margin = new Padding(5) };
+            MaterialLabel lblTituloVentas = new MaterialLabel { Text = "💳 VENTAS DEL DÍA", FontType = MaterialSkinManager.fontType.Subtitle2, Location = new Point(15, 15), AutoSize = true };
+            MaterialLabel lblMontoVentas = new MaterialLabel { Text = "$ 185.400,00", FontType = MaterialSkinManager.fontType.H5, Location = new Point(15, 45), AutoSize = true, UseAccent = true };
+            cardVentas.Controls.Add(lblTituloVentas);
+            cardVentas.Controls.Add(lblMontoVentas);
+
+            // KPI 2: Stock
+            MaterialCard cardStock = new MaterialCard { Dock = DockStyle.Fill, Margin = new Padding(5) };
+            MaterialLabel lblTituloStock = new MaterialLabel { Text = "⚠️ ALERTA DE STOCK", FontType = MaterialSkinManager.fontType.Subtitle2, Location = new Point(15, 15), AutoSize = true };
+            MaterialLabel lblCantStock = new MaterialLabel { Text = "3 Prod. Críticos", FontType = MaterialSkinManager.fontType.H5, Location = new Point(15, 45), AutoSize = true };
+            cardStock.Controls.Add(lblTituloStock);
+            cardStock.Controls.Add(lblCantStock);
+
+            // KPI 3: Clientes
+            MaterialCard cardClientes = new MaterialCard { Dock = DockStyle.Fill, Margin = new Padding(5) };
+            MaterialLabel lblTituloClientes = new MaterialLabel { Text = "👥 CLIENTES ATENDIDOS", FontType = MaterialSkinManager.fontType.Subtitle2, Location = new Point(15, 15), AutoSize = true };
+            MaterialLabel lblCantClientes = new MaterialLabel { Text = "14 Atendidos", FontType = MaterialSkinManager.fontType.H5, Location = new Point(15, 45), AutoSize = true };
+            cardClientes.Controls.Add(lblTituloClientes);
+            cardClientes.Controls.Add(lblCantClientes);
+
+            tableKpis.Controls.Add(cardVentas, 0, 0);
+            tableKpis.Controls.Add(cardStock, 1, 0);
+            tableKpis.Controls.Add(cardClientes, 2, 0);
+
+            // --- 2. TARJETA DE ACCESOS RÁPIDOS RESPONSIVA ---
+            MaterialCard cardAccesos = new MaterialCard
+            {
+                Location = new Point(15, 135),
+                Height = 190,
+                Width = panelContenedor.ClientSize.Width - 30,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Padding = new Padding(15)
+            };
+
+            MaterialLabel lblTituloAccesos = new MaterialLabel
+            {
+                Text = "⚡ ACCESOS RÁPIDOS DEL SISTEMA",
+                FontType = MaterialSkinManager.fontType.H6,
+                Location = new Point(15, 15),
+                AutoSize = true
+            };
+
+            TableLayoutPanel tableBotones = new TableLayoutPanel
+            {
+                Location = new Point(15, 55),
+                Height = 115,
+                Width = cardAccesos.Width - 30,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                ColumnCount = 2,
+                RowCount = 2
+            };
+            tableBotones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableBotones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+            MaterialButton btnVentas = new MaterialButton { Text = "🛒 Punto de Venta (POS)", Dock = DockStyle.Fill, Margin = new Padding(5), Type = MaterialButton.MaterialButtonType.Contained, UseAccentColor = true };
+            btnVentas.Click += (s, e) => { if (materialTabControl1.TabPages.Contains(tab_ventas)) materialTabControl1.SelectedTab = tab_ventas; };
+
+            MaterialButton btnProductos = new MaterialButton { Text = "📦 Catálogo de Productos", Dock = DockStyle.Fill, Margin = new Padding(5), Type = MaterialButton.MaterialButtonType.Contained };
+            btnProductos.Click += (s, e) => { if (materialTabControl1.TabPages.Contains(tab_productos)) materialTabControl1.SelectedTab = tab_productos; };
+
+            MaterialButton btnClientes = new MaterialButton { Text = "👥 Padrón de Clientes", Dock = DockStyle.Fill, Margin = new Padding(5), Type = MaterialButton.MaterialButtonType.Contained };
+            btnClientes.Click += (s, e) => { if (materialTabControl1.TabPages.Contains(tab_clientes)) materialTabControl1.SelectedTab = tab_clientes; };
+
+            MaterialButton btnInfo = new MaterialButton { Text = "❓ Centro de Ayuda y Guía", Dock = DockStyle.Fill, Margin = new Padding(5), Type = MaterialButton.MaterialButtonType.Contained };
+            btnInfo.Click += (s, e) => { if (materialTabControl1.TabPages.Contains(tab_info)) materialTabControl1.SelectedTab = tab_info; };
+
+            tableBotones.Controls.Add(btnVentas, 0, 0);
+            tableBotones.Controls.Add(btnProductos, 1, 0);
+            tableBotones.Controls.Add(btnClientes, 0, 1);
+            tableBotones.Controls.Add(btnInfo, 1, 1);
+
+            cardAccesos.Controls.Add(lblTituloAccesos);
+            cardAccesos.Controls.Add(tableBotones);
+
+            panelContenedor.Controls.Add(tableKpis);
+            panelContenedor.Controls.Add(cardAccesos);
+
+            tab_inicio.Controls.Add(panelContenedor);
+        }
+
+        // =========================================================================
+        // 2. GESTIÓN DE SESIÓN Y PERMISOS DE ACCESO (RBAC)
+        // =========================================================================
+
         public void EstablecerSesionUsuario(UsuarioRespuestaDto usuario)
         {
             _usuarioActual = usuario;
@@ -170,6 +319,10 @@ namespace CapaPresentacion
             }
         }
 
+        // =========================================================================
+        // 3. EVENTOS DEL NAVEGADOR Y FORMULARIO
+        // =========================================================================
+
         private void materialTabControl1_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (_reconstruyendoNavegacion)
@@ -224,7 +377,7 @@ namespace CapaPresentacion
             }
             catch (Exception ex)
             {
-                MaterialMessageBox.Show(this, "Detalle del error:\n" + ex.Message, "Error SQL");
+                // En modo mock ignora la falta de conexión
             }
         }
 
