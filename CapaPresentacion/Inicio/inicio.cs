@@ -7,6 +7,7 @@ using CapaPresentacion.Info;
 using CapaPresentacion.Productos;
 using CapaPresentacion.Proveedores;
 using CapaPresentacion.Reportes;
+using CapaPresentacion.Tema;
 using CapaPresentacion.Ventas;
 using MaterialSkin;
 using MaterialSkin.Controls;
@@ -48,15 +49,25 @@ namespace CapaPresentacion
             _db = db;
             _gestionUsuariosControl = gestionUsuariosControl;
             _gestionUsuariosControl.Dock = DockStyle.Fill;
+            _gestionUsuariosControl.BackColor = TemaAplicacion.FondoPrincipal;
             tab_usuarios.Controls.Add(_gestionUsuariosControl);
             tab_usuarios.Enter += tab_usuarios_Enter;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
-            materialSkinManager.Theme = MaterialSkinManager.Themes.DARK;
-            materialSkinManager.ColorScheme = new ColorScheme(
-                Primary.BlueGrey900, Primary.BlueGrey900, Primary.BlueGrey500, Accent.DeepOrange700, TextShade.WHITE
-            );
+            ConfigurarFondosDeNavegacion();
+        }
+        private void ConfigurarFondosDeNavegacion()
+        {
+            Color fondoPrincipal = TemaAplicacion.FondoPrincipal;
+
+            materialTabControl1.BackColor = fondoPrincipal;
+
+            foreach (TabPage tabPage in materialTabControl1.TabPages)
+            {
+                tabPage.UseVisualStyleBackColor = false;
+                tabPage.BackColor = fondoPrincipal;
+            }
         }
 
         // =========================================================================
@@ -69,27 +80,23 @@ namespace CapaPresentacion
             ArmarDashboardInicio();
 
             // B. Incrustar los subformularios en sus correspondientes TabPages
-            AbrirFormularioEnTab(new ProductosForm(), tab_productos);
-            AbrirFormularioEnTab(new VentasForm(), tab_ventas);
-            AbrirFormularioEnTab(new ComprasForm(), tab_compras);
-            AbrirFormularioEnTab(new ClientesForm(), tab_clientes);
-            AbrirFormularioEnTab(new ProveedoresForm(), tab_proveedores);
-            AbrirFormularioEnTab(new ReportesForm(), tab_reportes);
-            AbrirFormularioEnTab(new InfoForm(), tab_info);
+            AbrirVistaEnTab(new ProductosForm(), tab_productos);
+            AbrirVistaEnTab(new VentasForm(), tab_ventas);
+            AbrirVistaEnTab(new ComprasForm(), tab_compras);
+            AbrirVistaEnTab(new ClientesForm(), tab_clientes);
+            AbrirVistaEnTab(new ProveedoresForm(), tab_proveedores);
+            AbrirVistaEnTab(new ReportesForm(), tab_reportes);
+            AbrirVistaEnTab(new InfoForm(), tab_info);
         }
 
-        private void AbrirFormularioEnTab(Form formHijo, TabPage tabPage)
+        private void AbrirVistaEnTab(UserControl vista, TabPage tabPage)
         {
             if (tabPage == null) return;
 
             tabPage.Controls.Clear();
-            formHijo.TopLevel = false;
-            formHijo.FormBorderStyle = FormBorderStyle.None;
-            formHijo.Dock = DockStyle.Fill;
-
-            tabPage.Controls.Add(formHijo);
-            tabPage.Tag = formHijo;
-            formHijo.Show();
+            vista.Dock = DockStyle.Fill;
+            tabPage.Controls.Add(vista);
+            tabPage.Tag = vista;
         }
 
         private void ArmarDashboardInicio()
@@ -100,6 +107,7 @@ namespace CapaPresentacion
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
+                BackColor = TemaAplicacion.FondoPrincipal,
                 Padding = new Padding(15)
             };
 
@@ -245,11 +253,20 @@ namespace CapaPresentacion
                     materialTabControl1.SelectedTab = pestañaASeleccionar;
 
                 ActualizarReferenciaPestañaAnterior();
+                RefrescarDrawer();
             }
             finally
             {
                 _reconstruyendoNavegacion = false;
             }
+        }
+
+        private void RefrescarDrawer()
+        {
+            materialTabControl1.ImageList = imageList1;
+            DrawerTabControl = materialTabControl1;
+            DrawerShowIconsWhenHidden = true;
+            materialTabControl1.Invalidate(true);
         }
 
         private void RestaurarNavegacionBase()
@@ -260,10 +277,13 @@ namespace CapaPresentacion
                 tab_clientes, tab_proveedores, tab_reportes, tab_info, tab_salir
             };
 
-            foreach (TabPage tab in navegacionBase)
-                materialTabControl1.TabPages.Remove(tab);
+            for (int indice = 0; indice < navegacionBase.Length; indice++)
+            {
+                TabPage tab = navegacionBase[indice];
 
-            materialTabControl1.TabPages.AddRange(navegacionBase);
+                if (!materialTabControl1.TabPages.Contains(tab))
+                    materialTabControl1.TabPages.Insert(indice, tab);
+            }
             AsegurarReferenciaPestañaAnterior();
         }
 

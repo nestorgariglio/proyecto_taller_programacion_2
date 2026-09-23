@@ -7,15 +7,16 @@ using System.Text;
 using System.Windows.Forms;
 using MaterialSkin;
 using MaterialSkin.Controls;
+using CapaPresentacion.Tema;
 
 namespace CapaPresentacion.Productos
 {
-    public partial class ProductosForm : Form
+    public partial class ProductosForm : UserControl
     {
         public ProductosForm()
         {
             InitializeComponent();
-            Dock = DockStyle.Fill;
+            BackColor = TemaAplicacion.FondoPrincipal;
             ArmarInterfazMaterial();
         }
 
@@ -23,11 +24,11 @@ namespace CapaPresentacion.Productos
         {
             Controls.Clear();
 
-            // 1. Tarjeta Contenedora Principal (Otorga la elevación y bordes de MaterialSkin)
-            MaterialCard cardPrincipal = new MaterialCard
+            // 1. Contenedor principal de la vista
+            Panel panelPrincipal = new Panel
             {
                 Dock = DockStyle.Fill,
-                Margin = new Padding(15),
+                BackColor = TemaAplicacion.FondoPrincipal,
                 Padding = new Padding(15)
             };
 
@@ -57,22 +58,70 @@ namespace CapaPresentacion.Productos
                 StartIndex = 0
             };
             cboCategoria.Items.AddRange(new object[] { "Todas", "Periféricos", "Monitores", "Audio" });
+            MaterialComboBox cboEstado = new MaterialComboBox
+            {
+                Hint = "Estado",
+                Location = new Point(505, 55),
+                Width = 150,
+                StartIndex = 0
+            };
+            cboEstado.Items.AddRange(new object[] { "Activos", "Inactivos" });
 
             MaterialButton btnNuevo = new MaterialButton
             {
                 Text = "➕ Nuevo Producto",
-                Location = new Point(505, 60),
                 Height = 48,
                 Type = MaterialButton.MaterialButtonType.Contained,
                 UseAccentColor = true
             };
 
+            FlowLayoutPanel panelAcciones = new FlowLayoutPanel
+            {
+                Location = new Point(20, 110),
+                Width = panelPrincipal.Width - 40,
+                Height = 55,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoScroll = true,
+                Padding = new Padding(0, 2, 0, 0)
+            };
+
+            MaterialButton btnEditar = new MaterialButton
+            {
+                Text = "✏️ Editar",
+                Width = 120,
+                Height = 48,
+                Type = MaterialButton.MaterialButtonType.Contained
+            };
+
+            MaterialButton btnDesactivar = new MaterialButton
+            {
+                Text = "⛔ Desactivar",
+                Width = 150,
+                Height = 48,
+                Type = MaterialButton.MaterialButtonType.Contained
+            };
+
+            MaterialButton btnActualizar = new MaterialButton
+            {
+                Text = "🔄 Actualizar",
+                Width = 135,
+                Height = 48,
+                Type = MaterialButton.MaterialButtonType.Contained
+            };
+
+            panelAcciones.Controls.Add(btnNuevo);
+            panelAcciones.Controls.Add(btnEditar);
+            panelAcciones.Controls.Add(btnDesactivar);
+            panelAcciones.Controls.Add(btnActualizar);
+
             // 4. DataGridView Estilizado para Dark Mode de MaterialSkin
             DataGridView dgv = new DataGridView
             {
-                Location = new Point(20, 130),
-                Width = cardPrincipal.Width - 40,
-                Height = 360,
+                Location = new Point(20, 180),
+                Width = panelPrincipal.Width - 40,
+                Height = 300,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
                 ReadOnly = true,
                 AllowUserToAddRows = false,
@@ -113,14 +162,15 @@ namespace CapaPresentacion.Productos
 
             dgv.DataSource = dt;
 
-            // Ensamblar la tarjeta
-            cardPrincipal.Controls.Add(lblTitulo);
-            cardPrincipal.Controls.Add(txtBuscar);
-            cardPrincipal.Controls.Add(cboCategoria);
-            cardPrincipal.Controls.Add(btnNuevo);
-            cardPrincipal.Controls.Add(dgv);
+            // Ensamblar la vista
+            panelPrincipal.Controls.Add(lblTitulo);
+            panelPrincipal.Controls.Add(txtBuscar);
+            panelPrincipal.Controls.Add(cboCategoria);
+            panelPrincipal.Controls.Add(cboEstado);
+            panelPrincipal.Controls.Add(panelAcciones);
+            panelPrincipal.Controls.Add(dgv);
 
-            Controls.Add(cardPrincipal);
+            Controls.Add(panelPrincipal);
         }
     }
 }

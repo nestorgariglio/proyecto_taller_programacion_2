@@ -5,17 +5,18 @@ using System.Data;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
+using CapaPresentacion.Tema;
 using MaterialSkin;
 using MaterialSkin.Controls;
 
 namespace CapaPresentacion.Compras
 {
-    public partial class ComprasForm : Form
+    public partial class ComprasForm : UserControl
     {
         public ComprasForm()
         {
             InitializeComponent();
-            Dock = DockStyle.Fill;
+            BackColor = TemaAplicacion.FondoPrincipal;
             ArmarInterfazMaterial();
         }
 
@@ -23,11 +24,11 @@ namespace CapaPresentacion.Compras
         {
             Controls.Clear();
 
-            // 1. Tarjeta Contenedora Principal
-            MaterialCard cardPrincipal = new MaterialCard
+            // 1. Contenedor principal de la vista
+            Panel panelPrincipal = new Panel
             {
                 Dock = DockStyle.Fill,
-                Margin = new Padding(15),
+                BackColor = TemaAplicacion.FondoPrincipal,
                 Padding = new Padding(15)
             };
 
@@ -70,7 +71,7 @@ namespace CapaPresentacion.Compras
             DataGridView dgv = new DataGridView
             {
                 Location = new Point(20, 130),
-                Width = cardPrincipal.Width - 40,
+                Width = panelPrincipal.Width - 40,
                 Height = 360,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
                 ReadOnly = true,
@@ -109,13 +110,13 @@ namespace CapaPresentacion.Compras
             dgv.DataSource = dt;
 
             // Ensamblar
-            cardPrincipal.Controls.Add(lblTitulo);
-            cardPrincipal.Controls.Add(cboProveedor);
-            cardPrincipal.Controls.Add(txtFactura);
-            cardPrincipal.Controls.Add(btnRegistrar);
-            cardPrincipal.Controls.Add(dgv);
+            panelPrincipal.Controls.Add(lblTitulo);
+            panelPrincipal.Controls.Add(cboProveedor);
+            panelPrincipal.Controls.Add(txtFactura);
+            panelPrincipal.Controls.Add(btnRegistrar);
+            panelPrincipal.Controls.Add(dgv);
 
-            Controls.Add(cardPrincipal);
+            Controls.Add(panelPrincipal);
         }
     }
 }

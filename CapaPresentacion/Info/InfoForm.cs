@@ -5,17 +5,18 @@ using System.Data;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
+using CapaPresentacion.Tema;
 using MaterialSkin;
 using MaterialSkin.Controls;
 
 namespace CapaPresentacion.Info
 {
-    public partial class InfoForm : Form
+    public partial class InfoForm : UserControl
     {
         public InfoForm()
         {
             InitializeComponent();
-            Dock = DockStyle.Fill;
+            BackColor = TemaAplicacion.FondoPrincipal;
             ArmarInterfazMaterial();
         }
 
@@ -27,7 +28,8 @@ namespace CapaPresentacion.Info
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
-                Padding = new Padding(15)
+                Padding = new Padding(15),
+                BackColor = TemaAplicacion.FondoPrincipal
             };
 
             // --- TARJETA 1: ENCABEZADO ---

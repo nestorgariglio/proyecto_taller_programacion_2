@@ -47,7 +47,7 @@
             // 
             // materialTabControl1
             // 
-            materialTabControl1.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            materialTabControl1.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
             materialTabControl1.Controls.Add(tab_inicio);
             materialTabControl1.Controls.Add(tab_usuarios);
             materialTabControl1.Controls.Add(tab_productos);

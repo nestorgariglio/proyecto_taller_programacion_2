@@ -5,17 +5,18 @@ using System.Data;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
+using CapaPresentacion.Tema;
 using MaterialSkin;
 using MaterialSkin.Controls;
 
 namespace CapaPresentacion.Ventas
 {
-    public partial class VentasForm : Form
+    public partial class VentasForm : UserControl
     {
         public VentasForm()
         {
             InitializeComponent();
-            Dock = DockStyle.Fill;
+            BackColor = TemaAplicacion.FondoPrincipal;
             ArmarInterfazMaterial();
         }
 
@@ -28,7 +29,8 @@ namespace CapaPresentacion.Ventas
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 1,
-                Padding = new Padding(10)
+                Padding = new Padding(10),
+                BackColor = TemaAplicacion.FondoPrincipal
             };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));

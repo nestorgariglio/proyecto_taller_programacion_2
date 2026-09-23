@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using CapaDatos;
 using CapaNegocio;
+using CapaPresentacion.Tema;
 
 namespace CapaPresentacion
 {
@@ -13,6 +14,7 @@ namespace CapaPresentacion
         static void Main()
         {
             ApplicationConfiguration.Initialize();
+            TemaAplicacion.Configurar();
 
             var host = Host.CreateDefaultBuilder()
                 .ConfigureAppConfiguration((context, config) =>

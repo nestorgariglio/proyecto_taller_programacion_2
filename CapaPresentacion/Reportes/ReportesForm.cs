@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
+using CapaPresentacion.Tema;
 using MaterialSkin;
 using MaterialSkin.Controls;
 using LiveCharts;
@@ -16,12 +17,12 @@ using PieChart = LiveCharts.WinForms.PieChart;
 
 namespace CapaPresentacion.Reportes
 {
-    public partial class ReportesForm : Form
+    public partial class ReportesForm : UserControl
     {
         public ReportesForm()
         {
             InitializeComponent();
-            Dock = DockStyle.Fill;
+            BackColor = TemaAplicacion.FondoPrincipal;
             ArmarInterfazMaterial();
         }
 
@@ -33,7 +34,8 @@ namespace CapaPresentacion.Reportes
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
-                Padding = new Padding(15)
+                Padding = new Padding(15),
+                BackColor = TemaAplicacion.FondoPrincipal
             };
 
             // 1. FILTROS

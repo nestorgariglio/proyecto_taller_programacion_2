@@ -1,6 +1,7 @@
 using CapaNegocio;
 using CapaNegocio.DTOs.Usuarios;
 using CapaNegocio.Enums;
+using CapaPresentacion.Tema;
 using MaterialSkin.Controls;
 
 namespace CapaPresentacion;
@@ -24,6 +25,7 @@ public partial class GestionUsuariosControl : UserControl
 
         _usuarioNegocio = usuarioNegocio;
         InitializeComponent();
+        BackColor = TemaAplicacion.FondoPrincipal;
 
         comboEstado.Items.AddRange(new object[]
         {
