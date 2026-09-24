@@ -3,13 +3,13 @@
 Sistema de gestión comercial de escritorio (WinForms, C#, .NET) orientado a comercios minoristas. Resuelve control de inventario, compras a proveedores, punto de venta (POS) en red local (LAN) y trazabilidad de operaciones.
 
 > Materia: Taller de Programación 2 — FaCENA, UNNE. Trabajo grupal (G70).
-> La especificación completa de requisitos (ERS) se encuentra en el documento interno del equipo y no se versiona en este repositorio.
 
 ## Stack
 
 - **Lenguaje / Framework:** C# · .NET 10 (`net10.0-windows`) · Windows Forms
-- **IDE:** Visual Studio Community (compilación en Windows / Tiny10 VM)
-- **Base de datos:** SQL Server Express, con acceso mediante **EF Core** (`Microsoft.EntityFrameworkCore.SqlServer`). Las claves se almacenan con `BCrypt.Net-Next` 4.2.0.
+- **IDE:** Visual Studio Community (compilación y ejecución en Windows)
+- **Base de datos:** SQL Server Express o LocalDB, con acceso mediante **EF Core** (`Microsoft.EntityFrameworkCore.SqlServer`). Las claves se almacenan con `BCrypt.Net-Next` 4.2.0.
+- **Tests:** xUnit y EF Core InMemory para probar la lógica de negocio sin depender de una base externa.
 - **Arquitectura:** En capas: interfaz WinForms, lógica de negocio y acceso a datos con EF Core.
 
 ## Estructura del proyecto
@@ -31,33 +31,68 @@ proyecto_taller_programacion_2/
 
 ## Requisitos
 
-- Windows 10/11 con **Visual Studio Community 2022+** (workload ".NET Desktop Development").
-- **SQL Server Express** (o LocalDB para desarrollo liviano) instalado y accesible en LAN.
+- Windows 10/11 con una versión de **Visual Studio** compatible con .NET 10 y el workload ".NET Desktop Development".
+- **SQL Server Express** o LocalDB instalado y disponible localmente.
 - .NET SDK 10.0.400.
+- Herramienta `dotnet-ef` 10.0.11.
 
 ## Cómo compilar y ejecutar
 
-1. Abrir `SistemaVentaStock.slnx` en Visual Studio.
-2. Restaurar paquetes NuGet (Build → Restore).
-3. Configurar la cadena de conexión a SQL Server en `CapaPresentacion/appsettings.json`.
-4. Aplicar las migraciones EF Core para crear o actualizar el esquema de la base de datos; este paso no carga datos de desarrollo.
-5. Ejecutar `scripts/seed-desarrollo.sql` cuando se necesiten datos de desarrollo.
-6. Compilar y ejecutar (F5).
+1. Clonar el repositorio y abrir `SistemaVentaStock.slnx` en Visual Studio.
+2. Restaurar los paquetes NuGet desde Visual Studio o desde PowerShell:
 
-> En Fedora el proyecto no se compila directamente (WinForms requiere Windows). Usá la VM con Tiny10 + Visual Studio como entorno de compilación.
+   ```powershell
+   dotnet restore
+   ```
+
+3. Configurar la cadena de conexión a SQL Server en `CapaPresentacion/appsettings.json`.
+4. Aplicar las migraciones de EF Core para crear o actualizar el esquema de la base de datos.
+5. Ejecutar `scripts/seed-desarrollo.sql` para cargar los datos de desarrollo.
+6. Compilar y ejecutar con F5 desde Visual Studio.
 
 ## Migraciones de EF Core
 
-Desde la raíz del repositorio, restaurá la herramienta local y aplicá las migraciones:
+Desde PowerShell, instalar la herramienta de EF Core una sola vez:
 
 ```powershell
-dotnet tool restore
+dotnet tool install --global dotnet-ef --version 10.0.11
+```
+
+Desde la raíz del repositorio, aplicar las migraciones pendientes:
+
+```powershell
 dotnet ef database update --project CapaDatos --startup-project CapaDatos --context AppDbContext
 ```
 
-La migración inicial ya está versionada en `CapaDatos/Migrations`, por lo que normalmente no hace falta volver a ejecutar `migrations add`. Si cambiás el modelo, creá una nueva con `dotnet ef migrations add NombreDescriptivo --project CapaDatos --startup-project CapaDatos --context AppDbContext --output-dir Migrations`. `database update` crea o actualiza el esquema, pero no carga datos de desarrollo.
+Las migraciones versionadas se encuentran en `CapaDatos/Migrations`. `database update` crea o actualiza el esquema, pero no carga datos de desarrollo.
+
+Si cambiás una entidad o una regla del modelo, generá una nueva migración:
+
+```powershell
+dotnet ef migrations add NombreDescriptivo `
+  --project CapaDatos `
+  --startup-project CapaDatos `
+  --context AppDbContext `
+  --output-dir Migrations
+```
 
 La factory de diseño usa preferentemente `ConnectionStrings__CadenaSQL` y, si no está definida, `CapaPresentacion/appsettings.json`.
+
+### Configuración de SQL Server
+
+La configuración predeterminada utiliza una instancia local de SQL Server Express:
+
+```json
+{
+  "ConnectionStrings": {
+    "CadenaSQL": "Server=localhost\\SQLEXPRESS;Database=DB_SISTEMA_VENTA;Integrated Security=true;TrustServerCertificate=true;"
+  }
+}
+```
+
+Si se utiliza LocalDB, reemplazar el servidor por `(localdb)\\MSSQLLocalDB`.
+
+La cadena debe apuntar a una instancia accesible con las credenciales del usuario de Windows.
 
 ## Autenticación y seed de desarrollo
 
@@ -65,7 +100,27 @@ Las claves de usuarios se almacenan como hashes BCrypt; `UsuarioNegocio` valida 
 
 `scripts/seed-desarrollo.sql` conserva la transacción y el upsert de roles y usuarios, y asigna hashes BCrypt válidos a los usuarios de desarrollo con DNI `90000001`, `90000002` y `90000003`. El script no contiene las claves de esos usuarios en texto plano; ejecutalo después de aplicar las migraciones para cargar los datos de prueba.
 
+Desde PowerShell, ubicado en la raíz del repositorio, ejecutarlo con:
+
+```powershell
+sqlcmd -S ".\SQLEXPRESS" -E -b -i ".\scripts\seed-desarrollo.sql"
+```
+
+`-E` utiliza la autenticación integrada de Windows, `-b` hace que `sqlcmd` informe un error si el script falla y `-i` indica el archivo SQL de entrada.
+
 Credenciales de desarrollo: `90000001 / Admin123!`, `90000002 / Encargado123!` y `90000003 / Vendedor123!`. Son ficticias y no deben reutilizarse fuera de la base local.
+
+## Tests
+
+Los tests automatizados verifican autenticación, bloqueo por intentos fallidos, altas, modificaciones, bajas lógicas, activaciones, validaciones, duplicados y permisos por rol.
+
+Ejecutarlos desde la raíz del repositorio:
+
+```powershell
+dotnet test CapaNegocio.Tests\CapaNegocio.Tests.csproj
+```
+
+Estos tests utilizan EF Core InMemory, por lo que no requieren iniciar SQL Server.
 
 ## Roadmap (6 sprints — 12 semanas)
 
