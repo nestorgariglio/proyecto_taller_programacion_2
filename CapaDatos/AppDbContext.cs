@@ -56,6 +56,15 @@ namespace CapaDatos
                     "[sexo] IN ('M', 'F')"
                 ));
 
+            modelBuilder.Entity<Categoria>()
+                .Property(categoria => categoria.Descripcion)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<Categoria>()
+                .HasIndex(categoria => categoria.Descripcion)
+                .IsUnique()
+                .HasFilter("[descripcion] IS NOT NULL");
+
         }
     }
 }

@@ -32,7 +32,8 @@ namespace CapaDatos.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdCategoria"));
 
                     b.Property<string>("Descripcion")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
                         .HasColumnName("descripcion");
 
                     b.Property<bool>("Estado")
@@ -44,6 +45,10 @@ namespace CapaDatos.Migrations
                         .HasColumnName("fecha_registro");
 
                     b.HasKey("IdCategoria");
+
+                    b.HasIndex("Descripcion")
+                        .IsUnique()
+                        .HasFilter("[descripcion] IS NOT NULL");
 
                     b.ToTable("CATEGORIA");
                 });

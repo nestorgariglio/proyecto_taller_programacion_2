@@ -25,6 +25,7 @@ namespace CapaPresentacion
     {
         private readonly AppDbContext _db;
         private readonly GestionUsuariosControl _gestionUsuariosControl;
+        private readonly ProductosForm _productosForm;
         private TabPage? _pestañaAnterior;
         private UsuarioRespuestaDto? _usuarioActual;
         private bool _reconstruyendoNavegacion;
@@ -39,7 +40,8 @@ namespace CapaPresentacion
         /// </summary>
         public inicio(
             AppDbContext db,
-            GestionUsuariosControl gestionUsuariosControl)
+            GestionUsuariosControl gestionUsuariosControl,
+            ProductosForm productosForm)
         {
             InitializeComponent();
 
@@ -52,6 +54,11 @@ namespace CapaPresentacion
             _gestionUsuariosControl.BackColor = TemaAplicacion.FondoPrincipal;
             tab_usuarios.Controls.Add(_gestionUsuariosControl);
             tab_usuarios.Enter += tab_usuarios_Enter;
+
+            // La vista de productos llega por DI (patrón de los controles de
+            // gestión) y refresca su combo de categorías al entrar en la pestaña.
+            _productosForm = productosForm;
+            tab_productos.Enter += tab_productos_Enter;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -80,7 +87,7 @@ namespace CapaPresentacion
             ArmarDashboardInicio();
 
             // B. Incrustar los subformularios en sus correspondientes TabPages
-            AbrirVistaEnTab(new ProductosForm(), tab_productos);
+            AbrirVistaEnTab(_productosForm, tab_productos);
             AbrirVistaEnTab(new VentasForm(), tab_ventas);
             AbrirVistaEnTab(new ComprasForm(), tab_compras);
             AbrirVistaEnTab(new ClientesForm(), tab_clientes);
@@ -242,6 +249,11 @@ namespace CapaPresentacion
                 OcultarSiNoAutorizada("tab_proveedores", "Proveedores", rol);
                 OcultarSiNoAutorizada("tab_reportes", "Reportes", rol);
 
+                // RF-12: el botón "Gestionar categorías" de la vista de productos
+                // se muestra solo a quien puede acceder al módulo "Categorías"
+                // (Administrador/Encargado); al Vendedor le queda oculto.
+                _productosForm.AplicarRolUsuario(rol);
+
                 TabPage? pestañaASeleccionar = _pestañaAnterior;
                 if (pestañaASeleccionar == null ||
                     !materialTabControl1.TabPages.Contains(pestañaASeleccionar))
@@ -383,6 +395,17 @@ namespace CapaPresentacion
             if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Usuarios"))
             {
                 await _gestionUsuariosControl.CargarUsuariosAsync();
+            }
+        }
+
+        private async void tab_productos_Enter(object? sender, EventArgs e)
+        {
+            // RF-11/RNF-3: el combo de categorías de la vista de productos se
+            // recarga con las categorías activas al entrar en la pestaña,
+            // reflejando el ABM sin reiniciar la aplicación (D-7).
+            if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Productos"))
+            {
+                await _productosForm.CargarCategoriasAsync();
             }
         }
 
