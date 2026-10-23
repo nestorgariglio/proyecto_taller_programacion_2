@@ -65,6 +65,53 @@ namespace CapaDatos
                 .IsUnique()
                 .HasFilter("[descripcion] IS NOT NULL");
 
+            modelBuilder.Entity<Producto>(entity =>
+            {
+                entity.Property(producto => producto.Codigo)
+                    .HasMaxLength(13);
+
+                entity.HasIndex(producto => producto.Codigo)
+                    .IsUnique()
+                    .HasFilter("[codigo] IS NOT NULL");
+
+                entity.Property(producto => producto.Nombre)
+                    .HasMaxLength(100);
+
+                entity.Property(producto => producto.Descripcion)
+                    .HasMaxLength(300);
+
+                entity.Property(producto => producto.MotivoAjusteStock)
+                    .HasMaxLength(300);
+
+                entity.Property(producto => producto.IdUsuario)
+                    .IsRequired();
+
+                entity.Property(producto => producto.IdUsuarioModifica)
+                    .IsRequired(false);
+
+                entity.Property(producto => producto.FechaModificacion)
+                    .IsRequired(false)
+                    .ValueGeneratedOnAddOrUpdate();
+
+                entity.Property(producto => producto.FechaRegistro)
+                    .HasDefaultValueSql("GETDATE()");
+
+                entity.HasOne(producto => producto.Categoria)
+                    .WithMany()
+                    .HasForeignKey(producto => producto.IdCategoria)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<Usuario>()
+                    .WithMany()
+                    .HasForeignKey(producto => producto.IdUsuario)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<Usuario>()
+                    .WithMany()
+                    .HasForeignKey(producto => producto.IdUsuarioModifica)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
         }
     }
 }
