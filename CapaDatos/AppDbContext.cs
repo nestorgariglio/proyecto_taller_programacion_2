@@ -67,6 +67,7 @@ namespace CapaDatos
 
             modelBuilder.Entity<Producto>(entity =>
             {
+                entity.ToTable(tb => tb.HasTrigger("TR_PRODUCTO_FECHA_MODIFICACION"));
                 entity.Property(producto => producto.Codigo)
                     .HasMaxLength(13);
 

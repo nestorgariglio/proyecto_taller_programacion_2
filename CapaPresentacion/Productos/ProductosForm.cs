@@ -24,8 +24,7 @@ namespace CapaPresentacion.Productos
         private MaterialButton _btnGestionCategorias = null!;
         private MaterialButton _btnNuevo = null!;
         private MaterialButton _btnEditar = null!;
-        private MaterialButton _btnDesactivar = null!;
-        private MaterialButton _btnReactivar = null!;
+        private MaterialButton _btnEstado = null!;
         private MaterialButton _btnAjustarStock = null!;
         private MaterialButton _btnActualizar = null!;
         private bool _cargandoCategorias;
@@ -34,6 +33,10 @@ namespace CapaPresentacion.Productos
         private bool _actualizandoFiltros;
         private string? _rolActual;
         private int _idUsuarioActual;
+        private Panel _panelPrincipal = null!;
+        private TableLayoutPanel _panelRaiz = null!;
+        private TableLayoutPanel _panelFiltros = null!;
+        private FlowLayoutPanel _panelAcciones = null!;
 
         /// <summary>
         /// Inicializa la vista de productos.
@@ -50,6 +53,17 @@ namespace CapaPresentacion.Productos
             InitializeComponent();
             BackColor = TemaAplicacion.FondoPrincipal;
             ArmarInterfazMaterial();
+
+            this.Load += (s, e) =>
+            {
+                if (_panelRaiz != null)
+                {
+                    _panelRaiz.PerformLayout();
+                }
+            };
+
+            _dgvProductos.DataBindingComplete += dgvProductos_DataBindingComplete;
+            ActualizarEstadoBotones();
         }
 
         /// <summary>
@@ -185,6 +199,11 @@ namespace CapaPresentacion.Productos
                     await _productoNegocio.ListarProductosAsync(filtro);
 
                 _dgvProductos.DataSource = productos;
+                if (productos.Count > 0)
+                {
+                    _dgvProductos.ClearSelection();
+                    _dgvProductos.Rows[0].Selected = true;
+                }
             }
             catch (Exception exception)
             {
@@ -273,8 +292,7 @@ namespace CapaPresentacion.Productos
             bool puedeGestionarProductos = PoliticaAcceso.PuedeGestionarProductos(rol);
             _btnNuevo.Visible = puedeGestionarProductos;
             _btnEditar.Visible = puedeGestionarProductos;
-            _btnDesactivar.Visible = puedeGestionarProductos;
-            _btnReactivar.Visible = puedeGestionarProductos;
+            _btnEstado.Visible = puedeGestionarProductos;
             _btnAjustarStock.Visible = puedeGestionarProductos;
             _btnGestionCategorias.Visible = PoliticaAcceso.TieneAcceso(rol, "Categorías");
 
@@ -312,6 +330,11 @@ namespace CapaPresentacion.Productos
         }
 
         private void dgvProductos_SelectionChanged(object? sender, EventArgs e)
+        {
+            ActualizarEstadoBotones();
+        }
+
+        private void dgvProductos_DataBindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
         {
             ActualizarEstadoBotones();
         }
@@ -403,7 +426,12 @@ namespace CapaPresentacion.Productos
             }
         }
 
-        private async void btnDesactivar_Click(object? sender, EventArgs e)
+        /// <summary>
+        /// Cambia el estado del producto seleccionado con el único botón de estado
+        /// (RF-5/RF-8): da de baja lógica el producto activo y reactiva el inactivo,
+        /// pidiendo siempre confirmación en español antes de escribir.
+        /// </summary>
+        private async void btnEstado_Click(object? sender, EventArgs e)
         {
             // RF-11/RF-18: guard defensivo en tiempo de ejecución (defensa en profundidad).
             if (!PoliticaAcceso.PuedeGestionarProductos(_rolActual))
@@ -417,10 +445,13 @@ namespace CapaPresentacion.Productos
 
             if (_dgvProductos.CurrentRow?.DataBoundItem is not ProductoRespuestaDto producto)
             {
-                MaterialMessageBox.Show(
-                    this,
-                    "Debe seleccionar un producto del listado para darlo de baja.",
-                    "Aviso");
+                // Sin fila no hay estado del producto del que derivar la acción: se
+                // conserva el mensaje original según el texto vigente del botón.
+                string mensaje = _btnEstado.Text == "Reactivar"
+                    ? "Debe seleccionar un producto del listado para reactivarlo."
+                    : "Debe seleccionar un producto del listado para darlo de baja.";
+
+                MaterialMessageBox.Show(this, mensaje, "Aviso");
                 return;
             }
 
@@ -429,39 +460,66 @@ namespace CapaPresentacion.Productos
                 return;
             }
 
-            _btnDesactivar.Enabled = false;
+            // RF-6/RF-8: el estado del producto decide la acción y el texto del diálogo.
+            bool estaActivo = producto.Estado;
+            string tituloDialogo = estaActivo ? "Dar de baja producto" : "Reactivar producto";
+            string preguntaDialogo = estaActivo
+                ? $"¿Confirma que desea dar de baja el producto {producto.Nombre}?"
+                : $"¿Confirma que desea reactivar el producto {producto.Nombre}?";
+
+            // RF-12/D-13: confirmación simple en español antes de escribir.
+            var dialogo = new MaterialDialog(
+                formularioPrincipal,
+                tituloDialogo,
+                preguntaDialogo,
+                "SÍ",
+                true,
+                "NO");
+
+            // Cancelar ⇒ sin ninguna escritura: el producto queda sin cambios.
+            if (dialogo.ShowDialog(formularioPrincipal) != DialogResult.OK)
+            {
+                return;
+            }
+
+            _btnEstado.Enabled = false;
 
             try
             {
-                // RF-12/D-13: confirmación simple en español antes de escribir.
-                var dialogo = new MaterialDialog(
-                    formularioPrincipal,
-                    "Dar de baja producto",
-                    $"¿Confirma que desea dar de baja el producto {producto.Nombre}?",
-                    "SÍ",
-                    true,
-                    "NO");
-
-                // Cancelar ⇒ sin ninguna escritura: el producto queda sin cambios.
-                if (dialogo.ShowDialog(formularioPrincipal) != DialogResult.OK)
+                if (estaActivo)
                 {
-                    return;
+                    // La baja es lógica y la resuelve Negocio (RNF-3, sin DELETE físico).
+                    RespuestaBajaProducto respuesta =
+                        await _productoNegocio.DarBajaProductoAsync(
+                            producto.IdProducto, _idUsuarioActual);
+
+                    if (respuesta.Resultado != ResultadoBajaProducto.Exito)
+                    {
+                        // Casos límite (ya inactivo / sin permiso / no encontrado): se
+                        // muestra el mensaje en español de Negocio, sin modificar nada.
+                        MaterialMessageBox.Show(this, respuesta.Mensaje, "Atención");
+                        return;
+                    }
+
+                    MaterialMessageBox.Show(this, respuesta.Mensaje, "Producto dado de baja");
+                }
+                else
+                {
+                    RespuestaReactivacionProducto respuesta =
+                        await _productoNegocio.ReactivarProductoAsync(
+                            producto.IdProducto, _idUsuarioActual);
+
+                    if (respuesta.Resultado != ResultadoReactivacionProducto.Exito)
+                    {
+                        // D-12/RF-13: si la categoría está inactiva, Negocio bloquea la
+                        // reactivación y aquí solo se muestra su mensaje en español.
+                        MaterialMessageBox.Show(this, respuesta.Mensaje, "Atención");
+                        return;
+                    }
+
+                    MaterialMessageBox.Show(this, respuesta.Mensaje, "Producto reactivado");
                 }
 
-                // La baja es lógica y la resuelve Negocio (RNF-3, sin DELETE físico).
-                RespuestaBajaProducto respuesta =
-                    await _productoNegocio.DarBajaProductoAsync(
-                        producto.IdProducto, _idUsuarioActual);
-
-                if (respuesta.Resultado != ResultadoBajaProducto.Exito)
-                {
-                    // Casos límite (ya inactivo / sin permiso / no encontrado): se
-                    // muestra el mensaje en español de Negocio, sin modificar nada.
-                    MaterialMessageBox.Show(this, respuesta.Mensaje, "Atención");
-                    return;
-                }
-
-                MaterialMessageBox.Show(this, respuesta.Mensaje, "Producto dado de baja");
                 await CargarProductosAsync();
             }
             catch (Exception exception)
@@ -469,81 +527,7 @@ namespace CapaPresentacion.Productos
                 // RF-16: fallo de BD informado en español, conservando los filtros.
                 MaterialMessageBox.Show(
                     this,
-                    $"No se pudo dar de baja el producto.\nDetalle: {exception.Message}",
-                    "Error SQL");
-            }
-            finally
-            {
-                ActualizarEstadoBotones();
-            }
-        }
-
-        private async void btnReactivar_Click(object? sender, EventArgs e)
-        {
-            // RF-11/RF-18: guard defensivo en tiempo de ejecución (defensa en profundidad).
-            if (!PoliticaAcceso.PuedeGestionarProductos(_rolActual))
-            {
-                MaterialMessageBox.Show(
-                    this,
-                    "Acceso no autorizado. Este módulo solo está disponible para Administrador o Encargado.",
-                    "Acceso denegado");
-                return;
-            }
-
-            if (_dgvProductos.CurrentRow?.DataBoundItem is not ProductoRespuestaDto producto)
-            {
-                MaterialMessageBox.Show(
-                    this,
-                    "Debe seleccionar un producto del listado para reactivarlo.",
-                    "Aviso");
-                return;
-            }
-
-            if (FindForm() is not Form formularioPrincipal)
-            {
-                return;
-            }
-
-            _btnReactivar.Enabled = false;
-
-            try
-            {
-                // RF-13: se confirma la reactivación antes de escribir.
-                var dialogo = new MaterialDialog(
-                    formularioPrincipal,
-                    "Reactivar producto",
-                    $"¿Confirma que desea reactivar el producto {producto.Nombre}?",
-                    "SÍ",
-                    true,
-                    "NO");
-
-                // Cancelar ⇒ sin ninguna escritura: el producto sigue inactivo.
-                if (dialogo.ShowDialog(formularioPrincipal) != DialogResult.OK)
-                {
-                    return;
-                }
-
-                RespuestaReactivacionProducto respuesta =
-                    await _productoNegocio.ReactivarProductoAsync(
-                        producto.IdProducto, _idUsuarioActual);
-
-                if (respuesta.Resultado != ResultadoReactivacionProducto.Exito)
-                {
-                    // D-12/RF-13: si la categoría está inactiva, Negocio bloquea la
-                    // reactivación y aquí solo se muestra su mensaje en español.
-                    MaterialMessageBox.Show(this, respuesta.Mensaje, "Atención");
-                    return;
-                }
-
-                MaterialMessageBox.Show(this, respuesta.Mensaje, "Producto reactivado");
-                await CargarProductosAsync();
-            }
-            catch (Exception exception)
-            {
-                // RF-16: fallo de BD informado en español, conservando los filtros.
-                MaterialMessageBox.Show(
-                    this,
-                    $"No se pudo reactivar el producto.\nDetalle: {exception.Message}",
+                    $"No se pudo cambiar el estado del producto.\nDetalle: {exception.Message}",
                     "Error SQL");
             }
             finally
@@ -615,11 +599,12 @@ namespace CapaPresentacion.Productos
 
         /// <summary>
         /// Habilita las acciones del ABM según la fila seleccionada y el rol
-        /// (RF-10/RF-12/RF-13, D-18-bis): "Nuevo" queda disponible para quien puede
-        /// gestionar productos; "Actualizar" es una acción de lectura y nunca se
-        /// deshabilita por selección; "Editar" y "Ajustar stock" requieren una fila
-        /// seleccionada (también inactivos, D-20); "Desactivar" solo sobre activos y
-        /// "Reactivar" solo sobre inactivos.
+        /// (RF-7/RF-12): "Nuevo" queda disponible para quien puede gestionar
+        /// productos; "Actualizar" es una acción de lectura y nunca se deshabilita
+        /// por selección; "Editar" y "Ajustar stock" requieren una fila seleccionada
+        /// (también inactivos, D-20); el único botón de estado muestra "Desactivar"
+        /// sobre un producto activo y "Reactivar" sobre uno inactivo, y queda
+        /// deshabilitado cuando no hay selección.
         /// </summary>
         private void ActualizarEstadoBotones()
         {
@@ -628,11 +613,22 @@ namespace CapaPresentacion.Productos
             bool puedeGestionarProductos =
                 PoliticaAcceso.PuedeGestionarProductos(_rolActual);
 
+            // Defensa para CurrentRow = null (CF-1): si no hay fila seleccionada,
+            // los botones de edición/acciones se deshabilitan sin lanzar excepciones.
+            if (producto is null)
+            {
+                _btnEditar.Enabled = false;
+                _btnEstado.Enabled = false;
+                _btnAjustarStock.Enabled = false;
+            }
+            else
+            {
+                _btnEditar.Enabled = puedeGestionarProductos;
+                _btnEstado.Enabled = puedeGestionarProductos;
+                _btnEstado.Text = producto.Estado ? "Desactivar" : "Reactivar";
+                _btnAjustarStock.Enabled = puedeGestionarProductos;
+            }
             _btnNuevo.Enabled = puedeGestionarProductos;
-            _btnEditar.Enabled = puedeGestionarProductos && producto is not null;
-            _btnDesactivar.Enabled = puedeGestionarProductos && producto?.Estado == true;
-            _btnReactivar.Enabled = puedeGestionarProductos && producto?.Estado == false;
-            _btnAjustarStock.Enabled = puedeGestionarProductos && producto is not null;
         }
 
         private void ArmarInterfazMaterial()
@@ -640,29 +636,64 @@ namespace CapaPresentacion.Productos
             Controls.Clear();
 
             // 1. Contenedor principal de la vista
-            Panel panelPrincipal = new Panel
+            _panelPrincipal = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = TemaAplicacion.FondoPrincipal,
                 Padding = new Padding(15)
             };
 
-            // 2. Encabezado
-            MaterialLabel lblTitulo = new MaterialLabel
+            // 2. Panel raíz con distribución por filas
+            _panelRaiz = new TableLayoutPanel
             {
-                Text = "📦 CATÁLOGO Y GESTIÓN DE PRODUCTOS",
-                FontType = MaterialSkinManager.fontType.H6,
-                Location = new Point(20, 15),
-                AutoSize = true
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 4,
+                BackColor = TemaAplicacion.FondoPrincipal,
+                AutoSize = false
             };
 
-            // 3. Controles MaterialSkin 2 (Buscador, Combos y Botones)
+            _panelRaiz.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _panelRaiz.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _panelRaiz.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
+            _panelRaiz.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
+            _panelRaiz.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            // 3. Encabezado
+            MaterialLabel lblTitulo = new MaterialLabel
+            {
+                Text = "CATÁLOGO Y GESTIÓN DE PRODUCTOS",
+                FontType = MaterialSkinManager.fontType.H6,
+                AutoSize = true,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(5, 5, 5, 8)
+            };
+
+            // 4. Panel de filtros con distribución por columnas
+            _panelFiltros = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 1,
+                BackColor = TemaAplicacion.FondoPrincipal,
+                Margin = new Padding(0, 0, 0, 4),
+                AutoSize = false,
+                Height = 56
+            };
+
+            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
+            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
+            _panelFiltros.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            // Controles MaterialSkin 2 (Buscador, Combos)
             _txtBuscar = new MaterialTextBox2
             {
                 Hint = "Buscar por código o nombre...",
-                Location = new Point(20, 55),
-                Width = 280,
-                AnimateReadOnly = true
+                Dock = DockStyle.Fill,
+                Margin = new Padding(5, 4, 10, 4),
+                AnimateReadOnly = false,
+                Depth = 0
             };
 
             // El combo se puebla con las categorías activas reales en
@@ -670,9 +701,10 @@ namespace CapaPresentacion.Productos
             _cboCategoria = new MaterialComboBox
             {
                 Hint = "Categoría",
-                Location = new Point(310, 55),
-                Width = 180,
-                StartIndex = 0
+                Dock = DockStyle.Fill,
+                Margin = new Padding(5, 4, 10, 4),
+                StartIndex = 0,
+                Depth = 0
             };
 
             // RF-15: el filtro de estado deja de estar mockeado y ofrece
@@ -680,88 +712,94 @@ namespace CapaPresentacion.Productos
             _cboEstado = new MaterialComboBox
             {
                 Hint = "Estado",
-                Location = new Point(505, 55),
-                Width = 150,
-                StartIndex = 0
+                Dock = DockStyle.Fill,
+                Margin = new Padding(5, 4, 5, 4),
+                StartIndex = 0,
+                Depth = 0
             };
             _cboEstado.Items.AddRange(new object[] { "Todos", "Activos", "Inactivos" });
             _cboEstado.SelectedIndex = 0;
 
+            _panelFiltros.Controls.Add(_txtBuscar, 0, 0);
+            _panelFiltros.Controls.Add(_cboCategoria, 1, 0);
+            _panelFiltros.Controls.Add(_cboEstado, 2, 0);
+
+            // 5. Panel de acciones
             MaterialButton btnNuevo = new MaterialButton
             {
-                Text = "➕ Nuevo Producto",
-                Height = 48,
+                Text = "Nuevo",
+                Height = 36,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Type = MaterialButton.MaterialButtonType.Contained,
                 HighEmphasis = true,
-                UseAccentColor = true,
+                UseAccentColor = false,
+                Depth = 0,
                 // Nace oculto: AplicarRolUsuario lo muestra solo a Administrador y
                 // Encargado (RF-11/RF-18). Así ningún otro rol ve la acción.
-                Visible = false
+                Visible = false,
+                Margin = new Padding(4, 6, 4, 6)
             };
             _btnNuevo = btnNuevo;
             _btnNuevo.Click += btnNuevo_Click;
 
-            FlowLayoutPanel panelAcciones = new FlowLayoutPanel
+            _panelAcciones = new FlowLayoutPanel
             {
-                Location = new Point(20, 110),
-                Width = panelPrincipal.Width - 40,
-                Height = 55,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
-                AutoScroll = true,
-                Padding = new Padding(0, 2, 0, 0)
+                AutoScroll = false,
+                Padding = new Padding(0),
+                BackColor = TemaAplicacion.FondoPrincipal,
+                Margin = new Padding(0)
             };
 
             MaterialButton btnEditar = new MaterialButton
             {
-                Text = "✏️ Editar",
-                Width = 120,
-                Height = 48,
+                Text = "Editar",
+                Height = 36,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Type = MaterialButton.MaterialButtonType.Contained,
                 HighEmphasis = true,
-                Visible = false
+                UseAccentColor = false,
+                Depth = 0,
+                Visible = false,
+                Margin = new Padding(4, 6, 4, 6)
             };
             _btnEditar = btnEditar;
             _btnEditar.Click += btnEditar_Click;
 
-            MaterialButton btnDesactivar = new MaterialButton
-            {
-                Text = "⛔ Desactivar",
-                Width = 150,
-                Height = 48,
-                Type = MaterialButton.MaterialButtonType.Contained,
-                HighEmphasis = true,
-                Visible = false
-            };
-            _btnDesactivar = btnDesactivar;
-            _btnDesactivar.Click += btnDesactivar_Click;
-
-            // RF-13: reactivación de productos inactivos, con la misma protección
+            // RF-5/RF-6: un único botón de estado que alterna "Desactivar" (producto
+            // activo) y "Reactivar" (producto inactivo), con la misma protección
             // por rol que el resto de las acciones de escritura.
-            MaterialButton btnReactivar = new MaterialButton
+            MaterialButton btnEstado = new MaterialButton
             {
-                Text = "♻️ Reactivar",
-                Width = 140,
-                Height = 48,
+                Text = "Desactivar",
+                Height = 36,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Type = MaterialButton.MaterialButtonType.Contained,
                 HighEmphasis = true,
-                Visible = false
+                UseAccentColor = false,
+                Depth = 0,
+                Visible = false,
+                Margin = new Padding(4, 6, 4, 6)
             };
-            _btnReactivar = btnReactivar;
-            _btnReactivar.Click += btnReactivar_Click;
+            _btnEstado = btnEstado;
+            _btnEstado.Click += btnEstado_Click;
 
             // RF-10/D-14: ajuste manual de stock por valor absoluto y motivo
             // obligatorio, con la misma protección por rol que el resto de las
             // acciones de escritura.
             MaterialButton btnAjustarStock = new MaterialButton
             {
-                Text = "📦 Ajustar stock",
-                Width = 165,
-                Height = 48,
+                Text = "Ajustar stock",
+                Height = 36,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Type = MaterialButton.MaterialButtonType.Contained,
                 HighEmphasis = true,
-                Visible = false
+                UseAccentColor = false,
+                Depth = 0,
+                Visible = false,
+                Margin = new Padding(4, 6, 4, 6)
             };
             _btnAjustarStock = btnAjustarStock;
             _btnAjustarStock.Click += btnAjustarStock_Click;
@@ -772,11 +810,14 @@ namespace CapaPresentacion.Productos
             // pestaña, D-18-bis).
             MaterialButton btnActualizar = new MaterialButton
             {
-                Text = "🔄 Actualizar",
-                Width = 135,
-                Height = 48,
+                Text = "Actualizar",
+                Height = 36,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Type = MaterialButton.MaterialButtonType.Contained,
-                HighEmphasis = true
+                HighEmphasis = true,
+                UseAccentColor = false,
+                Depth = 0,
+                Margin = new Padding(4, 6, 4, 6)
             };
             _btnActualizar = btnActualizar;
             _btnActualizar.Click += btnActualizar_Click;
@@ -787,54 +828,81 @@ namespace CapaPresentacion.Productos
             // ausente), ningún otro rol ve la acción.
             _btnGestionCategorias = new MaterialButton
             {
-                Text = "🏷️ Gestionar categorías",
-                Width = 180,
-                Height = 48,
+                Text = "Gestionar categorías",
+                Height = 36,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Type = MaterialButton.MaterialButtonType.Contained,
-                Visible = false
+                HighEmphasis = true,
+                UseAccentColor = false,
+                Depth = 0,
+                Visible = false,
+                Margin = new Padding(4, 6, 4, 6)
             };
             _btnGestionCategorias.Click += btnGestionCategorias_Click;
 
-            panelAcciones.Controls.Add(btnNuevo);
-            panelAcciones.Controls.Add(btnEditar);
-            panelAcciones.Controls.Add(btnDesactivar);
-            panelAcciones.Controls.Add(btnReactivar);
-            panelAcciones.Controls.Add(btnAjustarStock);
-            panelAcciones.Controls.Add(btnActualizar);
-            panelAcciones.Controls.Add(_btnGestionCategorias);
+            _panelAcciones.Controls.Add(btnNuevo);
+            _panelAcciones.Controls.Add(btnEditar);
+            _panelAcciones.Controls.Add(btnEstado);
+            _panelAcciones.Controls.Add(btnAjustarStock);
+            _panelAcciones.Controls.Add(btnActualizar);
+            _panelAcciones.Controls.Add(_btnGestionCategorias);
 
-            // 4. DataGridView Estilizado para Dark Mode de MaterialSkin
+            // Configurar _panelAcciones directamente en el TableLayoutPanel (patrón GestionCategoriasControl)
+            _panelAcciones.Dock = DockStyle.Fill;
+            _panelAcciones.FlowDirection = FlowDirection.LeftToRight;
+            _panelAcciones.WrapContents = false;
+            _panelAcciones.AutoScroll = false;
+            _panelAcciones.Padding = new Padding(0);
+            _panelAcciones.BackColor = TemaAplicacion.FondoPrincipal;
+            _panelAcciones.Margin = new Padding(0, 4, 0, 4);
+
+            // 6. DataGridView Estilizado para Dark Mode de MaterialSkin
             DataGridView dgv = new DataGridView
             {
-                Location = new Point(20, 180),
-                Width = panelPrincipal.Width - 40,
-                Height = 300,
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                Dock = DockStyle.Fill,
                 ReadOnly = true,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
+                AllowUserToResizeRows = false,
                 AutoGenerateColumns = false,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.FromArgb(40, 40, 40),
+                BackgroundColor = Color.FromArgb(48, 48, 48),
                 BorderStyle = BorderStyle.None,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
                 RowHeadersVisible = false,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = false,
-                EnableHeadersVisualStyles = false
+                EnableHeadersVisualStyles = false,
+                Margin = new Padding(5, 4, 5, 5)
             };
 
             // Estilos oscuros del DataGridView para integrarse con Material
-            dgv.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(30, 30, 30);
-            dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Roboto", 10, FontStyle.Bold);
-            dgv.ColumnHeadersHeight = 40;
+            dgv.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                Alignment = DataGridViewContentAlignment.MiddleLeft,
+                BackColor = Color.FromArgb(55, 71, 79),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.White,
+                SelectionBackColor = Color.FromArgb(55, 71, 79),
+                SelectionForeColor = Color.White,
+                WrapMode = DataGridViewTriState.True
+            };
+            dgv.ColumnHeadersHeight = 42;
 
-            dgv.DefaultCellStyle.BackColor = Color.FromArgb(50, 50, 50);
-            dgv.DefaultCellStyle.ForeColor = Color.White;
-            dgv.DefaultCellStyle.SelectionBackColor = Color.FromArgb(80, 80, 80);
+            dgv.DefaultCellStyle = new DataGridViewCellStyle
+            {
+                Alignment = DataGridViewContentAlignment.MiddleLeft,
+                BackColor = Color.FromArgb(48, 48, 48),
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.White,
+                SelectionBackColor = Color.FromArgb(255, 87, 34),
+                SelectionForeColor = Color.White,
+                WrapMode = DataGridViewTriState.False
+            };
             dgv.DefaultCellStyle.SelectionForeColor = Color.White;
-            dgv.RowTemplate.Height = 35;
+            dgv.GridColor = Color.FromArgb(80, 80, 80);
+            dgv.RowTemplate.Height = 36;
 
             // RF-14: columnas del listado real de Negocio (ProductoRespuestaDto).
             dgv.Columns.AddRange(new DataGridViewColumn[]
@@ -865,14 +933,13 @@ namespace CapaPresentacion.Productos
             _dgvProductos = dgv;
 
             // Ensamblar la vista
-            panelPrincipal.Controls.Add(lblTitulo);
-            panelPrincipal.Controls.Add(_txtBuscar);
-            panelPrincipal.Controls.Add(_cboCategoria);
-            panelPrincipal.Controls.Add(_cboEstado);
-            panelPrincipal.Controls.Add(panelAcciones);
-            panelPrincipal.Controls.Add(dgv);
+            _panelRaiz.Controls.Add(lblTitulo, 0, 0);
+            _panelRaiz.Controls.Add(_panelFiltros, 0, 1);
+            _panelRaiz.Controls.Add(_panelAcciones, 0, 2);
+            _panelRaiz.Controls.Add(dgv, 0, 3);
 
-            Controls.Add(panelPrincipal);
+            _panelPrincipal.Controls.Add(_panelRaiz);
+            Controls.Add(_panelPrincipal);
 
             // La grilla se completa con el listado real (CargarProductosAsync) al
             // entrar en la pestaña y con cada cambio de filtro (RF-14/RF-15).
