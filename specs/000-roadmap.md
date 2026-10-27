@@ -36,7 +36,7 @@
 | # | Spec | Estado | Depende de |
 |---|---|---|---|
 | — | (transversal) `000-roadmap.md` | Este documento | — |
-| 001 | `001-abm-categorias` — ABM de Categorías/Rubros + reencuadre de acceso | **Aprobada** (cambio de requisito aprobado 2026-10-19). Backend y categorías implementados (T1–T10); **T11 hecha en código**; **T12–T14 pendientes**. Plan y tareas ya alineados con el reencuadre (2026-10-19) | — |
+| 001 | `001-abm-categorias` — ABM de Categorías/Rubros + reencuadre de acceso | **Aprobada e implementada** (reencuadre aprobado 2026-10-19). T1–T14 **hechas y validadas** (`dotnet build` limpio, `dotnet test` 64/64). Solo queda la **validación visual del usuario**. Plan y tareas alineados con el reencuadre | — |
 | 002 | `002-abm-productos` — ABM de Productos | **A crear** | 001 |
 | 003 | `003-abm-clientes` — ABM de Clientes | **A crear** | — (independiente; conviene tras 002 por patrón de ABM) |
 | 004 | `004-abm-proveedores` — ABM de Proveedores | **A crear** | — (independiente; conviene tras 002/003 por patrón de ABM) |
@@ -57,13 +57,14 @@
 
 ---
 
-## 4. Spec 001 — Categorías/Rubros (reencuadre) — **en curso**
+## 4. Spec 001 — Categorías/Rubros (reencuadre) — **implementada**
 
 - **Objetivo**: cerrar el reencuadre de acceso de la gestión de categorías (deja de ser ítem del menú principal y pasa a ser una característica del módulo Productos, en modal) y terminar el ABM ya implementado en backend.
-- **Estado de la documentación (2026-10-19)**: `spec.md` en estado **aprobada** (D-4); `plan.md` **actualizado y vigente** (sin menciones de "pendiente de aprobación", con el mecanismo del gating por rol y del refresco del combo ya explicitado) y `tasks.md` **revisado** (T11 hecha; T12/T13/T14 pendientes y coherentes con el plan y con el código real).
-- **Alcance pendiente**: T12 (botón "Gestionar categorías" en `ProductosForm` con gating por rol), T13 (contenedor modal `GestionCategoriasModalForm` que reutiliza `GestionCategoriasControl`) y T14 (verificación: `dotnet build` limpio, `dotnet test` 64/64, validación visual del reencuadre y arranque sin error de claves de imagen duplicadas).
-- **Toca**: `CapaPresentacion/Productos/ProductosForm.cs`, `CapaPresentacion/Categorias/`, `CapaPresentacion/Program.cs`, `CapaPresentacion/Inicio/inicio.cs` (ya tocado: pestaña eliminada).
-- **Riesgos/dependencias**: ninguno pendiente de backend (ya completo y en verde). Requiere **llevar el rol del usuario hasta `ProductosForm`**, que hoy solo recibe `CategoriaNegocio`.
+- **Estado de la documentación (2026-10-19/20)**: `spec.md` en estado **aprobada** (D-4); `plan.md` **actualizado y vigente** (sin menciones de "pendiente de aprobación", con el mecanismo del gating por rol y del refresco del combo ya explicitado) y `tasks.md` **revisado y cerrado** (T11–T14 hechas y validadas).
+- **Estado de implementación**: **T1–T14 hechas y validadas**. T11 (pestaña `tab_categorias` eliminada y crash `products.png` corregido), T12 (botón "Gestionar categorías" en `ProductosForm` con gating por rol y guard defensivo en runtime) y T13 (contenedor modal `GestionCategoriasModalForm` que reutiliza `GestionCategoriasControl`) están en código; T14 (verificación técnica) **cerrada**: `dotnet build` limpio y `dotnet test` **64/64**.
+- **Alcance pendiente**: **solo la validación visual del usuario** (arranque sin crash, flujo ABM completo desde el botón, botón oculto a Vendedor y visible a Admin/Encargado, combo de categorías refrescado al cerrar el modal).
+- **Toca**: `CapaPresentacion/Productos/ProductosForm.cs`, `CapaPresentacion/Categorias/`, `CapaPresentacion/Program.cs`, `CapaPresentacion/Inicio/inicio.cs` (tocados: pestaña eliminada y gating por rol).
+- **Riesgos/dependencias**: ninguno pendiente de backend (completo y en verde). El rol del usuario ya llega hasta `ProductosForm` mediante `AplicarRolUsuario(string?)`.
 - **Referencias**: `specs/001-abm-categorias/{spec.md, plan.md, tasks.md}`.
 
 ## 5. Spec 002 — ABM de Productos
@@ -187,7 +188,7 @@
 - **D-R1 (orden y nombres)**: se confirma el orden **y los nombres de carpeta**: `002-abm-productos` → `003-abm-clientes` → `004-abm-proveedores` → `005-ventas` → `006-compras` → `007-reportes`. Se mantiene, además, la regla de **una funcionalidad a la vez** con aprobación explícita del usuario en cada fase (spec → plan → tareas).
 - **D-R2 (menú principal congelado)**: se confirma que **ninguna spec futura (002–007) modifica el menú principal** (ni pestañas, ni ítems, ni íconos, ni orden). El reencuadre de categorías de la spec 001 lo deja igual y las funcionalidades nuevas viven dentro de las pantallas ya existentes. Regla transversal registrada en §2.
 - **D-R3 (vista Info = vista estática)**: la vista `Info` se documenta como **centro de ayuda estático**, sin backend, sin spec propia y sin lógica nueva; queda como **único ítem de cierre** del roadmap una **revisión de contenido y redacción** tras la spec 007 (ver §11).
-- **D-R4 (spec 001 aprobada y planificada)**: la spec `001-abm-categorias` queda **`aprobada`** (sin cambios de estado), con su **`plan.md` y `tasks.md` alineados** al reencuadre aprobado (D-4) el 2026-10-19; T11 hecha en código y T12–T14 pendientes.
+- **D-R4 (spec 001 aprobada e implementada)**: la spec `001-abm-categorias` está **`aprobada`** e **implementada** (T1–T14 hechas y validadas), con su **`plan.md` y `tasks.md` alineados y cerrados** al reencuadre aprobado (D-4) el 2026-10-19; T11–T14 hechas, `dotnet build` limpio y `dotnet test` 64/64. **Único pendiente: la validación visual del usuario.**
 
 ## 14. Dudas abiertas del roadmap
 
