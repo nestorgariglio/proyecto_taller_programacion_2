@@ -159,106 +159,112 @@ BEGIN TRY
        OR @idCategoriaFrutas IS NULL
         THROW 51006, N'Falta una o más categorías activas requeridas: Bebidas, Almacén, Lácteos, Limpieza y Frutas y Verduras.', 1;
 
+    DECLARE @idUsuarioAdministrador int =
+        (SELECT id_usuario FROM dbo.USUARIO WHERE dni = 90000001);
+
+    IF @idUsuarioAdministrador IS NULL
+        THROW 51007, N'No se encontró el usuario Administrador con DNI 90000001 para asignar a los productos.', 1;
+
     ---------------------------------------------------------------------------
     -- Productos de desarrollo: 12 activos, códigos de barras únicos
     -- (formato 779...), con stock > 0 y precio_venta > precio_compra.
     -- Cada categoría activa recibe al menos 2 productos.
     ---------------------------------------------------------------------------
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaBebidas, nombre = N'Coca-Cola 1,5 L', descripcion = N'Gaseosa de 1,5 L', stock = 40,
+    SET id_categoria = @idCategoriaBebidas, id_usuario = @idUsuarioAdministrador, nombre = N'Coca-Cola 1,5 L', descripcion = N'Gaseosa de 1,5 L', stock = 40,
         precio_compra = 1200.00, precio_venta = 1899.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000011';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaBebidas, N'7790001000011', N'Coca-Cola 1,5 L', N'Gaseosa de 1,5 L', 40, 1200.00, 1899.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaBebidas, @idUsuarioAdministrador, N'7790001000011', N'Coca-Cola 1,5 L', N'Gaseosa de 1,5 L', 40, 1200.00, 1899.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaBebidas, nombre = N'Agua Villavicencio 2 L', descripcion = N'Agua mineral sin gas de 2 L', stock = 60,
+    SET id_categoria = @idCategoriaBebidas, id_usuario = @idUsuarioAdministrador, nombre = N'Agua Villavicencio 2 L', descripcion = N'Agua mineral sin gas de 2 L', stock = 60,
         precio_compra = 500.00, precio_venta = 899.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000028';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaBebidas, N'7790001000028', N'Agua Villavicencio 2 L', N'Agua mineral sin gas de 2 L', 60, 500.00, 899.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaBebidas, @idUsuarioAdministrador, N'7790001000028', N'Agua Villavicencio 2 L', N'Agua mineral sin gas de 2 L', 60, 500.00, 899.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaAlmacen, nombre = N'Harina Pureza 1 kg', descripcion = N'Harina de trigo 1 kg', stock = 80,
+    SET id_categoria = @idCategoriaAlmacen, id_usuario = @idUsuarioAdministrador, nombre = N'Harina Pureza 1 kg', descripcion = N'Harina de trigo 1 kg', stock = 80,
         precio_compra = 700.00, precio_venta = 1150.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000035';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaAlmacen, N'7790001000035', N'Harina Pureza 1 kg', N'Harina de trigo 1 kg', 80, 700.00, 1150.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaAlmacen, @idUsuarioAdministrador, N'7790001000035', N'Harina Pureza 1 kg', N'Harina de trigo 1 kg', 80, 700.00, 1150.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaAlmacen, nombre = N'Aceite Natura 1,5 L', descripcion = N'Aceite de girasol 1,5 L', stock = 35,
+    SET id_categoria = @idCategoriaAlmacen, id_usuario = @idUsuarioAdministrador, nombre = N'Aceite Natura 1,5 L', descripcion = N'Aceite de girasol 1,5 L', stock = 35,
         precio_compra = 2100.00, precio_venta = 3199.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000042';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaAlmacen, N'7790001000042', N'Aceite Natura 1,5 L', N'Aceite de girasol 1,5 L', 35, 2100.00, 3199.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaAlmacen, @idUsuarioAdministrador, N'7790001000042', N'Aceite Natura 1,5 L', N'Aceite de girasol 1,5 L', 35, 2100.00, 3199.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaAlmacen, nombre = N'Azúcar Ledesma 1 kg', descripcion = N'Azúcar refinada 1 kg', stock = 50,
+    SET id_categoria = @idCategoriaAlmacen, id_usuario = @idUsuarioAdministrador, nombre = N'Azúcar Ledesma 1 kg', descripcion = N'Azúcar refinada 1 kg', stock = 50,
         precio_compra = 850.00, precio_venta = 1399.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000059';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaAlmacen, N'7790001000059', N'Azúcar Ledesma 1 kg', N'Azúcar refinada 1 kg', 50, 850.00, 1399.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaAlmacen, @idUsuarioAdministrador, N'7790001000059', N'Azúcar Ledesma 1 kg', N'Azúcar refinada 1 kg', 50, 850.00, 1399.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaLacteos, nombre = N'Leche La Serenísima 1 L', descripcion = N'Leche entera 1 L', stock = 70,
+    SET id_categoria = @idCategoriaLacteos, id_usuario = @idUsuarioAdministrador, nombre = N'Leche La Serenísima 1 L', descripcion = N'Leche entera 1 L', stock = 70,
         precio_compra = 900.00, precio_venta = 1450.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000073';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaLacteos, N'7790001000073', N'Leche La Serenísima 1 L', N'Leche entera 1 L', 70, 900.00, 1450.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaLacteos, @idUsuarioAdministrador, N'7790001000073', N'Leche La Serenísima 1 L', N'Leche entera 1 L', 70, 900.00, 1450.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaLacteos, nombre = N'Queso Cremoso Ilolay 500 g', descripcion = N'Queso cremoso en fetas 500 g', stock = 25,
+    SET id_categoria = @idCategoriaLacteos, id_usuario = @idUsuarioAdministrador, nombre = N'Queso Cremoso Ilolay 500 g', descripcion = N'Queso cremoso en fetas 500 g', stock = 25,
         precio_compra = 3200.00, precio_venta = 4799.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000080';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaLacteos, N'7790001000080', N'Queso Cremoso Ilolay 500 g', N'Queso cremoso en fetas 500 g', 25, 3200.00, 4799.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaLacteos, @idUsuarioAdministrador, N'7790001000080', N'Queso Cremoso Ilolay 500 g', N'Queso cremoso en fetas 500 g', 25, 3200.00, 4799.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaLacteos, nombre = N'Yogur Ilolay 1 L', descripcion = N'Yogur bebible sabor frutilla 1 L', stock = 30,
+    SET id_categoria = @idCategoriaLacteos, id_usuario = @idUsuarioAdministrador, nombre = N'Yogur Ilolay 1 L', descripcion = N'Yogur bebible sabor frutilla 1 L', stock = 30,
         precio_compra = 1300.00, precio_venta = 2099.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000097';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaLacteos, N'7790001000097', N'Yogur Ilolay 1 L', N'Yogur bebible sabor frutilla 1 L', 30, 1300.00, 2099.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaLacteos, @idUsuarioAdministrador, N'7790001000097', N'Yogur Ilolay 1 L', N'Yogur bebible sabor frutilla 1 L', 30, 1300.00, 2099.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaLimpieza, nombre = N'Detergente Magistral 750 ml', descripcion = N'Detergente concentrado limón 750 ml', stock = 55,
+    SET id_categoria = @idCategoriaLimpieza, id_usuario = @idUsuarioAdministrador, nombre = N'Detergente Magistral 750 ml', descripcion = N'Detergente concentrado limón 750 ml', stock = 55,
         precio_compra = 950.00, precio_venta = 1599.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000103';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaLimpieza, N'7790001000103', N'Detergente Magistral 750 ml', N'Detergente concentrado limón 750 ml', 55, 950.00, 1599.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaLimpieza, @idUsuarioAdministrador, N'7790001000103', N'Detergente Magistral 750 ml', N'Detergente concentrado limón 750 ml', 55, 950.00, 1599.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaLimpieza, nombre = N'Lavandina Ayudín 1 L', descripcion = N'Lavandina en gel 1 L', stock = 40,
+    SET id_categoria = @idCategoriaLimpieza, id_usuario = @idUsuarioAdministrador, nombre = N'Lavandina Ayudín 1 L', descripcion = N'Lavandina en gel 1 L', stock = 40,
         precio_compra = 800.00, precio_venta = 1350.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000110';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaLimpieza, N'7790001000110', N'Lavandina Ayudín 1 L', N'Lavandina en gel 1 L', 40, 800.00, 1350.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaLimpieza, @idUsuarioAdministrador, N'7790001000110', N'Lavandina Ayudín 1 L', N'Lavandina en gel 1 L', 40, 800.00, 1350.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaFrutas, nombre = N'Banana', descripcion = N'Banana en racimo, por kilo', stock = 30,
+    SET id_categoria = @idCategoriaFrutas, id_usuario = @idUsuarioAdministrador, nombre = N'Banana', descripcion = N'Banana en racimo, por kilo', stock = 30,
         precio_compra = 900.00, precio_venta = 1499.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000127';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaFrutas, N'7790001000127', N'Banana', N'Banana en racimo, por kilo', 30, 900.00, 1499.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaFrutas, @idUsuarioAdministrador, N'7790001000127', N'Banana', N'Banana en racimo, por kilo', 30, 900.00, 1499.00, 1, GETDATE());
 
     UPDATE dbo.PRODUCTO
-    SET id_categoria = @idCategoriaFrutas, nombre = N'Tomate', descripcion = N'Tomate redondo, por kilo', stock = 20,
+    SET id_categoria = @idCategoriaFrutas, id_usuario = @idUsuarioAdministrador, nombre = N'Tomate', descripcion = N'Tomate redondo, por kilo', stock = 20,
         precio_compra = 1100.00, precio_venta = 1799.00, estado = 1, fecha_registro = GETDATE()
     WHERE codigo = N'7790001000134';
     IF @@ROWCOUNT = 0
-        INSERT dbo.PRODUCTO (id_categoria, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
-        VALUES (@idCategoriaFrutas, N'7790001000134', N'Tomate', N'Tomate redondo, por kilo', 20, 1100.00, 1799.00, 1, GETDATE());
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaFrutas, @idUsuarioAdministrador, N'7790001000134', N'Tomate', N'Tomate redondo, por kilo', 20, 1100.00, 1799.00, 1, GETDATE());
 
     COMMIT TRANSACTION;
 END TRY

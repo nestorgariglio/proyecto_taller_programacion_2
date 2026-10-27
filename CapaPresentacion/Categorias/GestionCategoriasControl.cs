@@ -178,19 +178,26 @@ public partial class GestionCategoriasControl : UserControl
 
         try
         {
-            // RF-6: primero se determina si hay productos activos vinculados.
-            int productosActivos = await _categoriaNegocio.ContarProductosActivosAsync(categoria.IdCategoria);
+            // RF-13/RF-15: la regla de la baja y el texto en español los resuelve el
+            // negocio; la vista solo presenta el mensaje recibido (no compone textos).
+            ConfirmacionBajaCategoria confirmacion =
+                await _categoriaNegocio.ObtenerConfirmacionBajaAsync(categoria.IdCategoria);
 
-            // RF-7: con activos, el diálogo informa SOLO la cantidad (sin listado)
-            // y ofrece continuar o cancelar. RF-8: sin activos, confirmación simple.
-            string mensaje = productosActivos > 0
-                ? $"La categoría {categoria.Descripcion} tiene {productosActivos} producto(s) activo(s) vinculados. ¿Desea desactivarla igualmente?"
-                : $"¿Confirma que desea dar de baja la categoría {categoria.Descripcion}?";
+            // RF-14: si la baja no es posible (categoría inexistente o ya inactiva)
+            // se informa el motivo, sin diálogo SÍ/NO y sin escribir nada.
+            if (!confirmacion.PuedeDarseDeBaja)
+            {
+                MaterialMessageBox.Show(this, confirmacion.Mensaje, "Atención");
+                return;
+            }
 
+            // RF-7: con productos activos, el mensaje del negocio informa SOLO la
+            // cantidad (sin listado) y ofrece continuar o cancelar. RF-8: sin activos,
+            // el negocio entrega la confirmación simple.
             var dialogo = new MaterialDialog(
                 formularioPrincipal,
                 "Dar de baja categoría",
-                mensaje,
+                confirmacion.Mensaje,
                 "SÍ",
                 true,
                 "NO");

@@ -5,7 +5,7 @@
 `scripts/preparar-bd.ps1` prepara la base de datos de desarrollo en dos pasos ordenados y finaliza con una verificación de control:
 
 - **Paso 1 (opcional si se usa `-SoloDatos`)**: Aplica las migraciones de Entity Framework Core. Antes restaura la herramienta `dotnet-ef` definida en `.config/dotnet-tools.json` con `dotnet tool restore` y luego ejecuta `dotnet ef database update --project CapaDatos --startup-project CapaDatos --context AppDbContext`. Esto crea o actualiza el esquema de `DB_SISTEMA_VENTA`.
-- **Paso 2 (siempre)**: Ejecuta el script `scripts/seed-desarrollo.sql` contra la base con `sqlcmd`, usando autenticación integrada y forzando UTF-8 con `-f 65001` para evitar la lectura OEM de los caracteres con tilde.
+- **Paso 2 (siempre)**: Ejecuta el script `scripts/seed-desarrollo.sql` contra la base con `sqlcmd`, usando autenticación integrada y forzando UTF-8 con `-f 65001` para evitar la lectura OEM de los caracteres con tilde. El script asigna `id_usuario` de los productos al **Administrador** (DNI `90000001`) mediante variable y es idempotente.
 - **Paso 3 (verificación)**: Consulta los conteos y muestra una línea como `Categorías: 6 (activas: 5) | Productos: 12 (activos: 12)`. En caso de que los conteos sean 0, el script emite una advertencia.
 
 ## 2) ¿Qué NO hace?
