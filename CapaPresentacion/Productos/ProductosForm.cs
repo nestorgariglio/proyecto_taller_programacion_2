@@ -7,19 +7,39 @@ using CapaNegocio;
 using CapaNegocio.DTOs.Categorias;
 using CapaNegocio.DTOs.Productos;
 using CapaNegocio.Enums;
+using CapaNegocio.Stock;
 using MaterialSkin;
 using MaterialSkin.Controls;
+using Microsoft.Extensions.Configuration;
 using CapaPresentacion.Tema;
 
 namespace CapaPresentacion.Productos
 {
     public partial class ProductosForm : UserControl
     {
+        // Paleta de criticidad de la grilla (D-17). Son los cuatro colores
+        // aprobados sobre el fondo oscuro; el texto de la fila va siempre en blanco.
+        private static readonly Color FondoAgotado = Color.FromArgb(0xB7, 0x1C, 0x1C);           // #B71C1C
+        private static readonly Color FondoAgotadoInactivo = Color.FromArgb(0x6E, 0x20, 0x20);   // #6E2020
+        private static readonly Color FondoBajoUmbral = Color.FromArgb(0xF9, 0xA8, 0x25);        // #F9A825
+        private static readonly Color FondoBajoUmbralInactivo = Color.FromArgb(0x8C, 0x6D, 0x0A); // #8C6D0A
+
+        // Textos de la grilla vacía (RF-13/D-16). El de error es distinto a propósito:
+        // un fallo de base de datos no debe leerse como "no hay productos".
+        private const string MensajeSinProductos = "No hay productos registrados.";
+        private const string MensajeSinCoincidencias =
+            "Ningún producto coincide con los filtros aplicados.";
+        private const string MensajeErrorCarga = "No se pudo cargar el listado de productos.";
+
         private readonly CategoriaNegocio _categoriaNegocio;
         private readonly ProductoNegocio _productoNegocio;
+        private readonly IConfiguration _configuracion;
+        private readonly ResolucionUmbralStock _resolucionUmbral;
         private MaterialTextBox2 _txtBuscar = null!;
         private MaterialComboBox _cboCategoria = null!;
         private MaterialComboBox _cboEstado = null!;
+        private MaterialCheckbox _chkSoloCriticos = null!;
+        private Label _lblUmbral = null!;
         private DataGridView _dgvProductos = null!;
         private MaterialButton _btnGestionCategorias = null!;
         private MaterialButton _btnNuevo = null!;
@@ -38,18 +58,39 @@ namespace CapaPresentacion.Productos
         private TableLayoutPanel _panelFiltros = null!;
         private FlowLayoutPanel _panelAcciones = null!;
 
+        // Mensaje que la grilla dibuja sobre su área de filas cuando no hay filas
+        // (D-16); <c>null</c> cuando hay resultados o no corresponde avisar.
+        private string? _mensajeVacio;
+
         /// <summary>
         /// Inicializa la vista de productos.
         /// </summary>
         /// <param name="categoriaNegocio">Servicio que lista las categorías activas del combo (RF-11).</param>
         /// <param name="productoNegocio">Servicio que ejecuta las operaciones del ABM de productos (RF-1/RF-9).</param>
-        public ProductosForm(CategoriaNegocio categoriaNegocio, ProductoNegocio productoNegocio)
+        /// <param name="configuracion">
+        /// Configuración de la aplicación, de donde se lee una única vez el umbral
+        /// mínimo de stock (RF-9/RF-10, D-15). La interpretación del valor queda en
+        /// <see cref="ResolucionUmbralStock"/>: la vista no parsea el texto.
+        /// </param>
+        public ProductosForm(
+            CategoriaNegocio categoriaNegocio,
+            ProductoNegocio productoNegocio,
+            IConfiguration configuracion)
         {
             ArgumentNullException.ThrowIfNull(categoriaNegocio);
             ArgumentNullException.ThrowIfNull(productoNegocio);
+            ArgumentNullException.ThrowIfNull(configuracion);
 
             _categoriaNegocio = categoriaNegocio;
             _productoNegocio = productoNegocio;
+            _configuracion = configuracion;
+
+            // Lectura única del parámetro (D-15/RNF-9): el resultado tipado se
+            // guarda en el campo y de él salen tanto el texto como el valor que
+            // se pasará a la consulta.
+            _resolucionUmbral = ResolucionUmbralStock.Resolver(
+                _configuracion["StockCritico:UmbralMinimo"]);
+
             InitializeComponent();
             BackColor = TemaAplicacion.FondoPrincipal;
             ArmarInterfazMaterial();
@@ -92,7 +133,9 @@ namespace CapaPresentacion.Productos
         /// la opción "Todas" (RF-15) y, a continuación, recarga el listado real de
         /// productos (RF-14). Se invoca al entrar en la pestaña de productos para
         /// reflejar los cambios del ABM de categorías y de productos sin reiniciar
-        /// la aplicación (RNF-3).
+        /// la aplicación (RNF-3). Si la categoría que estaba elegida dejó de estar
+        /// activa, el filtro vuelve a "Todas" y se informa una única vez por este
+        /// evento de refresco (RF-24), conservando texto, estado y "Solo críticos".
         /// </summary>
         /// <returns>Tarea que representa la carga del combo y del listado.</returns>
         public async Task CargarCategoriasAsync()
@@ -103,6 +146,7 @@ namespace CapaPresentacion.Productos
             }
 
             _cargandoCategorias = true;
+            bool categoriaDesaparecida = false;
 
             try
             {
@@ -131,7 +175,13 @@ namespace CapaPresentacion.Productos
                         }
                     }
 
-                    _cboCategoria.SelectedIndex = BuscarIndiceCategoria(idCategoriaSeleccionada);
+                    // RF-24: si había una categoría elegida y ya no está entre las
+                    // activas, BuscarIndiceCategoria devuelve "Todas" (índice 0).
+                    int indiceCategoria = BuscarIndiceCategoria(idCategoriaSeleccionada);
+                    categoriaDesaparecida = idCategoriaSeleccionada.HasValue
+                        && indiceCategoria == 0;
+
+                    _cboCategoria.SelectedIndex = indiceCategoria;
                 }
                 finally
                 {
@@ -150,6 +200,11 @@ namespace CapaPresentacion.Productos
                     _actualizandoFiltros = false;
                 }
 
+                // RF-16: el fallo deja el texto de error para que la grilla vacía
+                // lo dibuje en su Paint (primera carga), sin confundirlo con el
+                // mensaje de "no hay productos". Un único modal de error.
+                _mensajeVacio = MensajeErrorCarga;
+
                 MaterialMessageBox.Show(
                     this,
                     $"No se pudieron cargar las categorías del combo.\nDetalle: {exception.Message}",
@@ -164,14 +219,31 @@ namespace CapaPresentacion.Productos
 
             // RF-14/RF-15: al entrar en la pestaña también se refresca la grilla.
             await CargarProductosAsync();
+
+            // RF-24: el aviso va una sola vez por este evento de refresco, después
+            // de recargar el listado y sin tocar los demás filtros. Vive aquí y no
+            // en TextChanged ni en cada recarga de la grilla. Es informativo y
+            // modal a propósito: no forma parte del aviso persistente del umbral
+            // degradado que RF-23 prohíbe mostrar como modal.
+            if (categoriaDesaparecida)
+            {
+                MaterialMessageBox.Show(
+                    this,
+                    "La categoría seleccionada ya no está disponible."
+                        + "\nSe muestran todos los productos.",
+                    "Categoría no disponible");
+            }
         }
 
         /// <summary>
         /// Carga el listado real de productos —activos e inactivos— armando el
         /// <see cref="FiltroProductosDto"/> con los filtros elegidos en pantalla:
-        /// búsqueda por Código y/o Nombre, categoría por Id y estado (RF-14/RF-15).
-        /// Las reglas de filtrado viven en <see cref="ProductoNegocio"/>: aquí solo
-        /// se arma el filtro y se bindea el resultado.
+        /// búsqueda por Código y/o Nombre, categoría por Id, estado (RF-14/RF-15) y
+        /// "Solo críticos" (RF-6/RF-11). Las reglas de filtrado y de criticidad
+        /// viven en <see cref="ProductoNegocio"/>: aquí solo se arma el filtro, se
+        /// pasa el umbral vigente y se bindea el resultado. Si el listado vuelve
+        /// vacío guarda el mensaje que la grilla dibujará (RF-13) y, ante un fallo
+        /// de base de datos, conserva el listado y los filtros previos (RF-16).
         /// </summary>
         /// <returns>Tarea que representa la carga del listado.</returns>
         private async Task CargarProductosAsync()
@@ -192,23 +264,36 @@ namespace CapaPresentacion.Productos
                 {
                     Texto = _txtBuscar.Text,
                     IdCategoria = ObtenerCategoriaSeleccionada()?.Id,
-                    Estado = ObtenerEstadoSeleccionado()
+                    Estado = ObtenerEstadoSeleccionado(),
+                    // RF-6/RF-11: la casilla viaja dentro del filtro; null cuando
+                    // está apagada, igual que el resto de los filtros opcionales.
+                    SoloCriticos = _chkSoloCriticos.Checked ? true : (bool?)null
                 };
 
+                // El umbral se toma tal como lo resolvió el constructor (RF-9):
+                // en modo degradado es null y el negocio solo marca los agotados
+                // (RF-10). La vista no parsea ni recalcula nada.
                 List<ProductoRespuestaDto> productos =
-                    await _productoNegocio.ListarProductosAsync(filtro);
+                    await _productoNegocio.ListarProductosAsync(
+                        filtro, _resolucionUmbral.Valor);
+
+                // RF-13/D-16: el texto de la grilla vacía se decide antes del bind
+                // para que el repintado que dispara el DataSource ya lo encuentre.
+                _mensajeVacio = await ObtenerMensajeVacioAsync(productos);
 
                 _dgvProductos.DataSource = productos;
-                if (productos.Count > 0)
-                {
-                    _dgvProductos.ClearSelection();
-                    _dgvProductos.Rows[0].Selected = true;
-                }
+
+                // RF-21: la única coincidencia exacta ya viene en la posición 0; aquí
+                // solo se decide qué fila queda activa tras el bind.
+                AplicarSeleccionTrasCarga(productos);
             }
             catch (Exception exception)
             {
                 // RF-16: un fallo de BD se informa en español sin perder los
-                // filtros ingresados ni el listado que ya estaba en pantalla.
+                // filtros ingresados ni el listado que ya estaba en pantalla. El
+                // texto dibujado es propio del error, nunca el de "sin productos".
+                _mensajeVacio = MensajeErrorCarga;
+
                 MaterialMessageBox.Show(
                     this,
                     $"No se pudo cargar el listado de productos.\nDetalle: {exception.Message}",
@@ -224,6 +309,133 @@ namespace CapaPresentacion.Productos
                     await CargarProductosAsync();
                 }
             }
+        }
+
+        /// <summary>
+        /// Obtiene el mensaje de grilla vacía que corresponde al listado recién
+        /// consultado (RF-13/D-16): sin filas y con catálogo vacío informa que no
+        /// hay productos registrados; sin filas pero con productos cargados informa
+        /// que ningún producto coincide con los filtros. La consulta de conteo se
+        /// hace <b>una única vez</b> y solo cuando el listado volvió vacío (RNF-1).
+        /// Si esa consulta falla, devuelve un texto genérico de error sin propagar
+        /// la excepción ni tocar los filtros.
+        /// </summary>
+        /// <param name="productos">Listado recién obtenido de Negocio.</param>
+        /// <returns>Mensaje a dibujar, o <c>null</c> cuando hay filas.</returns>
+        private async Task<string?> ObtenerMensajeVacioAsync(List<ProductoRespuestaDto> productos)
+        {
+            if (productos.Count > 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                int totalCatalogo = await _productoNegocio.ContarProductosAsync();
+                return totalCatalogo == 0 ? MensajeSinProductos : MensajeSinCoincidencias;
+            }
+            catch (Exception)
+            {
+                // Un fallo del conteo no debe romper la vista ni borrar los filtros.
+                return MensajeErrorCarga;
+            }
+        }
+
+        /// <summary>
+        /// Dibuja el mensaje de grilla vacía centrado sobre el área de filas, debajo
+        /// de los encabezados (RF-13/D-16), sin agregar controles ni forzar repintados.
+        /// No dibuja nada cuando hay filas, cuando no hay mensaje o cuando el área
+        /// visible no deja espacio.
+        /// </summary>
+        private void dgvProductos_Paint(object? sender, PaintEventArgs e)
+        {
+            if (sender is not DataGridView grilla
+                || string.IsNullOrEmpty(_mensajeVacio)
+                || grilla.RowCount > 0)
+            {
+                return;
+            }
+
+            int alturaEncabezados = grilla.ColumnHeadersVisible
+                ? grilla.ColumnHeadersHeight
+                : 0;
+
+            Rectangle areaFilas = new Rectangle(
+                grilla.ClientRectangle.Left,
+                grilla.ClientRectangle.Top + alturaEncabezados,
+                grilla.ClientRectangle.Width,
+                grilla.ClientRectangle.Height - alturaEncabezados);
+
+            if (areaFilas.Width <= 0 || areaFilas.Height <= 0)
+            {
+                return;
+            }
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                _mensajeVacio,
+                grilla.Font,
+                areaFilas,
+                Color.White,
+                TextFormatFlags.HorizontalCenter
+                    | TextFormatFlags.VerticalCenter
+                    | TextFormatFlags.WordBreak
+                    | TextFormatFlags.NoPrefix);
+        }
+
+        /// <summary>
+        /// Decide la fila activa después de enlazar el listado (RF-21). Con filas y
+        /// sin más de una coincidencia exacta de Código selecciona la fila 0 con
+        /// <see cref="DataGridView.CurrentCell"/>; sin filas o con dos o más
+        /// coincidencias exactas deja la grilla sin selección. No reordena: el
+        /// orden y la prioridad del código exacto los resuelve
+        /// <see cref="ProductoNegocio"/>.
+        /// </summary>
+        /// <param name="productos">Filas recién enlazadas, en su orden final.</param>
+        private void AplicarSeleccionTrasCarga(List<ProductoRespuestaDto> productos)
+        {
+            if (productos.Count == 0 || ContarCoincidenciasExactasDeCodigo(productos) > 1)
+            {
+                // Sin filas o inconsistencia de unicidad: nada queda activo y los
+                // botones de acción se deshabilitan (CF-1).
+                _dgvProductos.CurrentCell = null;
+                _dgvProductos.ClearSelection();
+                ActualizarEstadoBotones();
+                return;
+            }
+
+            // CurrentCell (y no solo Selected) deja la fila realmente activa, de modo
+            // que ActualizarEstadoBotones y el ABM trabajan sobre ella.
+            _dgvProductos.CurrentCell = _dgvProductos.Rows[0].Cells["colCodigo"];
+            ActualizarEstadoBotones();
+        }
+
+        /// <summary>
+        /// Cuenta cuántas filas mostradas tienen un Código idéntico al texto
+        /// recortado del buscador, con el mismo criterio de la capa de negocio
+        /// (ordinal, sin distinguir mayúsculas) (RF-21/D-12).
+        /// </summary>
+        /// <param name="productos">Filas mostradas por la grilla.</param>
+        /// <returns>Cantidad de coincidencias exactas de Código; 0 si no hay texto.</returns>
+        private int ContarCoincidenciasExactasDeCodigo(List<ProductoRespuestaDto> productos)
+        {
+            string texto = _txtBuscar.Text.Trim();
+            if (texto.Length == 0)
+            {
+                return 0;
+            }
+
+            int coincidencias = 0;
+
+            foreach (ProductoRespuestaDto producto in productos)
+            {
+                if (string.Equals(producto.Codigo, texto, StringComparison.OrdinalIgnoreCase))
+                {
+                    coincidencias++;
+                }
+            }
+
+            return coincidencias;
         }
 
         /// <summary>
@@ -329,6 +541,21 @@ namespace CapaPresentacion.Productos
             await CargarProductosAsync();
         }
 
+        /// <summary>
+        /// Recarga el listado al encender o apagar "Solo críticos" (RF-6/RF-11):
+        /// una sola recarga por cambio. No reinicia la casilla, de modo que
+        /// conserva su estado al cambiar de pestaña y al usar "Actualizar" (D-13).
+        /// </summary>
+        private async void chkSoloCriticos_CheckedChanged(object? sender, EventArgs e)
+        {
+            if (_actualizandoFiltros)
+            {
+                return;
+            }
+
+            await CargarProductosAsync();
+        }
+
         private void dgvProductos_SelectionChanged(object? sender, EventArgs e)
         {
             ActualizarEstadoBotones();
@@ -340,8 +567,43 @@ namespace CapaPresentacion.Productos
         }
 
         /// <summary>
+        /// Pinta el fondo de la fila según la criticidad ya calculada por
+        /// <see cref="ProductoNegocio"/> (RF-8/RF-14, RNF-6): el nivel sale del DTO,
+        /// la vista nunca compara el stock. Usa el tono atenuado de D-17 cuando el
+        /// producto está inactivo. Las filas <c>Normal</c> conservan el estilo actual.
+        /// El fondo y el de selección de las celdas se excluyen del pintado para que
+        /// no tapen el relleno de criticidad cuando la fila está seleccionada (RF-22).
+        /// </summary>
+        private void dgvProductos_RowPrePaint(object? sender, DataGridViewRowPrePaintEventArgs e)
+        {
+            if (sender is not DataGridView grilla
+                || e.RowIndex < 0
+                || e.RowIndex >= grilla.Rows.Count)
+            {
+                return;
+            }
+
+            ProductoRespuestaDto? producto =
+                grilla.Rows[e.RowIndex].DataBoundItem as ProductoRespuestaDto;
+            if (ObtenerRellenoCriticidad(producto) is not Color relleno)
+            {
+                return;
+            }
+
+            using (var brocha = new SolidBrush(relleno))
+            {
+                e.Graphics.FillRectangle(brocha, e.RowBounds);
+            }
+
+            e.PaintParts &= ~DataGridViewPaintParts.Background;
+            e.PaintParts &= ~DataGridViewPaintParts.SelectionBackground;
+        }
+
+        /// <summary>
         /// Muestra el estado del producto en español ("Activo"/"Inactivo") en la
-        /// columna de la grilla (RF-14).
+        /// columna de la grilla (RF-14), agrega en la columna de stock el indicador
+        /// de criticidad conservando la cantidad (RF-8) y fija el color de selección
+        /// del nivel para que la selección no reemplace el resaltado (RF-22).
         /// </summary>
         private void dgvProductos_CellFormatting(
             object? sender,
@@ -349,25 +611,139 @@ namespace CapaPresentacion.Productos
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0
                 || sender is not DataGridView grilla
+                || e.ColumnIndex >= grilla.Columns.Count
+                || e.RowIndex >= grilla.Rows.Count)
+            {
+                return;
+            }
+
+            ProductoRespuestaDto? producto =
+                grilla.Rows[e.RowIndex].DataBoundItem as ProductoRespuestaDto;
+
+            // El fondo de selección usa el mismo color del nivel de criticidad.
+            if (ObtenerRellenoCriticidad(producto) is Color relleno)
+            {
+                e.CellStyle.SelectionBackColor = relleno;
+                e.CellStyle.SelectionForeColor = Color.White;
+                e.CellStyle.ForeColor = Color.White;
+            }
+
+            string nombreColumna = grilla.Columns[e.ColumnIndex].Name;
+            if (nombreColumna == "colEstado" && e.Value is bool estado)
+            {
+                e.Value = estado ? "Activo" : "Inactivo";
+                e.FormattingApplied = true;
+                return;
+            }
+
+            if (nombreColumna == "colStock" && producto is not null)
+            {
+                switch (producto.NivelCriticidad)
+                {
+                    case NivelCriticidadStock.Agotado:
+                        e.Value = $"{producto.Stock} · SIN STOCK";
+                        e.FormattingApplied = true;
+                        break;
+                    case NivelCriticidadStock.BajoUmbral:
+                        e.Value = $"{producto.Stock} · BAJO";
+                        e.FormattingApplied = true;
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Marca la selección de una fila resaltada con un borde blanco de 2 px
+        /// sobre el perímetro de la fila (RF-22), sin repintar el fondo: así el
+        /// color de criticidad se conserva y la fila sigue leyéndose en escala de
+        /// grises (RNF-4/RNF-10). Las filas sin resaltado usan el pintado estándar.
+        /// </summary>
+        private void dgvProductos_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (sender is not DataGridView grilla
+                || e.RowIndex < 0
+                || e.ColumnIndex < 0
+                || e.RowIndex >= grilla.Rows.Count
                 || e.ColumnIndex >= grilla.Columns.Count)
             {
                 return;
             }
 
-            if (grilla.Columns[e.ColumnIndex].Name == "colEstado" && e.Value is bool estado)
+            ProductoRespuestaDto? producto =
+                grilla.Rows[e.RowIndex].DataBoundItem as ProductoRespuestaDto;
+            if (ObtenerRellenoCriticidad(producto) is not Color
+                || !grilla.Rows[e.RowIndex].Selected)
             {
-                e.Value = estado ? "Activo" : "Inactivo";
-                e.FormattingApplied = true;
+                return;
             }
+
+            // Pintado estándar sin fondo ni fondo de selección: el relleno de
+            // criticidad lo dibujó RowPrePaint y no debe taparse.
+            Graphics? grafico = e.Graphics;
+            if (grafico is null)
+            {
+                return;
+            }
+
+            DataGridViewPaintParts partes = e.PaintParts
+                & ~DataGridViewPaintParts.Background
+                & ~DataGridViewPaintParts.SelectionBackground;
+            e.Paint(e.ClipBounds, partes);
+
+            Rectangle celda = e.CellBounds;
+            using var lapiz = new Pen(Color.White, 2F);
+            grafico.DrawLine(lapiz, celda.Left, celda.Top, celda.Right - 1, celda.Top);
+            grafico.DrawLine(
+                lapiz, celda.Left, celda.Bottom - 1, celda.Right - 1, celda.Bottom - 1);
+
+            // Los bordes verticales solo en los extremos de la fila.
+            if (e.ColumnIndex == 0)
+            {
+                grafico.DrawLine(
+                    lapiz, celda.Left, celda.Top, celda.Left, celda.Bottom - 1);
+            }
+
+            if (e.ColumnIndex == grilla.Columns.Count - 1)
+            {
+                grafico.DrawLine(
+                    lapiz, celda.Right - 1, celda.Top, celda.Right - 1, celda.Bottom - 1);
+            }
+
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Devuelve el color de relleno que corresponde al nivel de criticidad del
+        /// producto (D-17), atenuado cuando está inactivo, o <c>null</c> cuando el
+        /// nivel es <see cref="NivelCriticidadStock.Normal"/>.
+        /// </summary>
+        /// <param name="producto">Fila de la grilla, o <c>null</c> si no hay dato.</param>
+        /// <returns>Color de relleno de la fila, o <c>null</c> para el estilo actual.</returns>
+        private static Color? ObtenerRellenoCriticidad(ProductoRespuestaDto? producto)
+        {
+            if (producto is null)
+            {
+                return null;
+            }
+
+            return producto.NivelCriticidad switch
+            {
+                NivelCriticidadStock.Agotado =>
+                    producto.Estado ? FondoAgotado : FondoAgotadoInactivo,
+                NivelCriticidadStock.BajoUmbral =>
+                    producto.Estado ? FondoBajoUmbral : FondoBajoUmbralInactivo,
+                _ => null
+            };
         }
 
         private async void btnActualizar_Click(object? sender, EventArgs e)
         {
-            // RF-1/RF-14/RF-15: "Actualizar" solo recarga el listado desde Negocio
-            // conservando los filtros elegidos. No es una operación de escritura,
-            // por eso no lleva guard de permiso: no modifica datos y el Vendedor
-            // no accede a esta pestaña (D-18-bis).
-            await CargarProductosAsync();
+            // RF-1/RF-14/RF-24: "Actualizar" refresca las categorías activas (y con
+            // ellas detecta si la elegida dejó de estarlo, avisando una sola vez)
+            // y recarga el listado desde Negocio conservando texto, estado y "Solo
+            // críticos". No es una operación de escritura, por eso no lleva guard de
+            // permiso: no modifica datos y el Vendedor no accede a esta pestaña.
+            await CargarCategoriasAsync();
         }
 
         private async void btnNuevo_Click(object? sender, EventArgs e)
@@ -631,6 +1007,26 @@ namespace CapaPresentacion.Productos
             _btnNuevo.Enabled = puedeGestionarProductos;
         }
 
+        /// <summary>
+        /// Compone el texto informativo del umbral aplicado para el <c>Label</c>
+        /// de la fila de filtros (RF-19). Con umbral vigente muestra el valor en
+        /// unidades; en modo degradado informa la causa y el criterio sin mostrar
+        /// ningún número (RF-10/RF-23). No parsea el texto: usa la resolución ya
+        /// calculada una sola vez en el constructor (D-15).
+        /// </summary>
+        /// <returns>Texto del umbral, en una o dos líneas según el modo.</returns>
+        private string ObtenerTextoUmbral()
+        {
+            if (_resolucionUmbral.EsDegradado)
+            {
+                return "Umbral no disponible: configuración inválida."
+                    + Environment.NewLine
+                    + "Solo se marca \"SIN STOCK\" (0 o negativo).";
+            }
+
+            return $"Umbral: {_resolucionUmbral.Valor.GetValueOrDefault()} unid.";
+        }
+
         private void ArmarInterfazMaterial()
         {
             Controls.Clear();
@@ -673,7 +1069,9 @@ namespace CapaPresentacion.Productos
             _panelFiltros = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 3,
+                // RF-1/RF-19: búsqueda, categoría, estado, columna reservada para
+                // la casilla "Solo críticos" (T6) y texto del umbral.
+                ColumnCount = 5,
                 RowCount = 1,
                 BackColor = TemaAplicacion.FondoPrincipal,
                 Margin = new Padding(0, 0, 0, 4),
@@ -681,9 +1079,11 @@ namespace CapaPresentacion.Productos
                 Height = 56
             };
 
-            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
-            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
+            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36F));
+            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16F));
+            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 13F));
+            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12F));
+            _panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 23F));
             _panelFiltros.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             // Controles MaterialSkin 2 (Buscador, Combos)
@@ -720,9 +1120,40 @@ namespace CapaPresentacion.Productos
             _cboEstado.Items.AddRange(new object[] { "Todos", "Activos", "Inactivos" });
             _cboEstado.SelectedIndex = 0;
 
+            // RF-6/RF-11: casilla "Solo críticos" (D-13). Se inicializa apagada
+            // solo aquí, durante la construcción de la vista; ni las recargas ni
+            // "Actualizar" ni el cambio de pestaña reinician su estado.
+            _chkSoloCriticos = new MaterialCheckbox
+            {
+                Text = "Solo críticos",
+                Checked = false,
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                BackColor = TemaAplicacion.FondoPrincipal,
+                ForeColor = Color.White,
+                Margin = new Padding(5, 4, 5, 4)
+            };
+
+            // RF-19: texto del umbral vigente. Sale de la resolución calculada una
+            // sola vez en el constructor (D-15); en modo degradado muestra el
+            // aviso persistente en dos líneas, sin número y sin modal (RF-10/RF-23).
+            _lblUmbral = new Label
+            {
+                Text = ObtenerTextoUmbral(),
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                BackColor = TemaAplicacion.FondoPrincipal,
+                ForeColor = Color.White,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Segoe UI", 8.25F),
+                Margin = new Padding(5, 4, 5, 4)
+            };
+
             _panelFiltros.Controls.Add(_txtBuscar, 0, 0);
             _panelFiltros.Controls.Add(_cboCategoria, 1, 0);
             _panelFiltros.Controls.Add(_cboEstado, 2, 0);
+            _panelFiltros.Controls.Add(_chkSoloCriticos, 3, 0);
+            _panelFiltros.Controls.Add(_lblUmbral, 4, 0);
 
             // 5. Panel de acciones
             MaterialButton btnNuevo = new MaterialButton
@@ -928,6 +1359,11 @@ namespace CapaPresentacion.Productos
 
             // El estado de negocio viaja como bool y se muestra como "Activo"/"Inactivo".
             dgv.CellFormatting += dgvProductos_CellFormatting;
+            // Resaltado por criticidad (D-17) y borde de selección de la fila (RF-22).
+            dgv.RowPrePaint += dgvProductos_RowPrePaint;
+            dgv.CellPainting += dgvProductos_CellPainting;
+            // Mensaje de grilla vacía dibujado sobre el área de filas (RF-13/D-16).
+            dgv.Paint += dgvProductos_Paint;
             dgv.SelectionChanged += dgvProductos_SelectionChanged;
 
             _dgvProductos = dgv;
@@ -948,6 +1384,9 @@ namespace CapaPresentacion.Productos
             _txtBuscar.TextChanged += txtBuscar_TextChanged;
             _cboCategoria.SelectedIndexChanged += cboCategoria_SelectedIndexChanged;
             _cboEstado.SelectedIndexChanged += cboEstado_SelectedIndexChanged;
+            // La casilla ya quedó apagada al crearla, antes de esta suscripción:
+            // no hay ningún CheckedChanged espurio al armar la vista (D-13).
+            _chkSoloCriticos.CheckedChanged += chkSoloCriticos_CheckedChanged;
 
             // El combo de categorías arranca con "Todas" hasta que Negocio
             // devuelva las categorías activas (CargarCategoriasAsync).

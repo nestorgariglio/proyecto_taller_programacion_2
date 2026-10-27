@@ -5,6 +5,8 @@
 > **Estado del plan: vigente y aprobado (actualizado el 2026-10-19).** No queda ninguna decisión pendiente de aprobación del usuario en esta spec.
 >
 > **CAMBIO DE REQUISITO (reencuadre de acceso — APROBADO por el usuario el 2026-10-19, registrado como D-4 en `spec.md`; la spec está en estado `aprobada`).** La gestión de categorías **deja de ser un ítem del menú principal**: pasa a ser una **característica del módulo Productos** y su ABM se abre desde la pantalla de Productos con un botón **"Gestionar categorías"** que lo despliega en una **ventana modal**, reutilizando `GestionCategoriasControl`/`CategoriaForm`. Este reencuadre: (a) **elimina la pestaña `tab_categorias`** de `inicio` y su cableo; (b) **elimina el crash** `ArgumentException: An item with the same key has already been added. Key: products.png` (la pestaña de categorías duplicaba la `ImageKey` de `tab_productos`); (c) **no toca** `inicio.Designer.cs`/`inicio.resx` más allá de la remoción de `tab_categorias` (el menú principal queda igual); (d) **no altera** el backend (`CapaEntidad`/`CapaDatos`/`CapaNegocio` intactos). Ver §1 (CapaPresentacion), §4 (D-5/D-7) y §6 (trazabilidad RF-10/RF-12).
+>
+> **RONDA DE CORRECCIONES (2026-10-26) — APROBADA por el usuario.** La spec incorpora **RF-13, RF-14, RF-15** (observación O-1) y **RF-16 + RNF-6** (observación O-2), y **no** altera RF-1…RF-12 ni RNF-1…RNF-5. Este plan se actualiza con la sección **§7**, que **sustituye la mecánica de dos decisiones vigentes**: **D-3** (baja en dos pasos con el mensaje compuesto por la interfaz) queda **sustituida por O-1**, y **D-6** (comparación de unicidad en memoria) queda **sustituida por O-2**. Las filas D-3 y D-6 se conservan en §4 como historial, marcadas como sustituidas. **Sin migraciones y sin cambios en `CapaEntidad`/`CapaDatos`**: el índice único de `descripcion` sigue siendo la red de seguridad de RF-3.
 
 ## 0. Verificaciones previas (leído en el repo, NO supuesto)
 
@@ -39,12 +41,12 @@
 - Nuevo **`CategoriaNegocio`** (ctor con `AppDbContext`, operaciones `async`, mapeo explícito, mensajes de retorno en español), con:
   - `CrearCategoriaAsync(CrearCategoriaDto)` → alta con Recorte + formato + unicidad, `Estado = true` (RF-1, RF-2, RF-3): ante duplicado, el `Mensaje` distingue si la categoría existente está activa o inactiva —en inactiva, indica que existe inactiva y puede reactivarse desde el listado— y **no** la reactiva (D-1, ver Definiciones/RF-3 de la spec).
   - `ModificarCategoriaAsync(ModificarCategoriaDto)` → mismos criterios con autoexclusión (RF-4), sin tocar vínculos con productos (RF-5).
-  - `ContarProductosActivosAsync(idCategoria)` → solo productos con `Estado = true` (RF-6, RF-7; caso límite: productos inactivos no cuentan).
+  - `ContarProductosActivosAsync(idCategoria)` → solo productos con `Estado = true` (RF-6, RF-7; caso límite: productos inactivos no cuentan). **Se conserva** (§7): es el contrato verificado por los tests de RF-6 y el colaborador interno de `ObtenerConfirmacionBajaAsync`; desde O-1 la vista ya **no** la consume directamente.
   - `DarBajaCategoriaAsync(idCategoria)` → `Estado = false` sin borrado físico; sin efecto sobre categorías ya inactivas (RF-8, RNF-4).
   - `ReactivarCategoriaAsync(idCategoria)` → `Estado = true` sin crear registro nuevo (RF-9).
   - `ListarCategoriasAsync()` → **todas** (activas e inactivas) con su estado (RF-10).
   - `ListarCategoriasActivasAsync()` → solo `Estado = true` para combos (RF-11).
-- Validaciones y reglas: recorte de bordes (espacios, tabuladores y saltos de línea), longitud 3–100 tras recorte, unicidad case-insensitive autoexcluyente con mensaje que distingue duplicado activo/inactivo (D-1), mensajes en español.
+- Validaciones y reglas: recorte de bordes (espacios, tabuladores y saltos de línea), longitud 3–100 tras recorte, unicidad case-insensitive autoexcluyente con mensaje que distingue duplicado activo/inactivo (D-1), mensajes en español. El **mecanismo** de la unicidad se reescribe en O-2 (§7.3): una sola consulta a la base en lugar de la comparación en memoria de D-6; el mensaje resultante no cambia.
 - **DTOs** de categorías (`CapaNegocio/DTOs/Categorias/`) y **Enums** de resultado (patrón de los 4 enums ya usados por usuarios).
 - `PoliticaAcceso` **no se modifica** (módulo `"Categorías"` ya resuelve RF-12 del lado de negocio; queda verificado por los tests existentes).
 
@@ -55,6 +57,7 @@
   - Si `ContarProductosActivosAsync` > 0 → diálogo informando **solo la cantidad** de productos activos con continuar/cancelar (RF-7).
   - Si es 0 → confirmación simple (RF-8).
   - Cancelar ⇒ ninguna llamada de escritura ⇒ la categoría queda sin cambios (RF-7).
+  - **[Sustituido por O-1 — ver §7]** Desde la ronda 2026-10-26 la vista **no** consulta el conteo ni compone estos textos: pide la confirmación a `ObtenerConfirmacionBajaAsync` y muestra el `Mensaje` recibido (RF-13/RF-15). Los dos textos finales y los botones Sí/No se mantienen idénticos (RF-7/RF-8).
 - **Contenedor modal del ABM (`GestionCategoriasModalForm`, nuevo)**: `Form` liviano (patrón modal del repo, mismo estilo MaterialSkin que `CategoriaForm`) cuyo único contenido es un `GestionCategoriasControl` alojado a `Dock = Fill`. Se abre con `ShowDialog(productosForm)` desde `ProductosForm`. Su ctor recibe `CategoriaNegocio` (o, alternativamente, el `GestionCategoriasControl` ya resuelto por DI) para poder cargar el listado con `CargarCategoriasAsync()` al abrirse. **Reutiliza el control existente sin duplicar lógica**; al cerrarse, `ProductosForm` refresca su combo de categorías (RNF-3, D-7).
 - **`ProductosForm`**: 
   - **NUEVO botón "Gestionar categorías"** (MaterialButton) agregado al `panelAcciones` que `ProductosForm` crea por código en `ArmarInterfazMaterial()` (verificado: el `FlowLayoutPanel` `panelAcciones` existe en esa construcción y hoy aloja Nuevo/Editar/Desactivar/Actualizar), que abre `GestionCategoriasModalForm` con `ShowDialog(this)`. **Gating por rol (RF-12)**: el botón sólo es **visible** para Administrador/Encargado (`PoliticaAcceso.TieneAcceso(rol, "Categorías")`); para el Vendedor queda oculto. `ProductosForm` ya recibe `CategoriaNegocio` por DI (ctor actual: `ProductosForm(CategoriaNegocio)`); **hay que hacerle llegar el rol** (verificado: hoy no lo conoce): se añade un método público de la vista (p. ej. `AplicarRolUsuario(string? rol)`) invocado desde `inicio.AplicarPermisosPorRol()` —el mismo punto donde ya se resuelve `OcultarSiNoAutorizada(...)` con `_usuarioActual?.RolDescripcion`—, con lo que el botón se muestra u oculta sin tocar la firma del ctor ni el DI. Al cerrar el modal con éxito se vuelve a llamar `CargarCategoriasAsync()` para reflejar altas/bajas/reactivaciones en el combo sin reiniciar (RNF-3).
@@ -114,10 +117,10 @@ Todos viven en `CapaNegocio/DTOs/Categorias/`. **Nunca** viaja la entidad `Categ
 |---|---|---|---|
 | D-1 | Crear **`CategoriaNegocio` propio** con sus DTOs/Enums. | (a) Meter el ABM en `UsuarioNegocio`; (b) lógica en eventos de WinForms. | (a) viola SRP y mezcla dominios; (b) está prohibido por AGENTS/Constitución ("nunca lógica de negocio en eventos visuales"). |
 | D-2 | Índice único en BD **aprobado por el usuario** (§3): `HasMaxLength(100)` + índice único con filtro, imitando `Usuario.Correo`; base: unicidad en `CapaNegocio`. | (a) Confiar en la colación de la BD sin índice; (b) `EF.Functions.Collate`; (c) `IsRequired()` sobre `descripcion` para omitir el filtro. | (a) no es portable, `InMemory` no la aplica y RF-3 quedaría sin test; (b) es específico de SQL Server y no ejecutable en los tests `InMemory`; (c) cambiaría el contrato de nulabilidad de la entidad (`string?`, decisión de CapaEntidad no pedida) y el patrón del repo para columnas nullable es el filtro (`correo`), no `IsRequired`. El check en Negocio sigue siendo el que produce el **mensaje** en español. |
-| D-3 | **Baja en dos pasos**: `ContarProductosActivosAsync` → diálogo en UI → `DarBajaCategoriaAsync`. | (a) Método único que "advierte" (imposible: `CapaNegocio` no tiene UI); (b) baja directa sin consulta de conteo. | Cumple RF-6/RF-7 (la UI decide según el conteo) manteniendo el aislamiento; la cancelación nunca llega a escribir. |
+| D-3 | **[SUSTITUIDA por O-1 — ver §7.1/§7.2]** **Baja en dos pasos**: `ContarProductosActivosAsync` → diálogo en UI → `DarBajaCategoriaAsync`. | (a) Método único que "advierte" (imposible: `CapaNegocio` no tiene UI); (b) baja directa sin consulta de conteo. | Cumple RF-6/RF-7 (la UI decide según el conteo) manteniendo el aislamiento; la cancelación nunca llega a escribir. |
 | D-4 | Conteo de productos activos por **consulta** (`_db.Productos.CountAsync(p => p.IdCategoria == id && p.Estado)`), sin `Include`. | Añadir `ICollection<Producto>` a `Categoria` + `Include`. | Evita modificar la entidad (CapaEntidad sin cambios) y evita traer filas innecesarias; mismo criterio que la navegación `Producto.Categoria` existente. |
 | D-5 | **[REEMPLAZADA por el cambio de requisito]** El ABM vive en un **modal abierto desde `ProductosForm`** mediante el botón "Gestionar categorías" (gating por rol, RF-12). Reutiliza `GestionCategoriasControl` dentro de un `Form` contenedor (`GestionCategoriasModalForm`). | (a) Pestaña propia `tab_categorias` en `inicio` (**decisión original; descartada por el usuario**: las categorías son una característica de productos, no una sección del menú, y la pestaña causaba el crash de la `ImageKey` duplicada); (b) botón dentro de `ProductosForm` sin modal. | El usuario decidió que las categorías son una **característica del módulo Productos** (útiles para filtrar y definir un producto), no un ítem del menú. El modal cumple RF-10 (listado de gestión completo) y RF-12 sigue apoyado en `PoliticaAcceso` (módulo `"Categorías"` ya testeado), ahora aplicado al botón. Elimina el crash `products.png` duplicada al remover la pestaña. |
-| D-6 | Comparación de unicidad con **`StringComparison.OrdinalIgnoreCase`** sobre las descripciones existentes. | `ToUpper()` traducido al SQL. | El catálogo es pequeño; la comparación en memoria es idéntica en SQL Server y en `InMemory` (evita diferencias de colación/soporte del proveedor) y la spec solo pide ignorar mayúsculas/minúsculas (no tildes). |
+| D-6 | **[SUSTITUIDA por O-2 — ver §7.3/§7.4]** Comparación de unicidad con **`StringComparison.OrdinalIgnoreCase`** sobre las descripciones existentes. | `ToUpper()` traducido al SQL. | El catálogo es pequeño; la comparación en memoria es idéntica en SQL Server y en `InMemory` (evita diferencias de colación/soporte del proveedor) y la spec solo pide ignorar mayúsculas/minúsculas (no tildes). |
 | D-7 | Refresco del combo de categorías de `ProductosForm` **al entrar en la pestaña** + **al cerrar el modal de gestión** con éxito + recarga del control tras cada operación del ABM. | Eventos globales/observer de invalidación. | Cumple RNF-3 (sin reinicio) con el mínimo acoplamiento, reutilizando el patrón `tab_productos_Enter` ya existente y añadiendo un refresco al cerrar el modal (que reemplaza el disparo que antes producía el `Enter` de `tab_categorias`). |
 | D-8 | Validación "doble" de formato: chequeo en UI (foco/mensaje inmediato) **y** en Negocio (fuente de verdad). | Solo UI. | RF-2 exige que el sistema rechace el guardado; los tests de `CapaNegocio` son la puerta de entrada (Constitución 4). |
 
@@ -158,3 +161,143 @@ Todos viven en `CapaNegocio/DTOs/Categorias/`. **Nunca** viaja la entidad `Categ
 | RF-12 | `PoliticaAcceso` + `PoliticaAccesoTests` (CapaNegocio, **ya existentes**) · **botón "Gestionar categorías" oculto para el Vendedor** en `ProductosForm` (gating por rol) | `dotnet test` (regresión) + validación visual |
 
 Todos los RF se consolidan con compilación limpia (`dotnet build`) según los Criterios de finalización.
+
+## 7. Ronda de correcciones 2026-10-26 (O-1 y O-2)
+
+> Requisitos que implementa: **RF-13, RF-14 y RF-15** (observación O-1) y **RF-16 + RNF-6** (observación O-2), aprobados por el usuario el 2026-10-26 (ver «Ronda de correcciones (2026-10-26)» en `spec.md`). **No** cambia la semántica de RF-1…RF-12 ni de RNF-1…RNF-5: los textos al usuario, las validaciones y los flujos de pantalla se conservan; cambia **dónde** se decide (Negocio, no la vista) y **cómo** se consulta (una fila en la base, no la tabla en memoria).
+> **Sin migraciones. `CapaEntidad` y `CapaDatos` no se tocan.** `ContarProductosActivosAsync` **se conserva** (contrato de RF-6/RF-7, con sus 3 tests) y pasa a ser colaborador interno del método nuevo.
+> **Sustituciones**: **D-3 ⇒ O-1** (la baja deja de resolverse en dos pasos desde la UI) y **D-6 ⇒ O-2** (la unicidad deja de compararse en memoria). Las filas originales quedan en §4 como historial.
+
+### 7.1 Diseño por capas (solo lo que cambia)
+
+**CapaEntidad — sin cambios.** `Categoria` y `Producto` no se modifican: no se añade colección de navegación ni propiedad calculada. El conteo sigue saliendo de una consulta (D-4 vigente).
+
+**CapaDatos — sin cambios.** Ninguna configuración Fluent nueva, ninguna migración (`AddCategoryConstraints` ya está aplicada y en el snapshot). El **índice único** de `descripcion` (§3) sigue siendo la red de seguridad del caso límite de concurrencia y **no** se toca: ni el índice ni la colación intervienen en la nueva consulta de unicidad.
+
+**CapaNegocio.**
+1. **DTO nuevo** `ConfirmacionBajaCategoria` en `CapaNegocio/DTOs/Categorias/` (un archivo por DTO, patrón del repo), sin entidad pura y sin datos sensibles.
+2. **Método nuevo** `ObtenerConfirmacionBajaAsync(int idCategoria)` en `CategoriaNegocio`: única fuente del mensaje de baja y de la posibilidad de baja (RF-13, RF-14, RF-15).
+3. **`ValidarUnicidadDescripcionAsync` reescrito** (firma privada y llamadores intactos): pasa de `ToListAsync()` + comparación en memoria a **una consulta filtrada** con `FirstOrDefaultAsync()` (RF-16, RNF-6).
+4. **Sin cambios** en `DarBajaCategoriaAsync`, `ContarProductosActivosAsync`, `CrearCategoriaAsync`, `ModificarCategoriaAsync`, `ConstruirMensajeDuplicado` (mensaje de duplicado literal) ni en `ListarCategoriasAsync`/`ListarCategoriasActivasAsync`.
+
+**CapaPresentacion — `GestionCategoriasControl.btnDarDebaja_Click`** (único punto de UI que cambia):
+- **Se elimina**: la llamada a `ContarProductosActivosAsync`; el ternario que compone los dos textos de la baja y sus literales en español; el uso de `categoria.Descripcion` como insumo del mensaje.
+- **Se conserva sin cambios**: la validación de fila seleccionada y el aviso "Debe seleccionar una categoría para darla de baja."; `btnDarDebaja.Enabled = false` durante la operación; `try/catch` con `"No se pudo dar de baja la categoría..."`; el `finally` con `ActualizarEstadoBotones()`; el `MaterialDialog` Sí/No con `"SÍ"/"NO"`; la recarga con `CargarCategoriasAsync()` tras el éxito; el `MaterialMessageBox` con el `Mensaje` del negocio cuando el resultado no es `Exito`.
+- **Lógica nueva**: pide `ObtenerConfirmacionBajaAsync`; si `PuedeDarseDeBaja == false` muestra `Mensaje` en `MaterialMessageBox` (aviso, **sin** diálogo Sí/No y **sin** escribir); si es `true` muestra `Mensaje` en el `MaterialDialog` y, al confirmar, ejecuta `DarBajaCategoriaAsync` (cuyo resultado se sigue mostrando igual que hoy).
+- **No se tocan** `GestionCategoriasModalForm`, `CategoriaForm`, `ProductosForm` ni `Program.cs`.
+
+### 7.2 Contratos
+
+**Firma exacta (CapaNegocio, pública, asíncrona):**
+
+```csharp
+public async Task<ConfirmacionBajaCategoria> ObtenerConfirmacionBajaAsync(int idCategoria)
+```
+
+**DTO nuevo `ConfirmacionBajaCategoria`** (`CapaNegocio/DTOs/Categorias/ConfirmacionBajaCategoria.cs`):
+
+| Campo | Tipo | Origen / significado |
+|---|---|---|
+| `Resultado` | `ResultadoBajaCategoria` (**reutilizado**, sin enum nuevo) | `Exito` = la confirmación se obtuvo y la baja **es posible**; `DatosInvalidos` / `CategoriaNoEncontrada` / `CategoriaYaInactiva` = no se puede dar de baja |
+| `Descripcion` | `string?` | `Categoria.Descripcion` de la fila consultada; `null` si no existe o si el id es inválido |
+| `CantidadProductosActivos` | `int` | salida de `ContarProductosActivosAsync(idCategoria)`; `0` si no existe, ya está inactiva o no hay activos |
+| `Mensaje` | `string` | mensaje en español **ya compuesto**, listo para mostrar (`= string.Empty`) |
+| `PuedeDarseDeBaja` | `bool` | `true` **solo** si `Resultado == Exito`; la UI no recalcula la condición (RF-15) |
+
+**Comportamiento por resultado (mensajes literales):**
+
+| Situación | `Resultado` | `Descripcion` | `Cantidad` | `PuedeDarseDeBaja` | `Mensaje` |
+|---|---|---|---|---|---|
+| `idCategoria <= 0` | `DatosInvalidos` | `null` | 0 | `false` | `Debe indicar una categoría válida.` |
+| no existe | `CategoriaNoEncontrada` | `null` | 0 | `false` | `La categoría indicada no existe.` |
+| ya inactiva | `CategoriaYaInactiva` | la de la fila | 0 | `false` | `La categoría {descripcion} ya está inactiva.` |
+| activa con *n* productos activos (*n* > 0) | `Exito` | la de la fila | *n* | `true` | `La categoría {descripcion} tiene {n} producto(s) activo(s) vinculados. ¿Desea desactivarla igualmente?` |
+| activa sin productos activos | `Exito` | la de la fila | 0 | `true` | `¿Confirma que desea dar de baja la categoría {descripcion}?` |
+
+- Los dos textos de `Exito` son **literalmente** los que hoy compone la vista: sin regresión de texto (RF-13, RF-8).
+- Los textos de `CategoriaNoEncontrada` y `CategoriaYaInactiva` coinciden con los de `DarBajaCategoriaAsync`, así el usuario ve el mismo mensaje antes o después de la operación (RF-14).
+- Tildes/ñ se conservan porque solo se interpolan valores ya validados; los textos son en español (RNF-2).
+
+**Orden interno (2 consultas de lectura, ninguna escritura):**
+1. `idCategoria <= 0` ⇒ `DatosInvalidos` sin consultar.
+2. Una consulta a `Categorias` (`AsNoTracking`, filtrada por `IdCategoria`) para obtener `Descripcion` y `Estado`.
+3. Si no existe ⇒ `CategoriaNoEncontrada` (sin contar). Si está inactiva ⇒ `CategoriaYaInactiva` (sin contar).
+4. Si está activa ⇒ `ContarProductosActivosAsync(idCategoria)` (reutilizado, RF-6) y composición del mensaje.
+5. **No** llama a `SaveChangesAsync` ni a `DarBajaCategoriaAsync`: pedir la confirmación nunca escribe (RF-13: cancelar no deja cambios).
+
+### 7.3 Consulta de unicidad (O-2)
+
+**Método**: `private async Task<string?> ValidarUnicidadDescripcionAsync(string descripcion, int? idCategoriaAExcluir)`. **La firma y los dos llamadores no cambian** (`CrearCategoriaAsync` en el alta, `ModificarCategoriaAsync` en la edición); `ConstruirMensajeDuplicado` tampoco.
+
+**Normalización del parámetro, en memoria y una sola vez:**
+
+```csharp
+string descripcionNormalizada = (descripcion ?? string.Empty).ToUpperInvariant();
+```
+
+**LINQ esperado (una sola consulta, proyección mínima):**
+
+```csharp
+var duplicada = await _db.Categorias
+    .AsNoTracking()
+    .Where(c => (!idCategoriaAExcluir.HasValue || c.IdCategoria != idCategoriaAExcluir.Value)
+        && c.Descripcion != null
+        && c.Descripcion.ToUpper() == descripcionNormalizada)
+    .Select(c => new { c.Descripcion, c.Estado })
+    .FirstOrDefaultAsync();
+
+if (duplicada is null)
+{
+    return null;
+}
+
+return ConstruirMensajeDuplicado(duplicada.Descripcion, duplicada.Estado);
+```
+
+**Traducción a SQL (SQL Server):**
+
+```sql
+SELECT TOP(1) [c].[descripcion], [c].[estado]
+FROM [CATEGORIA] AS [c]
+WHERE (@idExcluir IS NULL OR [c].[id_categoria] <> @idExcluir)
+  AND [c].[descripcion] IS NOT NULL
+  AND UPPER([c].[descripcion]) = @descripcionNormalizada;
+```
+
+- **Por qué se normaliza el parámetro en memoria**: el parámetro debe llegar ya en mayúsculas para que `UPPER(columna) = parámetro` funcione igual en SQL Server y en el proveedor `InMemory` de los tests (que evalúa `string.ToUpper()` en cliente). `ToUpperInvariant` es determinista y no depende de la cultura del hilo de la UI; con collation `CI_AS` de SQL Server, `UPPER` y `ToUpperInvariant` coinciden también en `ñ` y vocales acentuadas.
+- **`c.Descripcion != null`**: la columna es nullable (entidad y §3); en SQL `UPPER(NULL) = @p` da `NULL` (no cumple) y la guarda evita además la advertencia de nulabilidad en C#. Si el compilador sigue advirtiendo, se puede usar `c.Descripcion!.ToUpper()` **sin** cambiar el SQL ni el resultado (una descripción nula nunca es duplicado).
+- **`Select` + `FirstOrDefaultAsync`**: como máximo una fila y solo dos columnas; no se materializa la tabla (RNF-6). Desaparece el `ToListAsync()` de `Categorias` y toda comparación sobre la colección completa.
+- **Mensaje sin cambios**: `ConstruirMensajeDuplicado` recibe la descripción **con su caja original** y el `Estado` de la fila encontrada ⇒ duplicado genérico si está activa, mensaje que sugiere reactivar si está inactiva (D-1, RF-3).
+- **RNF-6 — contrapartida aceptada**: `UPPER(descripcion)` es no-sargable, así que el motor **no** puede hacer *seek* sobre el índice único y resolverá con un *scan* (de la tabla o del índice). Se acepta explícitamente: el filtrado ocurre en la base y no se transfieren ni se retienen filas en el cliente. Se verifica con `ToQueryString()`/log de EF en la revisión de la tarea.
+- **Límite `InMemory`**: los tests cubren la *semántica* (case-insensitive, autoexclusión, mensaje según estado), no el plan de ejecución ni el índice, igual que en §3.
+
+### 7.4 Alternativas descartadas
+
+| # | Decisión | Alternativa descartada | Por qué se descarta |
+|---|---|---|---|
+| O-1a | La confirmación de baja se compone en `CapaNegocio` y la vista solo la presenta. | **(a) Situación actual**: la vista llama `ContarProductosActivosAsync` y compone el texto con un ternario. | Deja la regla de negocio y el texto en español en la interfaz (viola RF-15 y la regla de AGENTS "nunca lógica de negocio en eventos visuales"), y obliga a la vista a coordinar dos consultas separadas. |
+| O-1b | Reutilizar `ResultadoBajaCategoria` en el DTO nuevo. | Enum nuevo `ResultadoConfirmacionBaja` con los mismos valores. | Duplicaría un enum idéntico y obligaría a mapear entre ambos sin que la UI bifurque conductas distintas; el enum existente ya expresa los cuatro casos. |
+| O-2a | Comparar en la base con `UPPER(columna) = parámetro normalizado`. | `c.Descripcion == descripcion` apoyado en la colación `CI_AS` de SQL Server. | `InMemory` es case-sensitive: rompería los tests existentes (`bEbIdAs`, autoexclusión) y obligaría a migrar la estrategia de pruebas a SQL Server real; además la unicidad quedaría dependiente de la colación de la BD (no portable). |
+| O-2b | `UPPER(...) = parámetro`. | `EF.Functions.Like(c.Descripcion, descripcion)`. | `%`, `_` y `[` en la descripción se interpretan como comodines: "100% Natural" produciría falsos positivos/negativos sin escapado manual; el soporte depende del proveedor. |
+| O-2c | Dos consultas en `ObtenerConfirmacionBajaAsync` (categoría + `ContarProductosActivosAsync`). | Una sola consulta con subconsulta de conteo (`_db.Productos.Count(...)` proyectado). | Duplicaría la regla de conteo de RF-6 en vez de reutilizar el método que ya está cubierto por 3 tests; se acepta la consulta extra (§7.6). |
+
+### 7.5 Pruebas
+
+`dotnet test` sobre `CapaNegocio.Tests` (xUnit + `InMemory`). **Total esperado: 237 = 230 actuales + 7 casos nuevos** (6 métodos, uno de ellos `[Theory]` de 2 casos). Los tests existentes de unicidad y de `ContarProductosActivosAsync` **no se modifican**.
+
+| RF / RNF | Qué lo verifica | Verificación concreta |
+|---|---|---|
+| RF-13 | Mensaje compuesto con y sin productos activos | *Test*: categoría activa con 2 productos activos y 1 inactivo ⇒ `Resultado = Exito`, `Descripcion = "Bebidas"`, `CantidadProductosActivos = 2`, `PuedeDarseDeBaja = true` y `Mensaje` **igual** al literal con la cantidad. *Test*: sin productos activos ⇒ `Cantidad = 0`, `PuedeDarseDeBaja = true` y `Mensaje` **igual** a la confirmación simple. *Test*: solo productos inactivos ⇒ mismo mensaje simple (caso límite). Nunca se escribe: `Estado` de la categoría y conteo de filas quedan intactos (consultar no da de baja). |
+| RF-14 | Categoría inexistente / ya inactiva / id inválido | *Test*: id 999 ⇒ `CategoriaNoEncontrada`, `PuedeDarseDeBaja = false`, `Descripcion = null`, `Mensaje` "La categoría indicada no existe." y tabla sin cambios. *Test*: inactiva ⇒ `CategoriaYaInactiva`, `PuedeDarseDeBaja = false`, `Mensaje` "La categoría {x} ya está inactiva.", `Estado` sigue `false`. *Test* `[Theory]` con `0` y `-5` ⇒ `DatosInvalidos`, `PuedeDarseDeBaja = false`, mensaje en español. |
+| RF-15 | La vista ya no compone la regla ni el texto | *Inspección de `GestionCategoriasControl.btnDarDebaja_Click`*: **0** llamadas a `ContarProductosActivosAsync`, **0** literales de negocio de la baja (`"producto(s) activo(s)"`, `"¿Confirma que desea dar de baja"`), **1** llamada a `ObtenerConfirmacionBajaAsync`, y el texto mostrado proviene de `Mensaje`. *Validación visual* (usuario): diálogo y aviso con los mismos textos. |
+| RF-16 | Unicidad en la base, case-insensitive y con autoexclusión | *Tests existentes sin cambios*: duplicado de activa, duplicado con `bEbIdAs`, duplicado sobre inactiva con mensaje específico y sin reactivar, edición conservando su propia descripción, edición hacia el nombre de otra. *Inspección*: una sola consulta con `FirstOrDefaultAsync` en `ValidarUnicidadDescripcionAsync`. |
+| RNF-6 | No se materializa la tabla ni se filtra en el cliente | *Inspección*: **0** `ToListAsync` sobre `Categorias` en el método y **0** comparaciones `string.Equals(..., OrdinalIgnoreCase)` sobre colecciones; `ToQueryString()`/log muestra `TOP(1)` y `UPPER(...)`. |
+| RNF-2 | Mensajes en español | Los literales de los *tests* anteriores (texto exacto de cada caso). |
+
+### 7.6 Riesgos
+
+- **Consulta extra en la baja (aceptada)**: el flujo confirmar→bajar pasa de 2 a 3 consultas (categoría de la confirmación + conteo + categoría que ya leía `DarBajaCategoriaAsync`). Se acepta: cada consulta devuelve una fila o un entero, el volumen es mínimo y el beneficio es que la regla y el texto salgan de la UI (RF-15). No se introduce transacción ni se modifica `DarBajaCategoriaAsync`.
+- **Carrera conteo/baja (mitigada, no eliminada)**: el mensaje y la posibilidad de baja se resuelven en una sola operación de negocio, pero entre la confirmación y la baja puede cambiar el padrón de productos activos. No se bloquea la baja (decisión original de la spec: siempre advierte, nunca impide) y `DarBajaCategoriaAsync` sigue siendo la fuente de verdad del resultado final. Queda documentado como límite conocido, igual que la concurrencia de altas.
+- **`UPPER()` no aprovecha el índice**: cada alta/edición hace un *scan* sobre `CATEGORIA` (RNF-6 lo acepta explícitamente). Con un catálogo de decenas de filas es irrelevante; si creciera mucho habría que evaluar una columna normalizada persistida, opción que hoy queda fuera de alcance.
+- **Regresión visual del diálogo**: los textos deben verse idénticos. Los *tests* fijan los literales y la validación visual del usuario confirma el diálogo y el aviso; se conservan el título, el orden de botones y el `MaterialMessageBox` de los resultados.
+- **`InMemory` y `ToUpper()`**: si el proveedor dejara de traducir `ToUpper()`, la suite fallaría en rojo en desarrollo (detección temprana) y no en producción. No se cambia la estrategia de pruebas.

@@ -2,34 +2,47 @@
 Memoria entre sesiones (máximo ~50 líneas). Resume o elimina lo que ya no aporte.
 
 ## Estado Actual
-- **Frontend (`CapaPresentacion`)**: 8 vistas maquetadas con MaterialSkin 2 y LiveCharts (`inicio`, `ProductosForm`, `ClientesForm`, `VentasForm`, `ProveedoresForm`, `ComprasForm`, `ReportesForm`, `InfoForm`).
-- **Autenticación y BD**: `UsuarioNegocio` funcional con BCrypt y `scripts/seed-desarrollo.sql`; BD `DB_SISTEMA_VENTA` reconstruida y sembrada (roles, usuarios, 5 categorías activas + Kiosco inactiva, 12 productos activos con códigos `779...`).
-- **Spec `001-abm-categorias` — implementada (T1–T10 cerradas)**: Fluent API + migración aplicada; alta/edición con `CategoriaForm`; unicidad case-insensitive (D-1/D-6); listados de activas y de todas; baja y reactivación lógicas. `CapaNegocio` completo; cierre 2026-10-19 con build limpio y tests en verde.
-- **Reencuadre D-4 (aprobado 2026-10-19) — implementado**: categorías dejan de ser ítem de menú y se gestionan desde `ProductosForm` en `GestionCategoriasModalForm` (botón "Gestionar categorías" nacido oculto, gating Admin/Encargado con guard en runtime y refresco del combo al volver). Pestaña `tab_categorias` eliminada.
-- **Spec `002-abm-productos` — implementada (T1–T13)**: Fluent API de `Producto` + migración `AddProductConstraints` **aplicada a la BD** (relleno de `id_usuario` + trigger `TR_PRODUCTO_FECHA_MODIFICACION`); `ProductoNegocio` (alta, unicidad de código, modificación con código inmutable, baja/reactivación, ajuste de stock, listados con filtros) y DTOs; UI con grilla y filtros reales, `ProductoModalForm`, `AjustarStockModalForm`, "Actualizar" conectado y gating por rol. T13 validada contra la BD real.
-- **Spec `003-productosform-bugfix` — implementada y aprobada (2026-10-25)**: causa raíz = `BackColor = Color.Transparent` en los paneles internos de `ProductosForm` (MaterialSkin 2.3.1 pinta con el `BackColor` del padre; `Transparent` = `ARGB(0,255,255,255)` ⇒ bloques blancos). Corrección = fondos opacos `TemaAplicacion.FondoPrincipal`, `AutoScroll = false`, eliminación de todo `Refresh()`/`Invalidate()` (queda 1 `PerformLayout()` en `Load`) y unificación a **un solo `_btnEstado`** alternante "Desactivar"/"Reactivar". T-08..T-13 cerradas: build 0 errores, tests 193/193 y validación visual confirmada por el usuario. Quedan 2 mejoras opcionales no aplicadas: mensaje neutro en el guard de "sin selección" y comentario XML de `AplicarRolUsuario`.
-- **Repositorio**: PR #18 documentado y sincronizado en la rama `main`.
-- **Script de preparación de BD**: `scripts/preparar-bd.ps1` (+ `README-preparar-bd.md`) crea/actualiza el esquema con migraciones y siembra con `sqlcmd -f 65001`; idempotente, sin DELETE/DROP, verifica `Categorías: 6 (activas: 5) | Productos: 12 (activos: 12)`. Documentado en `AGENTS.md` y como comando `/preparar-bd`.
+- **Specs 001 (`abm-categorias`), 002 (`abm-productos`) y 003 (`productosform-bugfix`)**: implementadas y cerradas; migraciones aplicadas (`AddProductConstraints`), build limpio y validación visual confirmada. Las categorías se gestionan desde `ProductosForm` en `GestionCategoriasModalForm`.
+- **Spec `004-consulta-stock` (HU-06 Consulta de Stock e Inventario Crítico) — implementada T1–T9 + correcciones de la fase 6 (C1, C2, C4, C5)**: sin migración, sin cambios de `PoliticaAcceso` ni del menú. `dotnet build` con **0 errores**; `dotnet test` **230/230**. **T10 abierta**: solo falta la validación visual del usuario (incluida la comprobación visual de RNF-1).
+- **Spec `001-abm-categorias` — ronda de correcciones 2026-10-26 (O-1 y O-2) implementada en T15–T17**: la baja de categoría se resuelve en `CapaNegocio` (`ObtenerConfirmacionBajaAsync` + DTO `ConfirmacionBajaCategoria`) y la validación de unicidad se resuelve en la base con una sola consulta. `dotnet build` 0 errores; `dotnet test` **237/237**; validación del revisor: **RONDA APTA**; queda la validación visual del diálogo de baja.
+- **BD de desarrollo**: `DB_SISTEMA_VENTA` con esquema por migraciones y semilla; `scripts/preparar-bd.ps1` idempotente. Baseline real: `Categorías: 7 (activas: 5) | Productos: 12 (activos: 12)`; la 7.ª es `Tecnologia` (inactiva, alta manual de la 001).
+- **Repositorio**: PR #18 sincronizado en `main`; **los cambios de la spec 004 están sin commitear**.
 
-## Decisiones (y por qué)
-- **DTOs Sanitizados**: DTOs específicos para que los hashes de contraseñas y los campos sensibles no lleguen a la UI.
-- **Soft Deletes**: columna `Estado` (bool) en lugar de borrados físicos, para preservar la auditoría.
+## Qué quedó implementado (spec 004)
+- `CapaNegocio`: `ListarProductosAsync(filtro, umbralStock = null)`, `ContarProductosAsync`, `ClasificarCriticidad`, `PriorizarCodigoExacto`, `NivelCriticidadStock`, `ResolucionUmbralStock`.
+- DTOs aditivos: `FiltroProductosDto.SoloCriticos` y `ProductoRespuestaDto.NivelCriticidad`.
+- `CapaPresentacion/Productos/ProductosForm.cs`: umbral desde `appsettings.json` leído **una vez** en el constructor, 2 controles nuevos (casilla "Solo críticos" + texto del umbral), resaltado D-17, indicador en `colStock`, selección por borde (D-18) y mensajes de vacío dibujados en `Paint`.
+- `appsettings.json`: `StockCritico:UmbralMinimo = "5"`.
+
+## Decisiones clave (spec 004)
+- **D-2**: umbral global por configuración, sin stock mínimo por producto ⇒ sin migración.
+- **D-10**: si falta la clave se usa el fallback interno **5** sin aviso; el modo degradado aplica **solo** si el valor existe y es inválido.
+- **D-13**: "Solo críticos" arranca **apagado** y persiste al cambiar de pestaña.
+- **D-16**: mensaje de vacío dibujado sobre la grilla en su `Paint`, sin tercer control (RNF-5: **2** controles nuevos).
+- **D-17**: agotado `#B71C1C` (inactivo `#6E2020`), bajo umbral `#F9A825` (inactivo `#8C6D0A`), texto blanco en los cuatro casos.
+- **D-18**: la selección sobre una fila resaltada se marca con **borde de 2 px**; el texto sigue **blanco**.
+
+## Decisiones clave (spec 001, ronda 2026-10-26)
+- **O-1**: la regla y el texto de la baja de categoría viven en el negocio (`ObtenerConfirmacionBajaAsync`); la vista solo presenta el mensaje. Sustituye a D-3 del plan 001.
+- **O-2**: unicidad con `UPPER(descripcion)` en la BD, una sola fila, sin materializar la tabla. Sustituye a D-6 del plan 001; contrapartida aceptada: el `UPPER` no es *sargable*.
+
+## RNF-1 (≤ 500 ms con 1.000 productos)
+- Medido con la base aparte **`DB_SISTEMA_VENTA_PERF`** (migraciones + 1.000 productos): listado completo **mediana 15,2 ms / máx 36,3 ms**; texto "Leche" 14,2 ms; categoría 11,0 ms; "Solo críticos" 12,2 ms; `ContarProductosAsync` 0,7 ms.
+- Es **cota inferior**: cubre consulta + mapeo, **sin** el pintado de la grilla. Para apuntar la app a esa base se usa la variable de entorno **`ConnectionStrings__CadenaSQL`**, sin editar `appsettings.json`.
 
 ## Aprendizajes y Errores a Evitar
-- Omitir `dotnet ef database update` antes de probar la UI genera excepciones de mapeo en EF Core. Los comandos `dotnet ef` requieren `dotnet tool restore` (manifiesto `.config/dotnet-tools.json`).
-- **MaterialSkin 2.3.1 pinta con el `BackColor` del padre**: `Color.Transparent` en paneles internos produce bloques blancos. Regla: paneles internos siempre opacos (`TemaAplicacion.FondoPrincipal`).
-- No "arreglar" el renderizado con cascadas de `Refresh()`/`PerformLayout()`/`Invalidate()`: son no-op sin handle y violan RNF-2. Diagnosticar con una sonda WinForms real (los tests no detectan esto).
-- **`AppDbContext.HasTrigger("TR_PRODUCTO_FECHA_MODIFICACION")` no debe revertirse**: sin él reaparece el error SQL "target table has database triggers".
-- **`sqlcmd` lee los `.sql` con la codepage OEM**: con tildes/ñ hay que guardarlos con BOM UTF-8 o pasar `-f 65001 -u`. Los `.sql` del repo van con BOM.
-- Las tablas con **índice único filtrado** (p. ej. `IX_CATEGORIA_descripcion`) fallan con error 1934 sin `SET QUOTED_IDENTIFIER ON;` (lo hace el script semilla).
-- **Regla del usuario**: antes de cualquier `DELETE` físico (incluso de filas creadas por error propio) **CONSULTAR AL USUARIO**. Nunca borrar por cuenta propia.
-- **Regla del usuario**: cualquier modificación significativa de UI (menú, estructura de pantallas, agregar/quitar ítems) se **CONSULTA ANTES**. La interfaz estática ya está definida.
-- **`ImageList` de un `TabControl`**: dos `TabPage` con la misma `ImageKey` lanzan `ArgumentException` al mostrar el menú. Cada `TabPage` con ícono lleva clave única.
-- **`MaterialForm.DrawerTabControl` (MaterialSkin 2.3.1)** no reenvía a `drawerControl.BaseTabControl`: el binding ocurre una sola vez en `AddDrawerOverlayForm()` (evento `Shown`). Quitar/reinsertar `TabPage` desincroniza el snapshot y produce `KeyNotFoundException`. Se resolvió **recreando `inicio` una vez por sesión** (`login` recibe `Func<inicio>`).
-- **`Form.Dispose()`** libera en cascada las formas propias (`OwnedForms`) y no dispara `FormClosed`; por eso `_inicioForm.Dispose()` también libera los `Form` del drawer sin ejecutar `Application.Exit()`.
-- Asegurar que los alias de LiveCharts (`using CartesianChart = LiveCharts.WinForms.CartesianChart;`) no choquen con tipos de WPF.
+- **MaterialSkin 2.3.1**: el tipo real es **`MaterialCheckbox`** (b minúscula), no `MaterialCheckBox`.
+- El `tasks.md` de la 004 menciona el filtro `~ProductoNegocioConsultaStockTests`, que devuelve 0 coincidencias porque la clase es `partial class ProductoNegocioTests`; los tests sí corren y pasan.
+- **`sqlcmd`**: al cargar datos usar `-I` (índices filtrados) y `-f 65001` (UTF-8); los `.sql` del repo van con BOM.
+- **DI**: `ProductosForm` se resuelve por DI y `IConfiguration` ya está registrada en el host; `Program.cs` no se toca.
+- MaterialSkin pinta con el `BackColor` del padre: **nunca `Color.Transparent`** en paneles internos, y sin cascadas de `Refresh()`/`Invalidate()` (regla de la 003).
+- `AppDbContext.HasTrigger("TR_PRODUCTO_FECHA_MODIFICACION")` no debe revertirse. Antes de cualquier `DELETE` físico, **consultar al usuario**.
+- No materializar tablas completas para validar unicidad ni justificar ese patrón por la portabilidad de los tests: filtrar siempre en la BD.
+- Al sustituir una decisión de diseño, actualizar también los **comentarios XML** que la citan (quedó uno obsoleto en `ContarProductosActivosAsync`).
 
 ## Próximos Pasos
-- **Sin pendientes funcionales** en las specs 001, 002 y 003: migraciones aplicadas, build 0 errores, tests 193/193 y validación visual confirmada (003 el 2026-10-25).
-- Único paso abierto: **commit/push de los cambios sin commitear** de la spec 003, si el usuario lo autoriza.
-- `ProductosForm` mantiene el **gating** por rol con `PoliticaAcceso.PuedeGestionarProductos` (botones ocultos + guard en cada handler); `inicio` no se modificó en T9 de la 002.
+- **T10**: validación visual del usuario — colores D-17, escala de grises, fila seleccionada (borde D-18), mensajes de vacío, modo degradado con valor inválido, categoría que desaparece y "Actualizar".
+- **Validación visual del diálogo de baja de categorías** (ronda 001): con/sin productos activos, categoría ya inactiva, categoría inexistente, cancelar y confirmar.
+- **Opcional, fuera de alcance**: `ProductosForm.cs:843` todavía compone el texto de la baja **de productos** en la vista (equivalente a O-1, para la spec 002).
+- **Commit de la spec 004** cuando el usuario lo autorice (hoy todo está sin commitear).
+- Sin pendientes funcionales en 001–003; sigue abierta la decisión sobre la categoría inactiva `Tecnologia` (dejarla y actualizar el baseline, o borrarla con autorización explícita).

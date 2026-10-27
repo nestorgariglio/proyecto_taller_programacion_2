@@ -23,4 +23,12 @@ public class FiltroProductosDto
 	/// inactivos y <c>null</c> = todos (RF-14).
 	/// </summary>
 	public bool? Estado { get; set; }
+
+	/// <summary>
+	/// Restringe el listado a los productos críticos (RF-11): agotados (stock 0
+	/// o negativo, D-11) y bajo el umbral vigente. <c>true</c> = solo críticos;
+	/// <c>null</c> o <c>false</c> = sin restricción, igual que <see cref="Estado"/>.
+	/// Se combina con los demás filtros.
+	/// </summary>
+	public bool? SoloCriticos { get; set; }
 }

@@ -912,16 +912,30 @@ namespace CapaNegocio
         /// <summary>
         /// Lista los productos —activos e inactivos— aplicando los filtros de
         /// búsqueda de <b>Código y/o Nombre</b> (por contenido, sin distinguir
-        /// mayúsculas y minúsculas), de <b>categoría</b> (por Id) y de
-        /// <b>Estado</b> (RF-14/RF-15). Sin filtros devuelve todo el catálogo
-        /// con su estado. El nombre de la categoría se resuelve por join y los
-        /// datos se proyectan a un DTO sanitizado (RF-17).
+        /// mayúsculas y minúsculas), de <b>categoría</b> (por Id), de
+        /// <b>Estado</b> (RF-14/RF-15) y de <b>"Solo críticos"</b> (RF-6/RF-11), y
+        /// clasifica la criticidad de cada fila con el umbral mínimo global
+        /// recibido (RF-8/RF-12). Sin filtros devuelve todo el catálogo con su
+        /// estado. El nombre de la categoría se resuelve por join y los datos se
+        /// proyectan a un DTO sanitizado (RF-17). Es una consulta de solo lectura
+        /// (RF-15/RNF-3).
         /// </summary>
         /// <param name="filtro">Filtros opcionales del listado.</param>
-        /// <returns>Colección de productos mapeados a su DTO de lectura.</returns>
-        public async Task<List<ProductoRespuestaDto>> ListarProductosAsync(FiltroProductosDto filtro)
+        /// <param name="umbralStock">
+        /// Umbral mínimo global vigente, en unidades (RF-9). <c>null</c> = modo
+        /// degradado (RF-10): solo el stock agotado es crítico y ningún producto
+        /// se clasifica como <see cref="NivelCriticidadStock.BajoUmbral"/>. Es
+        /// opcional para que los llamadores existentes sigan funcionando igual.
+        /// </param>
+        /// <returns>
+        /// Productos mapeados a su DTO de lectura, ordenados por Nombre y luego
+        /// por Código, con la única coincidencia exacta de Código en la primera
+        /// posición (RF-21/RNF-8).
+        /// </returns>
+        public async Task<List<ProductoRespuestaDto>> ListarProductosAsync(
+            FiltroProductosDto filtro, int? umbralStock = null)
         {
-            // Consulta de solo lectura (RNF de rendimiento).
+            // Consulta de solo lectura (RF-15/RNF-3).
             IQueryable<Producto> consulta = _db.Productos.AsNoTracking();
 
             string? texto = filtro.Texto?.Trim();
@@ -948,7 +962,26 @@ namespace CapaNegocio
                 consulta = consulta.Where(producto => producto.Estado == estado);
             }
 
-            return await consulta
+            // "Solo críticos" se aplica en la consulta (RF-6/RF-11) para no traer
+            // el catálogo completo cuando el filtro está activo. Se combina con
+            // texto, categoría y estado en el mismo IQueryable.
+            if (filtro.SoloCriticos == true)
+            {
+                if (umbralStock.HasValue)
+                {
+                    int umbral = umbralStock.Value;
+                    consulta = consulta.Where(producto =>
+                        producto.Stock <= 0 ||
+                        (producto.Stock > 0 && producto.Stock < umbral));
+                }
+                else
+                {
+                    // Modo degradado (RF-10): agotado = stock 0 o negativo (D-11).
+                    consulta = consulta.Where(producto => producto.Stock <= 0);
+                }
+            }
+
+            List<ProductoRespuestaDto> listado = await consulta
                 .OrderBy(producto => producto.Nombre)
                 .ThenBy(producto => producto.Codigo)
                 .Select(producto => new ProductoRespuestaDto
@@ -969,6 +1002,99 @@ namespace CapaNegocio
                     IdUsuarioModifica = producto.IdUsuarioModifica
                 })
                 .ToListAsync();
+
+            // La clasificación se asigna después de materializar: la proyección
+            // la resuelve el proveedor y no puede invocar código C# (plan §4b).
+            foreach (ProductoRespuestaDto producto in listado)
+            {
+                producto.NivelCriticidad = ClasificarCriticidad(producto.Stock, umbralStock);
+            }
+
+            // La priorización del escaneo exacto también es un post-proceso en
+            // memoria sobre el resultado ya filtrado y ordenado (plan §4c).
+            PriorizarCodigoExacto(listado, texto);
+
+            return listado;
+        }
+
+        /// <summary>
+        /// Clasifica la criticidad de un producto con el umbral global vigente
+        /// (RF-8/RF-12): agotado si el stock es 0 o negativo (D-11); bajo el
+        /// umbral si es mayor que 0 y estrictamente menor que el umbral; normal
+        /// en el resto. Sin umbral (modo degradado) nunca devuelve
+        /// <see cref="NivelCriticidadStock.BajoUmbral"/> (RF-10).
+        /// </summary>
+        /// <param name="stock">Stock actual del producto.</param>
+        /// <param name="umbralStock">Umbral global vigente, o <c>null</c> en modo degradado.</param>
+        /// <returns>Nivel de criticidad del producto.</returns>
+        private static NivelCriticidadStock ClasificarCriticidad(int stock, int? umbralStock)
+        {
+            if (stock <= 0)
+            {
+                return NivelCriticidadStock.Agotado;
+            }
+
+            if (umbralStock.HasValue && stock < umbralStock.Value)
+            {
+                return NivelCriticidadStock.BajoUmbral;
+            }
+
+            return NivelCriticidadStock.Normal;
+        }
+
+        /// <summary>
+        /// Mueve a la primera posición la coincidencia exacta de Código con el
+        /// texto buscado, ya recortado (RF-21/D-12), sin distinguir mayúsculas y
+        /// minúsculas. Solo reordena cuando hay <b>exactamente una</b> coincidencia:
+        /// con ninguna, o con más de una (inconsistencia imposible con la
+        /// unicidad vigente), conserva el orden habitual. El resto de las filas
+        /// mantiene su orden relativo y el costo es O(n) sobre el resultado ya
+        /// filtrado (RNF-1/RNF-8).
+        /// </summary>
+        /// <param name="listado">Listado materializado y ordenado a modificar.</param>
+        /// <param name="textoBuscado">Texto del buscador, ya recortado.</param>
+        private static void PriorizarCodigoExacto(
+            List<ProductoRespuestaDto> listado, string? textoBuscado)
+        {
+            if (string.IsNullOrEmpty(textoBuscado))
+            {
+                return;
+            }
+
+            int indiceExacto = -1;
+            int coincidenciasExactas = 0;
+
+            for (int indice = 0; indice < listado.Count; indice++)
+            {
+                if (string.Equals(
+                        listado[indice].Codigo, textoBuscado, StringComparison.OrdinalIgnoreCase))
+                {
+                    indiceExacto = indice;
+                    coincidenciasExactas++;
+                }
+            }
+
+            if (coincidenciasExactas != 1 || indiceExacto <= 0)
+            {
+                return;
+            }
+
+            ProductoRespuestaDto coincidenciaExacta = listado[indiceExacto];
+            listado.RemoveAt(indiceExacto);
+            listado.Insert(0, coincidenciaExacta);
+        }
+
+        /// <summary>
+        /// Cuenta los productos registrados en el catálogo, sin aplicar filtros
+        /// (RF-13). Permite distinguir un catálogo sin datos de un listado sin
+        /// coincidencias por filtros. Es una lectura de solo lectura (RNF-3).
+        /// </summary>
+        /// <returns>Cantidad total de productos, activos e inactivos.</returns>
+        public async Task<int> ContarProductosAsync()
+        {
+            return await _db.Productos
+                .AsNoTracking()
+                .CountAsync();
         }
     }
 }

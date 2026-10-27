@@ -1,6 +1,7 @@
 # Spec 002 — ABM de Productos
 
 Estado: aprobada (2026-10-23)
+Última revisión: 2026-10-26 (nota de verificación de O-3, sin cambio de requisitos; ver «Nota de verificación (2026-10-26)»)
 
 > **Origen**: petición del usuario (2026-10-22), complementada con decisiones ya cerradas por él (listadas en «Dudas abiertas» como **D-1 … D-8**) y con **las 8 dudas abiertas resueltas por el usuario el 2026-10-22** (registradas abajo como **D-9 … D-16**, que cierran el bloque «Dudas abiertas» de la primera redacción). Se agrega **D-17** (quién audita), que explicita el registro del usuario creador/modificador en los RF.
 > **Corrección tras revisión QA (2026-10-22)**: se aplicaron las respuestas del usuario a los 6 hallazgos del revisor. Se reformula **RF-18** (el Vendedor **no** ve la pestaña Productos; consulta el catálogo en solo lectura **desde el módulo de Ventas**, spec 005, y no puede modificar datos de producto) y se registran las decisiones cerradas **D-18 … D-21** (auditoría de usuario `NOT NULL` con relleno de la semilla; acceso del Vendedor; advertencia de precio **antes** de guardar; producto inactivo editable sin reactivar; `codigo` como **texto** `nvarchar(13)` que preserva ceros; auditoría de **último evento**). Se documentan además la FK `ON DELETE CASCADE` de `PRODUCTO → CATEGORIA` y los casos límite y huecos de verificabilidad señalados por el QA.
@@ -195,6 +196,14 @@ El catálogo de productos del Sistema Comercial G70 es la base operativa del neg
 - **D-21 (último evento) impacta el plan**: los campos de auditoría de modificación/motivo se **sobrescriben**; no se crea tabla de movimientos (coherente con D-8/D-14).
 - **D-22 (semilla en el alcance) impacta spec/plan/tasks**: se agrega una tarea de ajuste de `scripts/seed-desarrollo.sql` (setear `id_usuario` por variable del Administrador DNI `90000001` en los `INSERT`/`UPDATE` de `PRODUCTO`), manteniendo la semilla idempotente y re-ejecutable. No es código C# pero **sí** es entregable de esta spec. Requiere que la migración aplique el `NOT NULL` (D-18) de forma compatible con la semilla.
 - **D-23 (trigger `AFTER UPDATE`) impacta el plan/tasks**: **reemplaza** la combinación contradictoria previa (default de columna + exclusión manual del valor en el `UPDATE` / `ValueGeneratedOnAddOrUpdate` sobre columna nullable con default). El plan describe el trigger en la migración `AddProductConstraints` (crear en `Up()`, dropear en `Down()`) y EF Core **no** escribe `fecha_modificacion` (mapeo `ValueGeneratedOnAddOrUpdate()`). La fecha de **creación** conserva su default `GETDATE()` (funciona en `INSERT`). Coherente con RF-19/RNF-7 y con los Criterios de finalización (verificación de **ambas** fechas contra BD real).
+
+## Nota de verificación (2026-10-26)
+
+> **Origen**: observación recibida sobre el código entregado ("el combo de categorías del filtro de productos haría un mapeo débil por descripción"). **Resultado de la verificación: la observación no aplica al código actual; no hay cambio de requisito.**
+
+- El combo de categorías del filtro de productos (y el del alta/edición) **ya referencia las categorías por identificador**: cada opción del combo conserva el `Id` de la categoría junto al texto visible, la opción "Todas" se representa con un identificador nulo y la consulta del listado filtra por `IdCategoria`. La descripción se usa **solo** como texto a mostrar, nunca como clave de búsqueda ni de relación.
+- **RF-15 y RF-17 ya exigían ese comportamiento** (filtro y relación por identificadores, no por descripciones), por lo que se trata de un requisito ya cubierto y verificado, no de un requisito nuevo.
+- Aclaración de implementación: las opciones se cargan como elementos del combo con su texto visible, en lugar de usar los enlaces de datos de lista (miembro de visualización / miembro de valor / origen de datos). Es **equivalente funcional** —el identificador sigue siendo el dato de la opción— y el usuario decidió **no refactorizarlo** por ser de menor riesgo y no aportar comportamiento nuevo.
 
 ## Apéndice — Cambio pendiente en `MEMORY.md` (para quien tenga permiso fuera de `specs/`)
 
