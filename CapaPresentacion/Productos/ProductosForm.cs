@@ -805,7 +805,9 @@ namespace CapaPresentacion.Productos
         /// <summary>
         /// Cambia el estado del producto seleccionado con el único botón de estado
         /// (RF-5/RF-8): da de baja lógica el producto activo y reactiva el inactivo,
-        /// pidiendo siempre confirmación en español antes de escribir.
+        /// pidiendo siempre confirmación en español antes de escribir. La acción
+        /// aplicable, el título y la pregunta los resuelve la CapaNegocio sobre el
+        /// estado <b>actual</b> del producto registrado (RF-21/RF-22).
         /// </summary>
         private async void btnEstado_Click(object? sender, EventArgs e)
         {
@@ -836,64 +838,83 @@ namespace CapaPresentacion.Productos
                 return;
             }
 
-            // RF-6/RF-8: el estado del producto decide la acción y el texto del diálogo.
-            bool estaActivo = producto.Estado;
-            string tituloDialogo = estaActivo ? "Dar de baja producto" : "Reactivar producto";
-            string preguntaDialogo = estaActivo
-                ? $"¿Confirma que desea dar de baja el producto {producto.Nombre}?"
-                : $"¿Confirma que desea reactivar el producto {producto.Nombre}?";
-
-            // RF-12/D-13: confirmación simple en español antes de escribir.
-            var dialogo = new MaterialDialog(
-                formularioPrincipal,
-                tituloDialogo,
-                preguntaDialogo,
-                "SÍ",
-                true,
-                "NO");
-
-            // Cancelar ⇒ sin ninguna escritura: el producto queda sin cambios.
-            if (dialogo.ShowDialog(formularioPrincipal) != DialogResult.OK)
-            {
-                return;
-            }
-
+            // Se deshabilita ANTES de la consulta: todo el flujo (confirmación,
+            // aviso/diálogo, ejecución y recarga) va dentro del try, de modo que un
+            // fallo de BD al componer la confirmación caiga en el mismo catch (RF-16)
+            // y el finally rehabilite el botón (plan §7.1).
             _btnEstado.Enabled = false;
 
             try
             {
-                if (estaActivo)
+                // RF-21/RF-22: la acción aplicable, el título y la pregunta en español
+                // los compone la CapaNegocio a partir del estado actual del producto;
+                // la vista no deriva la acción del listado ni redacta los textos.
+                ConfirmacionCambioEstadoProducto confirmacion =
+                    await _productoNegocio.ObtenerConfirmacionCambioEstadoAsync(producto.IdProducto);
+
+                // RF-23: si no hay acción aplicable (producto inexistente o
+                // identificador inválido) se informa el motivo con un aviso, sin
+                // diálogo SÍ/NO y sin escribir nada.
+                if (!confirmacion.PuedeEjecutarse)
                 {
-                    // La baja es lógica y la resuelve Negocio (RNF-3, sin DELETE físico).
-                    RespuestaBajaProducto respuesta =
-                        await _productoNegocio.DarBajaProductoAsync(
-                            producto.IdProducto, _idUsuarioActual);
-
-                    if (respuesta.Resultado != ResultadoBajaProducto.Exito)
-                    {
-                        // Casos límite (ya inactivo / sin permiso / no encontrado): se
-                        // muestra el mensaje en español de Negocio, sin modificar nada.
-                        MaterialMessageBox.Show(this, respuesta.Mensaje, "Atención");
-                        return;
-                    }
-
-                    MaterialMessageBox.Show(this, respuesta.Mensaje, "Producto dado de baja");
+                    MaterialMessageBox.Show(this, confirmacion.Mensaje, "Atención");
+                    return;
                 }
-                else
+
+                // RF-12/D-13: confirmación simple en español antes de escribir.
+                var dialogo = new MaterialDialog(
+                    formularioPrincipal,
+                    confirmacion.TituloDialogo,
+                    confirmacion.Mensaje,
+                    "SÍ",
+                    true,
+                    "NO");
+
+                // RF-24: cancelar ⇒ sin ninguna escritura: el producto queda sin cambios.
+                if (dialogo.ShowDialog(formularioPrincipal) != DialogResult.OK)
                 {
-                    RespuestaReactivacionProducto respuesta =
-                        await _productoNegocio.ReactivarProductoAsync(
-                            producto.IdProducto, _idUsuarioActual);
+                    return;
+                }
 
-                    if (respuesta.Resultado != ResultadoReactivacionProducto.Exito)
-                    {
-                        // D-12/RF-13: si la categoría está inactiva, Negocio bloquea la
-                        // reactivación y aquí solo se muestra su mensaje en español.
-                        MaterialMessageBox.Show(this, respuesta.Mensaje, "Atención");
+                // RF-22: la vista solo ejecuta la acción confirmada por Negocio.
+                switch (confirmacion.Accion)
+                {
+                    case AccionCambioEstadoProducto.Baja:
+                        // La baja es lógica y la resuelve Negocio (RNF-3, sin DELETE físico).
+                        RespuestaBajaProducto respuestaBaja =
+                            await _productoNegocio.DarBajaProductoAsync(
+                                confirmacion.IdProducto ?? producto.IdProducto, _idUsuarioActual);
+
+                        if (respuestaBaja.Resultado != ResultadoBajaProducto.Exito)
+                        {
+                            // Casos límite (ya inactivo / sin permiso / no encontrado): se
+                            // muestra el mensaje en español de Negocio, sin modificar nada.
+                            MaterialMessageBox.Show(this, respuestaBaja.Mensaje, "Atención");
+                            return;
+                        }
+
+                        MaterialMessageBox.Show(this, respuestaBaja.Mensaje, "Producto dado de baja");
+                        break;
+
+                    case AccionCambioEstadoProducto.Reactivacion:
+                        RespuestaReactivacionProducto respuestaReactivacion =
+                            await _productoNegocio.ReactivarProductoAsync(
+                                confirmacion.IdProducto ?? producto.IdProducto, _idUsuarioActual);
+
+                        if (respuestaReactivacion.Resultado != ResultadoReactivacionProducto.Exito)
+                        {
+                            // D-12/RF-13: si la categoría está inactiva, Negocio bloquea la
+                            // reactivación y aquí solo se muestra su mensaje en español.
+                            MaterialMessageBox.Show(this, respuestaReactivacion.Mensaje, "Atención");
+                            return;
+                        }
+
+                        MaterialMessageBox.Show(this, respuestaReactivacion.Mensaje, "Producto reactivado");
+                        break;
+
+                    default:
+                        // Defensivo: Ninguna siempre viaja con PuedeEjecutarse = false (RF-23).
                         return;
-                    }
-
-                    MaterialMessageBox.Show(this, respuesta.Mensaje, "Producto reactivado");
                 }
 
                 await CargarProductosAsync();

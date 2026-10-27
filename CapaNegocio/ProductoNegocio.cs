@@ -567,6 +567,87 @@ namespace CapaNegocio
         }
 
         /// <summary>
+        /// Obtiene la confirmación del cambio de estado de un producto con la
+        /// acción aplicable, el título del diálogo y el mensaje en español ya
+        /// compuestos en la lógica de negocio (RF-21, RF-22, RF-23, RF-24). La
+        /// acción se decide con el estado <b>actual</b> del producto registrado
+        /// en la base —no con el estado que muestra el listado—: activo ⇒
+        /// <see cref="AccionCambioEstadoProducto.Baja"/>; inactivo ⇒
+        /// <see cref="AccionCambioEstadoProducto.Reactivacion"/>. Un
+        /// identificador inválido o un producto inexistente devuelven
+        /// <see cref="AccionCambioEstadoProducto.Ninguna"/> con
+        /// <c>PuedeEjecutarse = false</c> y el motivo en español (RF-23).
+        /// Pedir la confirmación nunca escribe: es una única consulta de solo
+        /// lectura (<c>AsNoTracking</c>), sin <c>SaveChangesAsync</c> ni llamadas
+        /// a <see cref="DarBajaProductoAsync"/> o <see cref="ReactivarProductoAsync"/>
+        /// (RF-24). Tampoco duplica las validaciones de permiso, estado o
+        /// categoría inactiva: esas reglas viven en las operaciones de ejecución,
+        /// que corren después de la confirmación.
+        /// </summary>
+        /// <param name="idProducto">Identificador del producto cuyo cambio de estado se desea confirmar.</param>
+        /// <returns>
+        /// Una confirmación con la acción aplicable, la indicación de si puede
+        /// ejecutarse, el identificador y el nombre del producto y los textos a
+        /// mostrar.
+        /// </returns>
+        public async Task<ConfirmacionCambioEstadoProducto> ObtenerConfirmacionCambioEstadoAsync(
+            int idProducto)
+        {
+            if (idProducto <= 0)
+            {
+                return new ConfirmacionCambioEstadoProducto
+                {
+                    Accion = AccionCambioEstadoProducto.Ninguna,
+                    PuedeEjecutarse = false,
+                    Mensaje = "Debe indicar un producto válido."
+                };
+            }
+
+            // RF-24: una sola consulta de lectura, con proyección mínima: el
+            // estado actual de la base es el que decide la acción aplicable.
+            var producto = await _db.Productos
+                .AsNoTracking()
+                .Where(p => p.IdProducto == idProducto)
+                .Select(p => new { p.IdProducto, p.Nombre, p.Estado })
+                .FirstOrDefaultAsync();
+
+            if (producto is null)
+            {
+                return new ConfirmacionCambioEstadoProducto
+                {
+                    Accion = AccionCambioEstadoProducto.Ninguna,
+                    PuedeEjecutarse = false,
+                    Mensaje = "El producto indicado no existe."
+                };
+            }
+
+            // RF-21/RF-22: los textos son los mismos literales que redactaba la
+            // vista; ahora se componen en Negocio y la interfaz solo los presenta.
+            if (producto.Estado)
+            {
+                return new ConfirmacionCambioEstadoProducto
+                {
+                    Accion = AccionCambioEstadoProducto.Baja,
+                    PuedeEjecutarse = true,
+                    IdProducto = producto.IdProducto,
+                    NombreProducto = producto.Nombre,
+                    TituloDialogo = "Dar de baja producto",
+                    Mensaje = $"¿Confirma que desea dar de baja el producto {producto.Nombre}?"
+                };
+            }
+
+            return new ConfirmacionCambioEstadoProducto
+            {
+                Accion = AccionCambioEstadoProducto.Reactivacion,
+                PuedeEjecutarse = true,
+                IdProducto = producto.IdProducto,
+                NombreProducto = producto.Nombre,
+                TituloDialogo = "Reactivar producto",
+                Mensaje = $"¿Confirma que desea reactivar el producto {producto.Nombre}?"
+            };
+        }
+
+        /// <summary>
         /// Da de baja lógicamente un producto: pone <c>Estado = false (Inactivo)</c>
         /// sobre la MISMA fila, jamás lo borra físicamente (RNF-3/D-13) ni crea un
         /// registro nuevo. Registra el usuario del último evento en

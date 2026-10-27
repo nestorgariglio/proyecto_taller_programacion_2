@@ -208,3 +208,102 @@ Todos viven en `CapaNegocio/DTOs/Productos/`. **Nunca** viaja la entidad `Produc
 | D-22 (semilla) | `scripts/seed-desarrollo.sql`: `INSERT`/`UPDATE` de `PRODUCTO` con `id_usuario` resuelto por variable (`@idUsuarioAdministrador`, DNI `90000001`), idempotente y re-ejecutable (sin `DELETE`) | re-ejecución de `preparar-bd.ps1` (y `-SoloDatos`) sin duplicados ni fallos |
 
 Todos los RF se consolidan con compilación limpia (`dotnet build`) y `dotnet test` en verde, según los Criterios de finalización de la spec.
+
+## 7. Ronda de correcciones 2026-10-27 (O-4)
+
+> Requisitos que implementa: **RF-21, RF-22, RF-23 y RF-24** (observación O-4), aprobados por el usuario el 2026-10-27 (ver «Ronda de correcciones (2026-10-27)» en `spec.md`). Es el **espejo** de la ronda O-1 de la spec 001, que dejó el mismo patrón cerrado y verificado (`ConfirmacionBajaCategoria` + `ObtenerConfirmacionBajaAsync`, §7 de `specs/001-abm-categorias/plan.md`).
+> **No cambia la semántica de RF-1…RF-20 ni de RNF-1…RNF-7**: los textos al usuario, las validaciones, los mensajes de resultado y los flujos de pantalla se conservan; cambia **dónde** se decide (Negocio, no la vista) y **qué fuente** se usa para decidir (el estado actual en la base, no el de la grilla).
+> **Sin migraciones. `CapaEntidad` y `CapaDatos` no se tocan.** `DarBajaProductoAsync`, `ReactivarProductoAsync` y el resto de `ProductoNegocio` **se conservan sin cambios** (siguen siendo la fuente de verdad del resultado y de las validaciones de permiso/estado/categoría).
+> **Referencia a §4**: la fila **D-3** («baja en dos pasos: confirmación simple en UI → `DarBajaProductoAsync`») queda **parcialmente sustituida** por esta ronda en su parte de composición del diálogo y de los textos: la confirmación simple (D-13 de la spec) se mantiene, pero el título, la pregunta y la acción pasan a `CapaNegocio`. La fila D-3 se conserva en §4 como historial; no se reescribe.
+
+### 7.1 Diseño por capas (solo lo que cambia)
+
+**CapaEntidad — sin cambios.** `Producto` no se modifica: no se agregan propiedades calculadas ni navegaciones. El estado se lee del campo `Estado` ya existente.
+
+**CapaDatos — sin cambios.** Ninguna configuración Fluent nueva, ninguna migración. La consulta de confirmación usa el `DbSet<Producto>` ya expuesto por `AppDbContext`, con `AsNoTracking()` y proyección mínima (mismo patrón que §1/§3).
+
+**CapaNegocio.**
+1. **Enum nuevo** `AccionCambioEstadoProducto { Ninguna, Baja, Reactivacion }` en `CapaNegocio/Enums/` (un archivo por tipo, patrón del repo).
+2. **DTO nuevo** `ConfirmacionCambioEstadoProducto` en `CapaNegocio/DTOs/Productos/` (un archivo por DTO), sin entidad pura y sin datos sensibles.
+3. **Método nuevo** `ObtenerConfirmacionCambioEstadoAsync(int idProducto)` en `ProductoNegocio`: única fuente de la acción aplicable, del título, del mensaje de confirmación y de la posibilidad de ejecutar (RF-21, RF-22, RF-23, RF-24).
+4. **Sin cambios** en `DarBajaProductoAsync`, `ReactivarProductoAsync`, `CrearProductoAsync`, `ModificarProductoAsync`, `AjustarStockAsync`, `ListarProductosAsync`, `PuedeGestionarProductos` ni en sus DTOs/Enums.
+
+**CapaPresentacion — `ProductosForm.btnEstado_Click`** (único punto de UI que cambia):
+- **Se elimina**: la lectura de `producto.Estado` como insumo de la decisión; el `if (estaActivo)` que bifurcaba la llamada a Negocio; el ternario con los dos títulos (`"Dar de baja producto"` / `"Reactivar producto"`) y el ternario con las dos preguntas (`"¿Confirma que desea dar de baja el producto {nombre}?"` / `"¿Confirma que desea reactivar el producto {nombre}?"`).
+- **Lógica nueva**: pide `ObtenerConfirmacionCambioEstadoAsync(producto.IdProducto)`; si `PuedeEjecutarse == false` muestra `Mensaje` en `MaterialMessageBox` con título `"Atención"` (aviso, **sin** diálogo SÍ/NO y **sin** escribir) y retorna; si es `true`, muestra `TituloDialogo`/`Mensaje` en el `MaterialDialog` SÍ/NO y, al confirmar, ejecuta la operación según `Accion` (`Baja` ⇒ `DarBajaProductoAsync`; `Reactivacion` ⇒ `ReactivarProductoAsync`), mostrando los resultados **exactamente** como hoy (`"Atención"` si el resultado no es `Exito`; títulos `"Producto dado de baja"` / `"Producto reactivado"` si es `Exito`).
+- **Se conserva sin cambios**: el guard defensivo por rol (`PoliticaAcceso.PuedeGestionarProductos(_rolActual)` con el mensaje y el título `"Acceso denegado"`); el aviso por fila no seleccionada con su mensaje según el texto vigente del botón; `_btnEstado.Enabled = false`; el `try/catch` con `"No se pudo cambiar el estado del producto.\nDetalle: …"` y título `"Error SQL"`; el `finally` con `ActualizarEstadoBotones()`; la recarga `await CargarProductosAsync()` tras el éxito.
+- **Decisión de orden (nueva)**: `_btnEstado.Enabled = false` se ejecuta **antes** de la consulta de confirmación y el flujo completo (consulta → aviso/diálogo → ejecución → recarga) va **dentro del `try` existente**, de modo que un fallo de BD al componer la confirmación caiga en el mismo `catch` con `"Error SQL"` (RF-16) y el `finally` rehabilite el botón. Antes el diálogo quedaba fuera del `try` porque no había consulta previa.
+- **No se tocan** `ProductoModalForm`, `AjustarStockModalForm`, `inicio`, `Program.cs` ni el DI (`ProductoNegocio` ya está registrado por T8).
+
+### 7.2 Contratos
+
+**Firma exacta (CapaNegocio, pública, asíncrona, solo lectura):**
+
+```csharp
+public async Task<ConfirmacionCambioEstadoProducto> ObtenerConfirmacionCambioEstadoAsync(int idProducto)
+```
+
+**Enum nuevo `AccionCambioEstadoProducto`** (`CapaNegocio/Enums/AccionCambioEstadoProducto.cs`): `Ninguna = 0`, `Baja = 1`, `Reactivacion = 2`. `Ninguna` significa "no hay acción aplicable" y siempre viaja con `PuedeEjecutarse == false`.
+
+**DTO nuevo `ConfirmacionCambioEstadoProducto`** (`CapaNegocio/DTOs/Productos/ConfirmacionCambioEstadoProducto.cs`):
+
+| Campo | Tipo | Origen / significado |
+|---|---|---|
+| `Accion` | `AccionCambioEstadoProducto` | Acción que corresponde ejecutar si el usuario confirma (RF-21); `Ninguna` cuando no hay nada que ejecutar |
+| `PuedeEjecutarse` | `bool` | `true` **solo** si `Accion != Ninguna`; la UI no recalcula la condición (RF-22) |
+| `IdProducto` | `int?` | id de la fila consultada; `null` si el id es inválido o el producto no existe |
+| `NombreProducto` | `string?` | `Producto.Nombre` de la fila consultada (insumo del mensaje y de la trazabilidad); `null` en los casos sin producto |
+| `TituloDialogo` | `string` | título del diálogo **ya compuesto** en español (`= string.Empty`) |
+| `Mensaje` | `string` | pregunta de confirmación o aviso **ya compuesto** en español, listo para mostrar (`= string.Empty`) |
+
+**Comportamiento por caso (textos literales — deben ser idénticos a los que hoy redacta la vista):**
+
+| Situación | `Accion` | `PuedeEjecutarse` | `IdProducto` | `NombreProducto` | `TituloDialogo` | `Mensaje` |
+|---|---|---|---|---|---|---|
+| `idProducto <= 0` | `Ninguna` | `false` | `null` | `null` | `""` | `Debe indicar un producto válido.` |
+| no existe | `Ninguna` | `false` | `null` | `null` | `""` | `El producto indicado no existe.` |
+| existe y `Estado == true` | `Baja` | `true` | el id | el nombre | `Dar de baja producto` | `¿Confirma que desea dar de baja el producto {nombre}?` |
+| existe y `Estado == false` | `Reactivacion` | `true` | el id | el nombre | `Reactivar producto` | `¿Confirma que desea reactivar el producto {nombre}?` |
+
+- Los dos textos de confirmación son **literalmente** los que hoy compone la vista (`ProductosForm.cs`, líneas 841-844): sin regresión de texto (RF-21, RF-22; RNF-2).
+- Los textos de los casos sin producto coinciden con los de `DarBajaProductoAsync` (`"Debe indicar un producto válido."`, `"El producto indicado no existe."`), así el usuario ve el mismo mensaje antes o después de la operación.
+- El título `"Atención"` del **aviso** (`PuedeEjecutarse == false`) es una constante de presentación que se queda en la vista, igual que en la ronda 001 y en el resto de los avisos de `ProductosForm`.
+
+**Orden interno (1 consulta de lectura, ninguna escritura):**
+1. `idProducto <= 0` ⇒ `Ninguna` / `false` sin consultar.
+2. Una consulta a `Productos` con `AsNoTracking()` y proyección de `IdProducto`, `Nombre` y `Estado` (`FirstOrDefaultAsync`), filtrada por id.
+3. Si no existe ⇒ `Ninguna` / `false` con `"El producto indicado no existe."`.
+4. Si `Estado == true` ⇒ `Baja` + título y mensaje de baja; si `Estado == false` ⇒ `Reactivacion` + título y mensaje de reactivación.
+5. **No** llama a `SaveChangesAsync` ni a `DarBajaProductoAsync`/`ReactivarProductoAsync`: pedir la confirmación **nunca** escribe (RF-24).
+6. **No** valida permiso por rol, ni estado "ya inactivo/ya activo", ni categoría inactiva: esas reglas viven en las operaciones de ejecución, que corren después (RF-21, nota de alcance de la spec).
+
+### 7.3 Alternativas descartadas
+
+| # | Decisión | Alternativa descartada | Por qué se descarta |
+|---|---|---|---|
+| O-4a | La acción, el título y la pregunta se componen en `CapaNegocio` leyendo el estado actual de la base. | **(a) Situación actual**: la vista deriva la acción de `producto.Estado` (fila del listado) y redacta los textos con ternarios. | Deja la regla de negocio y el texto en español en el evento visual (viola RNF-5 y AGENTS: "nunca lógica de negocio en eventos visuales") y decide sobre un dato que puede estar desactualizado respecto de la base. |
+| O-4b | La confirmación valida **solo** id, existencia y estado para decidir la acción; permiso/estado repetido/categoría inactiva se validan al ejecutar. | Validar también el permiso por rol y la categoría inactiva dentro de la confirmación. | Duplicaría reglas que ya están en `DarBajaProductoAsync`/`ReactivarProductoAsync` (dos fuentes de verdad, mensajes que podrían divergir) y la confirmación necesita el `IdUsuario`/rol, que hoy no recibe. La confirmación debe ser una lectura barata y estable; el resultado real lo sigue dando la ejecución. |
+| O-4c | DTO con `Accion` (enum de 3 valores) + `PuedeEjecutarse`. | Un `Resultado` unificado (p. ej. reutilizar `ResultadoBajaProducto`/`ResultadoReactivacionProducto` o un enum nuevo con los cuatro casos). | Un único enum obligaría a mezclar dos dominios distintos (baja y reactivación) y la vista tendría que volver a mapear resultado→acción para saber qué método llamar; `Accion` expresa directamente **qué ejecutar** y `PuedeEjecutarse` la decisión, sin lógica de traducción en la UI. |
+| O-4d | `TituloDialogo` y `Mensaje` viajan ya compuestos. | Devolver solo datos (nombre, estado) y dejar que la vista arme los textos. | Vuelve a poner los textos de negocio en la interfaz (motivo exacto de O-4); los literales deben quedar fijados por tests, no por la vista. |
+
+### 7.4 Pruebas
+
+`dotnet test` sobre `CapaNegocio.Tests` (xUnit + `InMemory`, archivo nuevo `ProductoNegocioConfirmacionCambioEstadoTests.cs`, `partial class ProductoNegocioTests`, patrón de `ProductoNegocioBajaReactivacionTests.cs`). **Total esperado: 243 = 237 actuales + 6 casos nuevos** (5 métodos, uno de ellos `[Theory]` de 2 casos). Los tests existentes de baja/reactivación **no se modifican**.
+
+| RF | Qué lo verifica | Verificación concreta |
+|---|---|---|
+| RF-21 | Producto **activo** ⇒ baja, con textos exactos | *Test*: producto con `Estado = true` ⇒ `Accion = Baja`, `PuedeEjecutarse = true`, `IdProducto` y `NombreProducto` de la fila, `TituloDialogo` **igual** a `"Dar de baja producto"` y `Mensaje` **igual** a `"¿Confirma que desea dar de baja el producto {nombre}?"`. |
+| RF-21 | Producto **inactivo** ⇒ reactivación, con textos exactos | *Test*: producto con `Estado = false` ⇒ `Accion = Reactivacion`, `PuedeEjecutarse = true`, `TituloDialogo` **igual** a `"Reactivar producto"` y `Mensaje` **igual** a `"¿Confirma que desea reactivar el producto {nombre}?"`. |
+| RF-23 | Producto inexistente | *Test*: id 999 ⇒ `Accion = Ninguna`, `PuedeEjecutarse = false`, `IdProducto = null`, `NombreProducto = null`, `Mensaje` `"El producto indicado no existe."` y tabla sin cambios. |
+| RF-23 | Identificador inválido | *Test* `[Theory]` con `0` y `-5` ⇒ `Accion = Ninguna`, `PuedeEjecutarse = false`, `Mensaje` `"Debe indicar un producto válido."` y sin consulta/escritura. |
+| RF-24 | La confirmación no escribe | *Test*: sobre un producto activo (y sobre uno inactivo) se invoca la confirmación varias veces y se verifica que `Estado`, `IdUsuarioModifica`, `FechaModificacion` y `MotivoAjusteStock` quedan **intactos** y que el conteo de filas de `Productos` no cambia. |
+| RF-22 | La vista ya no compone la regla ni los textos | *Inspección de `ProductosForm.btnEstado_Click`*: **0** literales `"¿Confirma que desea dar de baja el producto"` / `"¿Confirma que desea reactivar el producto"` en todo `CapaPresentacion/`, **0** usos de `producto.Estado` para decidir la acción, **1** llamada a `ObtenerConfirmacionCambioEstadoAsync`, y los textos mostrados provienen de `TituloDialogo`/`Mensaje`. *Validación visual* (usuario): diálogo y aviso con los mismos textos. |
+
+### 7.5 Riesgos
+
+- **Consulta extra de lectura (aceptada)**: cada clic en el botón de estado suma una consulta de una fila antes del diálogo (el flujo confirmar→ejecutar pasa de 1 a 2 lecturas y la escritura de siempre). Se acepta: volumen mínimo, y el beneficio es que la regla, la acción y los textos salen de la UI (RF-22). No se introduce transacción ni se modifica la baja/reactivación.
+- **Fila desactualizada**: la decisión se toma con el estado de la base, así que la ventana de desfase se reduce a la que hay entre la confirmación y la ejecución; en ese caso la operación responde "ya está inactivo"/"ya está activo" sin efectos. Queda como límite conocido, igual que la concurrencia de altas.
+- **Regresión de textos**: los textos deben verse **idénticos** a los actuales; los tests fijan los literales y la validación visual del usuario confirma el diálogo y el aviso. Se conservan el orden de botones (`"SÍ"`/`"NO"`), los títulos de los mensajes de resultado (`"Producto dado de baja"` / `"Producto reactivado"` / `"Atención"`) y el `"Error SQL"`.
+- **Excepción de BD en la confirmación**: al mover la consulta dentro del `try` existente, un fallo cae en el mismo `catch` con `"Error SQL"` y el `finally` rehabilita el botón; se verifica por inspección (no hay test de UI).
+- **`InMemory` no cubre la UI**: el refactor de la vista se verifica por inspección de código + validación visual; los tests cubren el contrato de Negocio (RF-21, RF-23, RF-24).
+

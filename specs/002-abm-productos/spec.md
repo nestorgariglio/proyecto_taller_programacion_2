@@ -1,7 +1,7 @@
 # Spec 002 — ABM de Productos
 
 Estado: aprobada (2026-10-23)
-Última revisión: 2026-10-26 (nota de verificación de O-3, sin cambio de requisitos; ver «Nota de verificación (2026-10-26)»)
+Última revisión: 2026-10-27 (ronda de correcciones O-4: regla y textos de la confirmación de estado en la lógica de negocio; agrega RF-21…RF-24 sin modificar RF-1…RF-20 ni RNF-1…RNF-7; ver «Ronda de correcciones (2026-10-27)»)
 
 > **Origen**: petición del usuario (2026-10-22), complementada con decisiones ya cerradas por él (listadas en «Dudas abiertas» como **D-1 … D-8**) y con **las 8 dudas abiertas resueltas por el usuario el 2026-10-22** (registradas abajo como **D-9 … D-16**, que cierran el bloque «Dudas abiertas» de la primera redacción). Se agrega **D-17** (quién audita), que explicita el registro del usuario creador/modificador en los RF.
 > **Corrección tras revisión QA (2026-10-22)**: se aplicaron las respuestas del usuario a los 6 hallazgos del revisor. Se reformula **RF-18** (el Vendedor **no** ve la pestaña Productos; consulta el catálogo en solo lectura **desde el módulo de Ventas**, spec 005, y no puede modificar datos de producto) y se registran las decisiones cerradas **D-18 … D-21** (auditoría de usuario `NOT NULL` con relleno de la semilla; acceso del Vendedor; advertencia de precio **antes** de guardar; producto inactivo editable sin reactivar; `codigo` como **texto** `nvarchar(13)` que preserva ceros; auditoría de **último evento**). Se documentan además la FK `ON DELETE CASCADE` de `PRODUCTO → CATEGORIA` y los casos límite y huecos de verificabilidad señalados por el QA.
@@ -204,6 +204,46 @@ El catálogo de productos del Sistema Comercial G70 es la base operativa del neg
 - El combo de categorías del filtro de productos (y el del alta/edición) **ya referencia las categorías por identificador**: cada opción del combo conserva el `Id` de la categoría junto al texto visible, la opción "Todas" se representa con un identificador nulo y la consulta del listado filtra por `IdCategoria`. La descripción se usa **solo** como texto a mostrar, nunca como clave de búsqueda ni de relación.
 - **RF-15 y RF-17 ya exigían ese comportamiento** (filtro y relación por identificadores, no por descripciones), por lo que se trata de un requisito ya cubierto y verificado, no de un requisito nuevo.
 - Aclaración de implementación: las opciones se cargan como elementos del combo con su texto visible, en lugar de usar los enlaces de datos de lista (miembro de visualización / miembro de valor / origen de datos). Es **equivalente funcional** —el identificador sigue siendo el dato de la opción— y el usuario decidió **no refactorizarlo** por ser de menor riesgo y no aportar comportamiento nuevo.
+
+## Ronda de correcciones (2026-10-27)
+
+> **Origen**: instrucción del usuario (2026-10-27) de aplicar en el cambio de estado de **productos** el mismo refactor de separación de capas ya cerrado en la spec 001 (ronda O-1, «la regla y el texto de la baja viven en el negocio»): la regla de confirmación de la baja —y, por simetría del único botón de estado, la de la reactivación— debe vivir en la lógica de negocio. El usuario pidió además que, de aquí en adelante, se respeten siempre las buenas prácticas de programación y de arquitectura. Esta ronda **no modifica** los RF-1…RF-20 ni los RNF-1…RNF-7 ya aprobados: agrega requisitos nuevos a continuación con numeración propia.
+
+### Observación 4 — Regla y textos de la confirmación de estado en la interfaz (O-4)
+
+**Situación detectada**: al cambiar el estado de un producto, la vista leía el estado de la **fila del listado**, decidía por su cuenta si correspondía dar de baja o reactivar y **redactaba** el título del diálogo y la pregunta de confirmación ("Dar de baja producto" / "Reactivar producto" y "¿Confirma que desea dar de baja el producto …?" / "¿Confirma que desea reactivar el producto …?"). La regla de negocio y el texto en español vivían en un evento visual (contradice RNF-5 y la regla del proyecto de no escribir lógica de negocio en eventos de WinForms), y la decisión se tomaba sobre un dato que podía estar desactualizado respecto de la base.
+
+**Resolución acordada (decisión del usuario, 2026-10-27)**: la lógica de negocio determina, leyendo el **estado actual del producto registrado en la base**, qué acción corresponde (baja lógica o reactivación) y entrega a la interfaz la acción aplicable, el título del diálogo y el mensaje de confirmación **ya compuestos en español**, junto con la indicación de si la operación puede ejecutarse. La vista deja de derivar la acción del estado de la fila y de redactar textos: solo presenta el título y el mensaje recibidos y, si el usuario confirma, ejecuta la acción confirmada. Las validaciones que condicionan la ejecución (permiso por rol, estado del producto y categoría inactiva en la reactivación) **siguen** en la operación de baja y de reactivación, que se ejecuta **después** de la confirmación; la confirmación no las duplica.
+
+- RF-21: CUANDO un Administrador o Encargado solicita cambiar el estado de un producto, EL SISTEMA determina —a partir del estado **actual** del producto registrado, no del estado que muestra el listado— si la acción aplicable es la baja lógica o la reactivación, e informa a la interfaz la acción aplicable, el título del diálogo y la pregunta de confirmación **ya compuestos en español**, junto con la indicación de si la operación puede ejecutarse.
+- RF-22: EL SISTEMA resuelve en la lógica de negocio qué acción corresponde al cambio de estado de un producto, qué se informa y si la operación puede ejecutarse; la interfaz no deriva la acción del estado que muestra el listado ni compone títulos ni textos de negocio, y se limita a presentar el título y el mensaje recibidos y, tras la confirmación del usuario, a ejecutar la acción confirmada.
+- RF-23: SI el producto sobre el que se solicita el cambio de estado no existe o el identificador indicado no es válido, ENTONCES EL SISTEMA no ejecuta la baja ni la reactivación, muestra en español el motivo mediante un aviso —sin diálogo de confirmación— y no escribe ningún cambio.
+- RF-24: CUANDO se solicita la confirmación del cambio de estado de un producto, EL SISTEMA no escribe ni modifica el producto: la confirmación es una consulta de solo lectura. SI el usuario cancela, ENTONCES EL SISTEMA no ejecuta ninguna acción y el producto queda tal como estaba.
+
+### Casos límite (O-4)
+
+- **Fila del listado desactualizada** (otro usuario cambió el estado del producto después de cargar la grilla): la acción se decide con el estado actual de la base, no con el de la fila.
+- **Estado cambiado entre la confirmación y la ejecución**: la operación de baja o de reactivación devuelve su resultado habitual ("ya está inactivo" / "ya está activo") sin duplicar filas ni corromper el registro.
+- **Producto inexistente** al momento de pedir la confirmación: se informa el motivo con un aviso y no se escribe nada (RF-23).
+- **Identificador inválido** (cero o negativo): aviso en español, sin diálogo de confirmación y sin escritura (RF-23).
+- **Sin fila seleccionada en el listado**: se mantiene el aviso previo de la interfaz, sin consultar ni escribir.
+- **Cancelar el diálogo de confirmación**: no se escribe nada; el producto queda sin cambios (RF-24).
+- **Producto inactivo cuya categoría está inactiva**: la confirmación informa que la acción es la reactivación (no la anticipa como bloqueada); el bloqueo por categoría inactiva se mantiene al ejecutar (RF-13).
+- **Baja de un producto con ventas o compras históricas**: se mantiene la confirmación simple (D-13); cambia dónde se decide y se redacta, no el tipo de confirmación.
+- **Fallo o desconexión de la base de datos** al componer la confirmación: el sistema muestra un mensaje en español y el producto queda sin cambios (RF-16).
+
+### Trazabilidad de la ronda
+
+| Requisito nuevo | Observación de origen | Decisión del usuario (2026-10-27) |
+|---|---|---|
+| RF-21, RF-22, RF-23, RF-24 | O-4 — regla y textos de la confirmación de estado compuestos en la interfaz | Corregir |
+
+### Nota de alcance de la ronda
+
+- **No cambian** los RF-1…RF-20 ni los RNF-1…RNF-7 ya aprobados: los textos que ve el usuario, las validaciones y los flujos de pantalla se conservan.
+- **Sin migraciones**: no hay cambios de esquema ni de entidades; la confirmación es una consulta de lectura sobre los datos ya existentes.
+- Las operaciones de **baja** y de **reactivación** conservan **todas** sus validaciones (usuario identificado, permiso por rol, existencia, estado del producto y categoría inactiva): esta ronda solo agrega la consulta de confirmación previa y no altera su comportamiento ni sus mensajes.
+- La decisión **D-13** (confirmación simple) se mantiene; queda sustituida únicamente la parte que ubicaba la composición del diálogo y de los textos en la interfaz (decisión D-3 del plan técnico).
 
 ## Apéndice — Cambio pendiente en `MEMORY.md` (para quien tenga permiso fuera de `specs/`)
 
