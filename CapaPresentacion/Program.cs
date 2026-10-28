@@ -33,6 +33,7 @@ namespace CapaPresentacion
                     services.AddTransient<UsuarioNegocio>();
                     services.AddTransient<CategoriaNegocio>();
                     services.AddTransient<ClienteNegocio>();
+                    services.AddTransient<ProductoNegocio>();
 
                     services.AddTransient<GestionUsuariosControl>();
                     services.AddTransient<GestionCategoriasControl>();

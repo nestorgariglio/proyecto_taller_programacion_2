@@ -258,8 +258,9 @@ namespace CapaPresentacion
 
                 // RF-12: el botón "Gestionar categorías" de la vista de productos
                 // se muestra solo a quien puede acceder al módulo "Categorías"
-                // (Administrador/Encargado); al Vendedor le queda oculto.
-                _productosForm.AplicarRolUsuario(rol);
+                // (Administrador/Encargado); al Vendedor le queda oculto. También
+                // se aplica el gating del ABM de productos (RF-11/RF-18).
+                _productosForm.AplicarRolUsuario(rol, _usuarioActual?.IdUsuario ?? 0);
 
                 // RF-27/D-5: en el padrón, «Desactivar» y «Reactivar» se muestran solo
                 // a Administrador y Encargado; el Vendedor conserva Nuevo y Editar.

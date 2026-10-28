@@ -229,3 +229,9 @@ $RECYCLE.BIN/
 # Registros
 log.txt
 *.log
+
+# OpenCode y archivos temporales de agentes
+build_output.txt
+test_output.txt
+orig_appdb.txt
+.opencode/

@@ -51,4 +51,18 @@ public static class PoliticaAcceso
             && (string.Equals(rol.Trim(), "administrador", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(rol.Trim(), "encargado", StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>
+    /// Indica si un rol puede gestionar (escribir) productos: alta, edición,
+    /// baja, reactivación y ajuste de stock (RF-11/RF-18/D-18-bis). Solo
+    /// Administrador y Encargado; el Vendedor no ve el módulo y su lectura del
+    /// catálogo llega desde Ventas (spec 005). La regla se reutiliza de
+    /// <see cref="TieneAcceso"/> para no duplicar la lista de módulos.
+    /// </summary>
+    /// <param name="rol">Descripción del rol del usuario.</param>
+    /// <returns><see langword="true"/> si el rol puede gestionar productos; de lo contrario, <see langword="false"/>.</returns>
+    public static bool PuedeGestionarProductos(string? rol)
+    {
+        return TieneAcceso(rol, "Productos");
+    }
 }
