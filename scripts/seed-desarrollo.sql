@@ -298,41 +298,90 @@ GO
 
     ---------------------------------------------------------------------------
     -- Clientes de desarrollo: ~12 con estado y campos opcionales variados
-    -- IF NOT EXISTS por Documento (7-20 alfanumérico), nombre/apellido 2-100
+    -- Patrón idempotente: UPDATE ... IF @@ROWCOUNT = 0 THEN INSERT
+    -- DNI alfanumérico 7-20, nombre/apellido 2-100, correo/teléfono opcionales
+    -- Cobertura: válidos, opcionales completos, opcionales nulos, activo/inactivo
     ---------------------------------------------------------------------------
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000001')
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Juan', apellido = N'Pérez', correo = N'juan.perez@email.com', telefono = N'1123456789', estado = 1, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000001';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000001', N'Juan', N'Pérez', N'juan.perez@email.com', N'1123456789', 1, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000002')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'María', apellido = N'Gómez', correo = NULL, telefono = N'1134567890', estado = 1, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000002';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000002', N'María', N'Gómez', NULL, N'1134567890', 1, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000003')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Carlos', apellido = N'Sánchez', correo = N'carlos.sanchez@email.com', telefono = NULL, estado = 1, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000003';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000003', N'Carlos', N'Sánchez', N'carlos.sanchez@email.com', NULL, 1, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000004')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Laura', apellido = N'Díaz', correo = NULL, telefono = NULL, estado = 0, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000004';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000004', N'Laura', N'Díaz', NULL, NULL, 0, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000005')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Andrés', apellido = N'Rodríguez', correo = N'andres.rodriguez@email.com', telefono = N'1156789012', estado = 1, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000005';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000005', N'Andrés', N'Rodríguez', N'andres.rodriguez@email.com', N'1156789012', 1, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000006')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Sofía', apellido = N'Fernández', correo = N'sofia.fernandez@email.com', telefono = N'1167890123', estado = 1, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000006';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000006', N'Sofía', N'Fernández', N'sofia.fernandez@email.com', N'1167890123', 1, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000007')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Miguel', apellido = N'González', correo = NULL, telefono = N'1178901234', estado = 0, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000007';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000007', N'Miguel', N'González', NULL, N'1178901234', 0, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000008')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Gabriela', apellido = N'Palacios', correo = N'gabriela.palacios@email.com', telefono = N'1189012345', estado = 1, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000008';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000008', N'Gabriela', N'Palacios', N'gabriela.palacios@email.com', N'1189012345', 1, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000009')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Santiago', apellido = N'Córdoba', correo = NULL, telefono = NULL, estado = 1, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000009';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000009', N'Santiago', N'Córdoba', NULL, NULL, 1, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000010')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Valeria', apellido = N'Toro', correo = N'valeria.toro@email.com', telefono = N'1190123456', estado = 1, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000010';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000010', N'Valeria', N'Toro', N'valeria.toro@email.com', N'1190123456', 1, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000011')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Hugo', apellido = N'Lucero', correo = NULL, telefono = N'1201234567', estado = 0, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000011';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000011', N'Hugo', N'Lucero', NULL, N'1201234567', 0, GETDATE());
-    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'CLI0000012')
+
+    UPDATE dbo.CLIENTE
+    SET nombre = N'Elena', apellido = N'Vega', correo = N'elenavega@email.com', telefono = N'1212345678', estado = 1, fecha_registro = GETDATE()
+    WHERE dni = N'CLI0000012';
+    IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000012', N'Elena', N'Vega', N'elenavega@email.com', N'1212345678', 1, GETDATE());

@@ -59,3 +59,20 @@ Regla de trabajo: **una tarea a la vez**, pruebas primero (rojo → verde), `dot
   - Crear `Clientes/ClienteForm.cs` (patrón `CategoriaForm`): campos Documento, Nombre, Apellido, Correo y Teléfono; envía valores **crudos** al negocio, muestra el `Mensaje` devuelto sin cerrar cuando hay error y conserva lo tipeado; al guardar con éxito cierra y la grilla recarga.
   - Conectar Nuevo/Editar con el modal (Editar precarga desde la fila seleccionada), Desactivar con `ObtenerConfirmacionBajaClienteAsync` + **un único** diálogo y posterior `DarBajaClienteAsync`, y Reactivar con confirmación simple; ocultar Desactivar/Reactivar al Vendedor y deshabilitarlas según el estado de la fila.
   - Hecho cuando: `dotnet build` y `dotnet test` (suite completa) quedan en verde y la validación visual del checklist se cumple: alta (con el filtro pasando a Activos, el buscador vacío y el cliente visible junto al resto), edición de un cliente inactivo, rechazo con mensaje del negocio sin cerrar el modal, baja con y sin ventas mostrando **un solo** diálogo con la cantidad, reactivación, y acciones ocultas/deshabilitadas para el Vendedor.
+
+---
+
+> **Corrección visual (enmienda técnica post-merge, sin cambio de RF)** — tareas adicionales de la spec aprobada `003-abm-clientes`; referencia estándar: `ProductosForm.cs`.
+
+- [x] **C1. `CapaPresentacion`: armonizar grilla (`DataGridView`) en `ClientesForm.cs`.** V-G1 / `ClientesForm.cs` 226–255 / `ProductosForm.cs` 1333–1357
+  - Ajustar `BackgroundColor = Color.FromArgb(48,48,48)`; `ColumnHeadersDefaultCellStyle` (`BackColor = 55,71,79`, `Font = new Font("Segoe UI",11F,FontStyle.Bold)`, `ForeColor = White`); `DefaultCellStyle` (`BackColor = 48,48,48`, `Font = new Font("Segoe UI",10F)`, `SelectionBackColor = 255,87,34`, `SelectionForeColor = White`); `GridColor = 80,80,80`; `RowTemplate.Height = 36`; conservar `EnableHeadersVisualStyles = false`, `BorderStyle = None`, `CellBorderStyle = SingleHorizontal`.
+  - Hecho cuando: `dotnet build` limpia y la grilla muestra la paleta de referencia (verificado visualmente al abrir `ClientesForm` con datos reales); no se alteran columnas ni `DataPropertyName`.
+
+- [x] **C2. `CapaPresentacion`: armonizar botones (`MaterialButton`) en `ClientesForm.cs`.** V-B1 / `ClientesForm.cs` 174–217 / `ProductosForm.cs` 1180–1291
+  - En `_btnNuevo`, `_btnEditar`, `_btnDesactivar`, `_btnReactivar`, `_btnActualizar`: agregar `AutoSizeMode = AutoSizeMode.GrowAndShrink`; `HighEmphasis = true`; `Type = MaterialButton.MaterialButtonType.Contained`; `Margin = new Padding(4,6,4,6)`; `Depth = 0` (por defecto); mantener `UseAccentColor = true` solo en `_btnNuevo`; ajustar `Height` a 40 (o dejar por `AutoSizeMode`); eliminar `Width` fijo donde sea compatible con auto-size.
+  - Hecho cuando: los cinco botones muestran la misma altura, margen y énfasis que los de `ProductosForm`; `dotnet build` limpia.
+
+- [x] **C3. `CapaPresentacion`: armonizar panel de acciones y mensaje vacío (`FlowLayoutPanel` + `_lblEstadoListado`).** V-L1 / V-M1 / `ClientesForm.cs` 162–172 y 30,153–159 / `ProductosForm.cs` 1308–1309 y 377
+  - Panel: `BackColor = TemaAplicacion.FondoPrincipal`; `Padding = new Padding(0,2,0,2)`; `Margin = new Padding(0,4,0,4)`; conservar `FlowLayoutPanel` y `Anchor`; no migrar a `TableLayoutPanel`.
+  - Mensaje: en `_lblEstadoListado` ajustar `FontType = MaterialSkinManager.fontType.Body2` (ya existe), `ForeColor = Color.Gainsboro` (o `255,87,34` solo si `respuesta.Resultado == ErrorPersistencia`, como hoy); confirmar que se usa `label` dinámico (`_lblEstadoListado.Text = respuesta.Mensaje`) y **no** se introduce `Paint`.
+  - Hecho cuando: panel de acciones alineado con el estándar visual; mensaje vacío se muestra y actualiza sin cambios de comportamiento (RF-26); `dotnet build` limpia.

@@ -228,6 +228,33 @@ Archivos: **nuevo** `CapaNegocio.Tests/ClienteNegocioTests.cs`; **modificado** `
 
 ---
 
+## 8. Corrección de consistencia visual (post-merge / enmienda técnica)
+Estado: **enmienda técnica**, sin cambio de requisitos funcionales ni de comportamiento.
+> **Nota de ejecución (dado por @reviewer / QA)**: la pantalla `ClientesForm.cs` presenta diferencias bloqueantes respecto al estándar `ProductosForm.cs` (vista de lista real). Esta sección define el estándar visual y las tareas de armonización; no modifica RF, casos límite ni criterios de cierre de la spec.
+
+### Estándar adoptado (referencia `CapaPresentacion/Productos/ProductosForm.cs` líneas 1180–1357, 1059–1170)
+- **Grilla (`DataGridView`)**: `BackColor = 48,48,48`; cabeceras `BackColor = 55,71,79`, fuente `Segoe UI 11 Bold`; celdas `BackColor = 48,48,48`, fuente `Segoe UI 10`, `SelectionBackColor = 255,87,34`, `SelectionForeColor = White`; `GridColor = 80,80,80`; `RowTemplate.Height = 36`; `EnableHeadersVisualStyles = false`; `BorderStyle = None`; `CellBorderStyle = SingleHorizontal`.
+- **Botones (`MaterialButton`)**: `Type = Contained`; `AutoSizeMode = GrowAndShrink`; `HighEmphasis = true`; `Margin = new Padding(4,6,4,6)`; `Depth = 0` (o valor por defecto del material); `UseAccentColor = true` solo en acción principal (`_btnNuevo`); resto sin acento.
+- **Panel de acciones**: se mantiene `FlowLayoutPanel` (ya funcional) pero se armoniza `BackColor = TemaAplicacion.FondoPrincipal`, `Padding = new Padding(0,2,0,2)`, `Margin = new Padding(0,4,0,4)`; no se migra a `TableLayoutPanel` para minimizar riesgo de regresión de layout.
+- **Mensaje vacío / listado**: se recomienda `MaterialLabel _lblEstadoListado` (ya existe, líneas 153–159 de `ClientesForm.cs`) con `ForeColor = Color.Gainsboro` (o `255,87,34` solo en error) y fuente `Body2`; **no se migra al patrón `Paint`** de `ProductosForm` porque `RF-26` requiere que el mensaje venga del negocio y el label actual lo muestra sin lógica de dibujo adicional.
+
+### Decisiones tomadas
+1. **Standard de grilla**: valores exactos de `ProductosForm.cs` (paleta oscura, fuente Segoe UI, selección naranja). No se conserva la paleta oscura alternativa de `ClientesForm` (30/30/30 cabeceras, 40/40/40 fondo, Roboto 10).
+2. **Mensajes de vacío**: `MaterialLabel _lblEstadoListado` (existente); solo se ajustan `ForeColor` y fuente para consistencia con `ProductosForm`. Se descarta `Paint` (más complejo, sin beneficio para un mensaje dinámico de negocio).
+3. **Layout de acciones**: se mantiene `FlowLayoutPanel` absoluto (líneas 162–172); se armoniza `BackColor`, `Padding` y `Margin`. Se descarta `TableLayoutPanel` (menor riesgo, equivalente funcional).
+
+---
+
+## 9. Trazabilidad visual (corrección post-merge)
+| ID | Componente | Archivo / líneas referencia | Archivo / líneas a armonizar | Decisión |
+|---|---|---|---|---|
+| V-G1 | Grilla: paleta, fuente, selección | `ProductosForm.cs` 1333–1357 | `ClientesForm.cs` 226–255 | Adoptar valores de referencia |
+| V-B1 | Botones: tamaño, HighEmphasis, auto-size, márgenes | `ProductosForm.cs` 1180–1291 | `ClientesForm.cs` 174–217 | Adoptar valores de referencia |
+| V-L1 | Panel acciones: FlowLayoutPanel | `ProductosForm.cs` 1308–1309 | `ClientesForm.cs` 162–172 | Mantener FlowLayoutPanel, armonizar propiedades |
+| V-M1 | Mensaje vacío: label dinámico | `ProductosForm.cs` 377 (mensaje dinámico en grilla) | `ClientesForm.cs` 30, 153–159, 84–88 | Mantener `_lblEstadoListado`; no usar `Paint` |
+
+---
+
 ## 6. Trazabilidad RF → componente → tarea
 
 | RF | Componente / método | Tarea |

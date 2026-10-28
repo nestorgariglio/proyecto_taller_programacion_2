@@ -168,24 +168,35 @@ namespace CapaPresentacion.Clientes
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
                 AutoScroll = true,
-                Padding = new Padding(0, 2, 0, 0)
+                Padding = new Padding(0, 2, 0, 2),
+                BackColor = TemaAplicacion.FondoPrincipal,
+                Margin = new Padding(0, 4, 0, 4)
             };
 
             _btnNuevo = new MaterialButton
             {
                 Text = "Nuevo Cliente",
-                Width = 150,
-                Height = 48,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Height = 36,
                 Type = MaterialButton.MaterialButtonType.Contained,
-                UseAccentColor = true
+                HighEmphasis = true,
+                UseAccentColor = true,
+                Depth = 0,
+                BackColor = TemaAplicacion.FondoPrincipal,
+                Margin = new Padding(4, 6, 4, 6)
             };
 
             _btnEditar = new MaterialButton
             {
                 Text = "Editar",
-                Width = 120,
-                Height = 48,
-                Type = MaterialButton.MaterialButtonType.Contained
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Height = 36,
+                Type = MaterialButton.MaterialButtonType.Contained,
+                HighEmphasis = true,
+                UseAccentColor = false,
+                Depth = 0,
+                BackColor = TemaAplicacion.FondoPrincipal,
+                Margin = new Padding(4, 6, 4, 6)
             };
 
             // Nacen ocultas: AplicarRolUsuario las muestra solo a Administrador y
@@ -193,27 +204,42 @@ namespace CapaPresentacion.Clientes
             _btnDesactivar = new MaterialButton
             {
                 Text = "Desactivar",
-                Width = 150,
-                Height = 48,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Height = 36,
                 Type = MaterialButton.MaterialButtonType.Contained,
-                Visible = false
+                HighEmphasis = true,
+                UseAccentColor = false,
+                Depth = 0,
+                BackColor = TemaAplicacion.FondoPrincipal,
+                Visible = false,
+                Margin = new Padding(4, 6, 4, 6)
             };
 
             _btnReactivar = new MaterialButton
             {
                 Text = "Reactivar",
-                Width = 150,
-                Height = 48,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Height = 36,
                 Type = MaterialButton.MaterialButtonType.Contained,
-                Visible = false
+                HighEmphasis = true,
+                UseAccentColor = false,
+                Depth = 0,
+                BackColor = TemaAplicacion.FondoPrincipal,
+                Visible = false,
+                Margin = new Padding(4, 6, 4, 6)
             };
 
             _btnActualizar = new MaterialButton
             {
                 Text = "Actualizar",
-                Width = 135,
-                Height = 48,
-                Type = MaterialButton.MaterialButtonType.Contained
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Height = 36,
+                Type = MaterialButton.MaterialButtonType.Contained,
+                HighEmphasis = true,
+                UseAccentColor = false,
+                Depth = 0,
+                BackColor = TemaAplicacion.FondoPrincipal,
+                Margin = new Padding(4, 6, 4, 6)
             };
 
             panelAcciones.Controls.Add(_btnNuevo);
@@ -234,25 +260,41 @@ namespace CapaPresentacion.Clientes
                 AllowUserToDeleteRows = false,
                 AutoGenerateColumns = false,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.FromArgb(40, 40, 40),
+                BackgroundColor = Color.FromArgb(48, 48, 48),
                 BorderStyle = BorderStyle.None,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
                 RowHeadersVisible = false,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = false,
                 EnableHeadersVisualStyles = false
             };
 
-            _gridClientes.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(30, 30, 30);
-            _gridClientes.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            _gridClientes.ColumnHeadersDefaultCellStyle.Font = new Font("Roboto", 10, FontStyle.Bold);
-            _gridClientes.ColumnHeadersHeight = 40;
+            _gridClientes.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                Alignment = DataGridViewContentAlignment.MiddleLeft,
+                BackColor = Color.FromArgb(55, 71, 79),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.White,
+                SelectionBackColor = Color.FromArgb(55, 71, 79),
+                SelectionForeColor = Color.White,
+                WrapMode = DataGridViewTriState.True
+            };
+            _gridClientes.ColumnHeadersHeight = 42;
 
-            _gridClientes.DefaultCellStyle.BackColor = Color.FromArgb(50, 50, 50);
-            _gridClientes.DefaultCellStyle.ForeColor = Color.White;
-            _gridClientes.DefaultCellStyle.SelectionBackColor = Color.FromArgb(80, 80, 80);
+            _gridClientes.DefaultCellStyle = new DataGridViewCellStyle
+            {
+                Alignment = DataGridViewContentAlignment.MiddleLeft,
+                BackColor = Color.FromArgb(48, 48, 48),
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.White,
+                SelectionBackColor = Color.FromArgb(255, 87, 34),
+                SelectionForeColor = Color.White,
+                WrapMode = DataGridViewTriState.False
+            };
             _gridClientes.DefaultCellStyle.SelectionForeColor = Color.White;
-            _gridClientes.RowTemplate.Height = 35;
+            _gridClientes.GridColor = Color.FromArgb(80, 80, 80);
+            _gridClientes.RowTemplate.Height = 36;
 
             _gridClientes.Columns.Add(new DataGridViewTextBoxColumn
             {
