@@ -63,15 +63,19 @@ namespace CapaDatos.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdCliente"));
 
                     b.Property<string>("Apellido")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
                         .HasColumnName("apellido");
 
                     b.Property<string>("Correo")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)")
                         .HasColumnName("correo");
 
                     b.Property<string>("Dni")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
                         .HasColumnName("dni");
 
                     b.Property<bool>("Estado")
@@ -83,14 +87,25 @@ namespace CapaDatos.Migrations
                         .HasColumnName("fecha_registro");
 
                     b.Property<string>("Nombre")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
                         .HasColumnName("nombre");
 
                     b.Property<string>("Telefono")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(15)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(15)")
                         .HasColumnName("telefono");
 
                     b.HasKey("IdCliente");
+
+                    b.HasIndex("Correo")
+                        .IsUnique()
+                        .HasFilter("[correo] IS NOT NULL AND [correo] <> ''");
+
+                    b.HasIndex("Dni")
+                        .IsUnique()
+                        .HasFilter("[dni] IS NOT NULL");
 
                     b.ToTable("CLIENTE");
                 });
@@ -219,27 +234,50 @@ namespace CapaDatos.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdProducto"));
 
                     b.Property<string>("Codigo")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(13)
+                        .HasColumnType("nvarchar(13)")
                         .HasColumnName("codigo");
 
                     b.Property<string>("Descripcion")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
                         .HasColumnName("descripcion");
 
                     b.Property<bool>("Estado")
                         .HasColumnType("bit")
                         .HasColumnName("estado");
 
-                    b.Property<DateTime>("FechaRegistro")
+                    b.Property<DateTime?>("FechaModificacion")
+                        .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("datetime2")
-                        .HasColumnName("fecha_registro");
+                        .HasColumnName("fecha_modificacion");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_registro")
+                        .HasDefaultValueSql("GETDATE()");
 
                     b.Property<int>("IdCategoria")
                         .HasColumnType("int")
                         .HasColumnName("id_categoria");
 
+                    b.Property<int>("IdUsuario")
+                        .HasColumnType("int")
+                        .HasColumnName("id_usuario");
+
+                    b.Property<int?>("IdUsuarioModifica")
+                        .HasColumnType("int")
+                        .HasColumnName("id_usuario_modifica");
+
+                    b.Property<string>("MotivoAjusteStock")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("motivo_ajuste_stock");
+
                     b.Property<string>("Nombre")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
                         .HasColumnName("nombre");
 
                     b.Property<decimal>("PrecioCompra")
@@ -256,7 +294,15 @@ namespace CapaDatos.Migrations
 
                     b.HasKey("IdProducto");
 
+                    b.HasIndex("Codigo")
+                        .IsUnique()
+                        .HasFilter("[codigo] IS NOT NULL");
+
                     b.HasIndex("IdCategoria");
+
+                    b.HasIndex("IdUsuario");
+
+                    b.HasIndex("IdUsuarioModifica");
 
                     b.ToTable("PRODUCTO");
                 });
@@ -523,8 +569,19 @@ namespace CapaDatos.Migrations
                     b.HasOne("CapaEntidad.Categoria", "Categoria")
                         .WithMany()
                         .HasForeignKey("IdCategoria")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("CapaEntidad.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("IdUsuario")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CapaEntidad.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("IdUsuarioModifica")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Categoria");
                 });

@@ -15,9 +15,9 @@ public class PoliticaAccesoTests
     [Fact]
     public void TieneAcceso_Encargado_DevuelveSoloModulosOperativos()
     {
-        foreach (string modulo in new[] { "Productos", "Categorías", "Proveedores", "Compras", "Reportes" })
+        foreach (string modulo in new[] { "Productos", "Categorías", "Proveedores", "Compras", "Reportes", "Clientes" })
             Assert.True(PoliticaAcceso.TieneAcceso("Encargado", modulo));
-        foreach (string modulo in new[] { "Usuarios", "Ventas", "Clientes" })
+        foreach (string modulo in new[] { "Usuarios", "Ventas" })
             Assert.False(PoliticaAcceso.TieneAcceso("Encargado", modulo));
     }
 
@@ -44,5 +44,36 @@ public class PoliticaAccesoTests
     public void TieneAcceso_RolYModuloConEspaciosOMayusculas_DevuelveTrue()
     {
         Assert.True(PoliticaAcceso.TieneAcceso("  aDmInIsTrAdOr ", "  rEpOrTeS "));
+    }
+
+    [Fact]
+    public void TieneAcceso_EncargadoConEspaciosYMinusculas_DevuelveTrueParaClientes()
+    {
+        Assert.True(PoliticaAcceso.TieneAcceso("  eNcArGaDo ", "clientes"));
+    }
+
+    [Theory]
+    [InlineData("Administrador")]
+    [InlineData("administrador")]
+    [InlineData("  aDmInIsTrAdOr  ")]
+    [InlineData("Encargado")]
+    [InlineData("encargado")]
+    [InlineData("  ENCARGADO ")]
+    public void PuedeAdministrarClientes_AdministradorOEncargado_DevuelveTrue(string rol)
+    {
+        Assert.True(PoliticaAcceso.PuedeAdministrarClientes(rol));
+    }
+
+    [Theory]
+    [InlineData("Vendedor")]
+    [InlineData("vendedor")]
+    [InlineData("  vEnDeDoR ")]
+    [InlineData("Otro")]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void PuedeAdministrarClientes_VendedorRolNuloOVacio_DevuelveFalse(string? rol)
+    {
+        Assert.False(PoliticaAcceso.PuedeAdministrarClientes(rol));
     }
 }

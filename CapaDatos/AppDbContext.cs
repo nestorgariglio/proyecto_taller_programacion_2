@@ -65,6 +65,86 @@ namespace CapaDatos
                 .IsUnique()
                 .HasFilter("[descripcion] IS NOT NULL");
 
+            modelBuilder.Entity<Cliente>()
+                .Property(cliente => cliente.Dni)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            modelBuilder.Entity<Cliente>()
+                .Property(cliente => cliente.Nombre)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<Cliente>()
+                .Property(cliente => cliente.Apellido)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<Cliente>()
+                .Property(cliente => cliente.Correo)
+                .HasMaxLength(254);
+
+            modelBuilder.Entity<Cliente>()
+                .Property(cliente => cliente.Telefono)
+                .HasMaxLength(15)
+                .IsUnicode(false);
+
+            modelBuilder.Entity<Cliente>()
+                .HasIndex(cliente => cliente.Dni)
+                .IsUnique()
+                .HasFilter("[dni] IS NOT NULL");
+
+            modelBuilder.Entity<Cliente>()
+                .HasIndex(cliente => cliente.Correo)
+                .IsUnique()
+                .HasFilter("[correo] IS NOT NULL AND [correo] <> ''");
+
+            modelBuilder.Entity<Producto>(entity =>
+            {
+                entity.ToTable(tb => tb.HasTrigger("TR_PRODUCTO_FECHA_MODIFICACION"));
+                entity.Property(producto => producto.Codigo)
+                    .HasMaxLength(13);
+
+                entity.HasIndex(producto => producto.Codigo)
+                    .IsUnique()
+                    .HasFilter("[codigo] IS NOT NULL");
+
+                entity.Property(producto => producto.Nombre)
+                    .HasMaxLength(100);
+
+                entity.Property(producto => producto.Descripcion)
+                    .HasMaxLength(300);
+
+                entity.Property(producto => producto.MotivoAjusteStock)
+                    .HasMaxLength(300);
+
+                entity.Property(producto => producto.IdUsuario)
+                    .IsRequired();
+
+                entity.Property(producto => producto.IdUsuarioModifica)
+                    .IsRequired(false);
+
+                entity.Property(producto => producto.FechaModificacion)
+                    .IsRequired(false)
+                    .ValueGeneratedOnAddOrUpdate();
+
+                entity.Property(producto => producto.FechaRegistro)
+                    .HasDefaultValueSql("GETDATE()");
+
+                entity.HasOne(producto => producto.Categoria)
+                    .WithMany()
+                    .HasForeignKey(producto => producto.IdCategoria)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<Usuario>()
+                    .WithMany()
+                    .HasForeignKey(producto => producto.IdUsuario)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<Usuario>()
+                    .WithMany()
+                    .HasForeignKey(producto => producto.IdUsuarioModifica)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
         }
     }
 }

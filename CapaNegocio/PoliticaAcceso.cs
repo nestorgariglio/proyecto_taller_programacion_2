@@ -14,7 +14,7 @@ public static class PoliticaAcceso
             },
             ["encargado"] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "Productos", "Categorías", "Proveedores", "Compras", "Reportes"
+                "Productos", "Categorías", "Proveedores", "Compras", "Reportes", "Clientes"
             },
             ["vendedor"] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -34,5 +34,35 @@ public static class PoliticaAcceso
             && !string.IsNullOrWhiteSpace(modulo)
             && Accesos.TryGetValue(rol.Trim(), out var modulos)
             && modulos.Contains(modulo.Trim());
+    }
+
+    /// <summary>
+    /// Indica si un rol puede administrar el padrón de clientes, es decir, darlos
+    /// de baja lógica y reactivarlos (RF-27, D-5 y D-8).
+    /// </summary>
+    /// <param name="rol">Descripción del rol del usuario.</param>
+    /// <returns>
+    /// <see langword="true"/> solo para Administrador y Encargado; de lo contrario,
+    /// <see langword="false"/> (incluidos Vendedor, rol desconocido, nulo o vacío).
+    /// </returns>
+    public static bool PuedeAdministrarClientes(string? rol)
+    {
+        return !string.IsNullOrWhiteSpace(rol)
+            && (string.Equals(rol.Trim(), "administrador", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(rol.Trim(), "encargado", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Indica si un rol puede gestionar (escribir) productos: alta, edición,
+    /// baja, reactivación y ajuste de stock (RF-11/RF-18/D-18-bis). Solo
+    /// Administrador y Encargado; el Vendedor no ve el módulo y su lectura del
+    /// catálogo llega desde Ventas (spec 005). La regla se reutiliza de
+    /// <see cref="TieneAcceso"/> para no duplicar la lista de módulos.
+    /// </summary>
+    /// <param name="rol">Descripción del rol del usuario.</param>
+    /// <returns><see langword="true"/> si el rol puede gestionar productos; de lo contrario, <see langword="false"/>.</returns>
+    public static bool PuedeGestionarProductos(string? rol)
+    {
+        return TieneAcceso(rol, "Productos");
     }
 }

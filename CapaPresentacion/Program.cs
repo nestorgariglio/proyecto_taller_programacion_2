@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using CapaDatos;
 using CapaNegocio;
 using CapaPresentacion.Tema;
+using CapaPresentacion.Clientes;
 using CapaPresentacion.Productos;
 
 namespace CapaPresentacion
@@ -31,10 +32,13 @@ namespace CapaPresentacion
 
                     services.AddTransient<UsuarioNegocio>();
                     services.AddTransient<CategoriaNegocio>();
+                    services.AddTransient<ClienteNegocio>();
+                    services.AddTransient<ProductoNegocio>();
 
                     services.AddTransient<GestionUsuariosControl>();
                     services.AddTransient<GestionCategoriasControl>();
                     services.AddTransient<ProductosForm>();
+                    services.AddTransient<ClientesForm>();
                     services.AddTransient<login>();
                     services.AddTransient<inicio>();
 
