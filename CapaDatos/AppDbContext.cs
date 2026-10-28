@@ -65,6 +65,38 @@ namespace CapaDatos
                 .IsUnique()
                 .HasFilter("[descripcion] IS NOT NULL");
 
+            modelBuilder.Entity<Cliente>()
+                .Property(cliente => cliente.Dni)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            modelBuilder.Entity<Cliente>()
+                .Property(cliente => cliente.Nombre)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<Cliente>()
+                .Property(cliente => cliente.Apellido)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<Cliente>()
+                .Property(cliente => cliente.Correo)
+                .HasMaxLength(254);
+
+            modelBuilder.Entity<Cliente>()
+                .Property(cliente => cliente.Telefono)
+                .HasMaxLength(15)
+                .IsUnicode(false);
+
+            modelBuilder.Entity<Cliente>()
+                .HasIndex(cliente => cliente.Dni)
+                .IsUnique()
+                .HasFilter("[dni] IS NOT NULL");
+
+            modelBuilder.Entity<Cliente>()
+                .HasIndex(cliente => cliente.Correo)
+                .IsUnique()
+                .HasFilter("[correo] IS NOT NULL AND [correo] <> ''");
+
         }
     }
 }

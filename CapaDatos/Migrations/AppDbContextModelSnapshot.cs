@@ -63,15 +63,19 @@ namespace CapaDatos.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdCliente"));
 
                     b.Property<string>("Apellido")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
                         .HasColumnName("apellido");
 
                     b.Property<string>("Correo")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)")
                         .HasColumnName("correo");
 
                     b.Property<string>("Dni")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
                         .HasColumnName("dni");
 
                     b.Property<bool>("Estado")
@@ -83,14 +87,25 @@ namespace CapaDatos.Migrations
                         .HasColumnName("fecha_registro");
 
                     b.Property<string>("Nombre")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
                         .HasColumnName("nombre");
 
                     b.Property<string>("Telefono")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(15)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(15)")
                         .HasColumnName("telefono");
 
                     b.HasKey("IdCliente");
+
+                    b.HasIndex("Correo")
+                        .IsUnique()
+                        .HasFilter("[correo] IS NOT NULL AND [correo] <> ''");
+
+                    b.HasIndex("Dni")
+                        .IsUnique()
+                        .HasFilter("[dni] IS NOT NULL");
 
                     b.ToTable("CLIENTE");
                 });
