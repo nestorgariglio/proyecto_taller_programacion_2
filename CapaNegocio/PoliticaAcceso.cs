@@ -67,6 +67,22 @@ public static class PoliticaAcceso
     }
 
     /// <summary>
+    /// Indica si un rol puede operar el módulo de compras, es decir, registrar
+    /// compras y consultar el historial y el detalle (RF-59, RF-60 y RF-61). Se
+    /// reutiliza de <see cref="TieneAcceso"/> para no duplicar la lista de
+    /// módulos: Administrador y Encargado.
+    /// </summary>
+    /// <param name="rol">Descripción del rol del usuario.</param>
+    /// <returns>
+    /// <see langword="true"/> si el rol puede operar compras; de lo contrario,
+    /// <see langword="false"/> (incluidos Vendedor, rol desconocido, nulo o vacío).
+    /// </returns>
+    public static bool PuedeOperarCompras(string? rol)
+    {
+        return TieneAcceso(rol, "Compras");
+    }
+
+    /// <summary>
     /// Indica si un rol puede administrar el padrón de proveedores (alta, edición,
     /// baja y reactivación) (D-8, D-10).
     /// </summary>

@@ -6,6 +6,7 @@ using CapaDatos;
 using CapaNegocio;
 using CapaPresentacion.Tema;
 using CapaPresentacion.Clientes;
+using CapaPresentacion.Compras;
 using CapaPresentacion.Productos;
 using CapaPresentacion.Proveedores;
 
@@ -36,12 +37,14 @@ namespace CapaPresentacion
                     services.AddTransient<ClienteNegocio>();
                     services.AddTransient<ProductoNegocio>();
                     services.AddTransient<ProveedorNegocio>();
+                    services.AddTransient<CompraNegocio>();
 
                     services.AddTransient<GestionUsuariosControl>();
                     services.AddTransient<GestionCategoriasControl>();
                     services.AddTransient<ProductosForm>();
                     services.AddTransient<ClientesForm>();
                     services.AddTransient<ProveedoresForm>();
+                    services.AddTransient<ComprasForm>();
                     services.AddTransient<login>();
                     services.AddTransient<inicio>();
 

@@ -28,6 +28,7 @@ namespace CapaPresentacion
         private readonly ProductosForm _productosForm;
         private readonly ClientesForm _clientesForm;
         private readonly ProveedoresForm _proveedoresForm;
+        private readonly ComprasForm _comprasForm;
         private TabPage? _pestañaAnterior;
         private UsuarioRespuestaDto? _usuarioActual;
         private bool _reconstruyendoNavegacion;
@@ -45,7 +46,8 @@ namespace CapaPresentacion
             GestionUsuariosControl gestionUsuariosControl,
             ProductosForm productosForm,
             ClientesForm clientesForm,
-            ProveedoresForm proveedoresForm)
+            ProveedoresForm proveedoresForm,
+            ComprasForm comprasForm)
         {
             InitializeComponent();
 
@@ -71,6 +73,11 @@ namespace CapaPresentacion
 
             _proveedoresForm = proveedoresForm;
             tab_proveedores.Enter += tab_proveedores_Enter;
+
+            // La pantalla de compras también llega por DI (plan §10.1) y recarga
+            // el historial real al entrar en la pestaña.
+            _comprasForm = comprasForm;
+            tab_compras.Enter += tab_compras_Enter;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -101,7 +108,7 @@ namespace CapaPresentacion
             // B. Incrustar los subformularios en sus correspondientes TabPages
             AbrirVistaEnTab(_productosForm, tab_productos);
             AbrirVistaEnTab(new VentasForm(), tab_ventas);
-            AbrirVistaEnTab(new ComprasForm(), tab_compras);
+            AbrirVistaEnTab(_comprasForm, tab_compras);
             AbrirVistaEnTab(_clientesForm, tab_clientes);
             AbrirVistaEnTab(_proveedoresForm, tab_proveedores);
             AbrirVistaEnTab(new ReportesForm(), tab_reportes);
@@ -271,6 +278,10 @@ namespace CapaPresentacion
                 // a Administrador y Encargado; el Vendedor conserva Nuevo y Editar.
                 _clientesForm.AplicarRolUsuario(rol);
                 _proveedoresForm.AplicarRolUsuario(rol);
+
+                // RF-8/RF-59: la pantalla de compras recibe el usuario responsable y
+                // el rol; solo Administrador y Encargado tienen acciones habilitadas.
+                _comprasForm.AplicarSesion(_usuarioActual?.IdUsuario ?? 0, rol);
 
                 TabPage? pestañaASeleccionar = _pestañaAnterior;
                 if (pestañaASeleccionar == null ||
@@ -442,6 +453,16 @@ namespace CapaPresentacion
             if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Proveedores"))
             {
                 await _proveedoresForm.CargarProveedoresAsync();
+            }
+        }
+
+        private async void tab_compras_Enter(object? sender, EventArgs e)
+        {
+            // RF-52: el historial se recarga con datos reales al entrar en la
+            // pestaña, solo para los roles con acceso al módulo (RF-8).
+            if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Compras"))
+            {
+                await _comprasForm.CargarHistorialAsync();
             }
         }
 
