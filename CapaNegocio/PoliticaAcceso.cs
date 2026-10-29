@@ -65,4 +65,15 @@ public static class PoliticaAcceso
     {
         return TieneAcceso(rol, "Productos");
     }
+
+    /// <summary>
+    /// Indica si un rol puede administrar el padrón de proveedores (alta, edición,
+    /// baja y reactivación) (D-8, D-10).
+    /// </summary>
+    public static bool PuedeAdministrarProveedores(string? rol)
+    {
+        return !string.IsNullOrWhiteSpace(rol)
+            && (string.Equals(rol.Trim(), "administrador", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(rol.Trim(), "encargado", StringComparison.OrdinalIgnoreCase));
+    }
 }

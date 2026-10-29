@@ -304,7 +304,12 @@ namespace CapaDatos.Migrations
 
                     b.HasIndex("IdUsuarioModifica");
 
-                    b.ToTable("PRODUCTO");
+                    b.ToTable("PRODUCTO", t =>
+                        {
+                            t.HasTrigger("TR_PRODUCTO_FECHA_MODIFICACION");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("CapaEntidad.Proveedor", b =>
@@ -317,11 +322,16 @@ namespace CapaDatos.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdProveedor"));
 
                     b.Property<string>("Correo")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(254)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(254)")
                         .HasColumnName("correo");
 
                     b.Property<string>("Cuit")
-                        .HasColumnType("nvarchar(max)")
+                        .IsRequired()
+                        .HasMaxLength(13)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(13)")
                         .HasColumnName("cuit");
 
                     b.Property<bool>("Estado")
@@ -333,14 +343,27 @@ namespace CapaDatos.Migrations
                         .HasColumnName("fecha_registro");
 
                     b.Property<string>("RazonSocial")
-                        .HasColumnType("nvarchar(max)")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(200)")
                         .HasColumnName("razon_social");
 
                     b.Property<string>("Telefono")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(15)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(15)")
                         .HasColumnName("telefono");
 
                     b.HasKey("IdProveedor");
+
+                    b.HasIndex("Correo")
+                        .IsUnique()
+                        .HasFilter("[correo] IS NOT NULL AND [correo] <> ''");
+
+                    b.HasIndex("Cuit")
+                        .IsUnique()
+                        .HasFilter("[cuit] IS NOT NULL");
 
                     b.ToTable("PROVEEDOR");
                 });

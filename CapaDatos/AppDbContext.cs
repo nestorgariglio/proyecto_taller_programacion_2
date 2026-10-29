@@ -97,6 +97,31 @@ namespace CapaDatos
                 .IsUnique()
                 .HasFilter("[correo] IS NOT NULL AND [correo] <> ''");
 
+            modelBuilder.Entity<Proveedor>(entity =>
+            {
+                entity.Property(proveedor => proveedor.Cuit)
+                    .IsUnicode(false)
+                    .IsRequired();
+
+                entity.Property(proveedor => proveedor.RazonSocial)
+                    .IsUnicode(false)
+                    .IsRequired();
+
+                entity.Property(proveedor => proveedor.Correo)
+                    .IsUnicode(false);
+
+                entity.Property(proveedor => proveedor.Telefono)
+                    .IsUnicode(false);
+
+                entity.HasIndex(proveedor => proveedor.Cuit)
+                    .IsUnique()
+                    .HasFilter("[cuit] IS NOT NULL");
+
+                entity.HasIndex(proveedor => proveedor.Correo)
+                    .IsUnique()
+                    .HasFilter("[correo] IS NOT NULL AND [correo] <> ''");
+            });
+
             modelBuilder.Entity<Producto>(entity =>
             {
                 entity.ToTable(tb => tb.HasTrigger("TR_PRODUCTO_FECHA_MODIFICACION"));

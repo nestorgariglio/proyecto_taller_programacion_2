@@ -76,4 +76,29 @@ public class PoliticaAccesoTests
     {
         Assert.False(PoliticaAcceso.PuedeAdministrarClientes(rol));
     }
+
+    [Theory]
+    [InlineData("Administrador")]
+    [InlineData("administrador")]
+    [InlineData("  aDmInIsTrAdOr  ")]
+    [InlineData("Encargado")]
+    [InlineData("encargado")]
+    [InlineData("  ENCARGADO ")]
+    public void PuedeAdministrarProveedores_AdministradorOEncargado_DevuelveTrue(string rol)
+    {
+        Assert.True(PoliticaAcceso.PuedeAdministrarProveedores(rol));
+    }
+
+    [Theory]
+    [InlineData("Vendedor")]
+    [InlineData("vendedor")]
+    [InlineData("  vEnDeDoR ")]
+    [InlineData("Otro")]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void PuedeAdministrarProveedores_VendedorONulo_DevuelveFalse(string? rol)
+    {
+        Assert.False(PoliticaAcceso.PuedeAdministrarProveedores(rol));
+    }
 }

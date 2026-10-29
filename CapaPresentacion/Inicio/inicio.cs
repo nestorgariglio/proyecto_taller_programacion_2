@@ -27,6 +27,7 @@ namespace CapaPresentacion
         private readonly GestionUsuariosControl _gestionUsuariosControl;
         private readonly ProductosForm _productosForm;
         private readonly ClientesForm _clientesForm;
+        private readonly ProveedoresForm _proveedoresForm;
         private TabPage? _pestañaAnterior;
         private UsuarioRespuestaDto? _usuarioActual;
         private bool _reconstruyendoNavegacion;
@@ -43,7 +44,8 @@ namespace CapaPresentacion
             AppDbContext db,
             GestionUsuariosControl gestionUsuariosControl,
             ProductosForm productosForm,
-            ClientesForm clientesForm)
+            ClientesForm clientesForm,
+            ProveedoresForm proveedoresForm)
         {
             InitializeComponent();
 
@@ -66,6 +68,9 @@ namespace CapaPresentacion
             // los datos reales al entrar en la pestaña.
             _clientesForm = clientesForm;
             tab_clientes.Enter += tab_clientes_Enter;
+
+            _proveedoresForm = proveedoresForm;
+            tab_proveedores.Enter += tab_proveedores_Enter;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -98,7 +103,7 @@ namespace CapaPresentacion
             AbrirVistaEnTab(new VentasForm(), tab_ventas);
             AbrirVistaEnTab(new ComprasForm(), tab_compras);
             AbrirVistaEnTab(_clientesForm, tab_clientes);
-            AbrirVistaEnTab(new ProveedoresForm(), tab_proveedores);
+            AbrirVistaEnTab(_proveedoresForm, tab_proveedores);
             AbrirVistaEnTab(new ReportesForm(), tab_reportes);
             AbrirVistaEnTab(new InfoForm(), tab_info);
         }
@@ -265,6 +270,7 @@ namespace CapaPresentacion
                 // RF-27/D-5: en el padrón, «Desactivar» y «Reactivar» se muestran solo
                 // a Administrador y Encargado; el Vendedor conserva Nuevo y Editar.
                 _clientesForm.AplicarRolUsuario(rol);
+                _proveedoresForm.AplicarRolUsuario(rol);
 
                 TabPage? pestañaASeleccionar = _pestañaAnterior;
                 if (pestañaASeleccionar == null ||
@@ -428,6 +434,14 @@ namespace CapaPresentacion
             if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Clientes"))
             {
                 await _clientesForm.CargarClientesAsync();
+            }
+        }
+
+        private async void tab_proveedores_Enter(object? sender, EventArgs e)
+        {
+            if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Proveedores"))
+            {
+                await _proveedoresForm.CargarProveedoresAsync();
             }
         }
 

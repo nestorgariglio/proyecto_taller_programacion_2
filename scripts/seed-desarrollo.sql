@@ -297,7 +297,12 @@ GO
   ORDER BY p.id_producto;
 
     ---------------------------------------------------------------------------
-    -- Clientes de desarrollo: ~12 con estado y campos opcionales variados
+    -- Proveedores de desarrollo: 3 activos e inactivos con campos variados
+    -- (con/sin correo, con/sin teléfono, activo/inactivo) para probar
+    -- baja/reactivación, unicidad de CUIT y búsqueda (RF-04).
+    -- Patrón idempotente: UPDATE ... IF @@ROWCOUNT = 0 THEN INSERT.
+    -- DNI = CUIT; todos los valores cumplen RF-4 (cuit solo dígitos,
+    -- sin letras ni símbolos, 11 dígitos; razón social vigente).
     -- Patrón idempotente: UPDATE ... IF @@ROWCOUNT = 0 THEN INSERT
     -- DNI alfanumérico 7-20, nombre/apellido 2-100, correo/teléfono opcionales
     -- Cobertura: válidos, opcionales completos, opcionales nulos, activo/inactivo
@@ -322,6 +327,27 @@ GO
     IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000003', N'Carlos', N'Sánchez', N'carlos.sanchez@email.com', NULL, 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Distribuidora Norte SRL', correo = N'ventas@norte.com', telefono = N'01145550000', estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'30123456789';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'30123456789', N'Distribuidora Norte SRL', N'ventas@norte.com', N'01145550000', 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Logitech Argentina SA', correo = N'contacto@logitech.com', telefono = NULL, estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'20123456789';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'20123456789', N'Logitech Argentina SA', N'contacto@logitech.com', NULL, 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Tecnologia Norte', correo = NULL, telefono = NULL, estado = 0, fecha_registro = GETDATE()
+    WHERE cuit = N'27123456789';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'27123456789', N'Tecnologia Norte', NULL, NULL, 0, GETDATE());
 
     UPDATE dbo.CLIENTE
     SET nombre = N'Laura', apellido = N'Díaz', correo = NULL, telefono = NULL, estado = 0, fecha_registro = GETDATE()
