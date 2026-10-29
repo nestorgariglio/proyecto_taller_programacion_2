@@ -26,6 +26,8 @@ namespace CapaPresentacion
         private readonly AppDbContext _db;
         private readonly GestionUsuariosControl _gestionUsuariosControl;
         private readonly ProductosForm _productosForm;
+        private readonly ClientesForm _clientesForm;
+        private readonly ProveedoresForm _proveedoresForm;
         private TabPage? _pestañaAnterior;
         private UsuarioRespuestaDto? _usuarioActual;
         private bool _reconstruyendoNavegacion;
@@ -41,7 +43,9 @@ namespace CapaPresentacion
         public inicio(
             AppDbContext db,
             GestionUsuariosControl gestionUsuariosControl,
-            ProductosForm productosForm)
+            ProductosForm productosForm,
+            ClientesForm clientesForm,
+            ProveedoresForm proveedoresForm)
         {
             InitializeComponent();
 
@@ -59,6 +63,14 @@ namespace CapaPresentacion
             // gestión) y refresca su combo de categorías al entrar en la pestaña.
             _productosForm = productosForm;
             tab_productos.Enter += tab_productos_Enter;
+
+            // La vista del padrón de clientes también llega por DI (D-T8) y recarga
+            // los datos reales al entrar en la pestaña.
+            _clientesForm = clientesForm;
+            tab_clientes.Enter += tab_clientes_Enter;
+
+            _proveedoresForm = proveedoresForm;
+            tab_proveedores.Enter += tab_proveedores_Enter;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -90,8 +102,8 @@ namespace CapaPresentacion
             AbrirVistaEnTab(_productosForm, tab_productos);
             AbrirVistaEnTab(new VentasForm(), tab_ventas);
             AbrirVistaEnTab(new ComprasForm(), tab_compras);
-            AbrirVistaEnTab(new ClientesForm(), tab_clientes);
-            AbrirVistaEnTab(new ProveedoresForm(), tab_proveedores);
+            AbrirVistaEnTab(_clientesForm, tab_clientes);
+            AbrirVistaEnTab(_proveedoresForm, tab_proveedores);
             AbrirVistaEnTab(new ReportesForm(), tab_reportes);
             AbrirVistaEnTab(new InfoForm(), tab_info);
         }
@@ -251,8 +263,14 @@ namespace CapaPresentacion
 
                 // RF-12: el botón "Gestionar categorías" de la vista de productos
                 // se muestra solo a quien puede acceder al módulo "Categorías"
-                // (Administrador/Encargado); al Vendedor le queda oculto.
-                _productosForm.AplicarRolUsuario(rol);
+                // (Administrador/Encargado); al Vendedor le queda oculto. También
+                // se aplica el gating del ABM de productos (RF-11/RF-18).
+                _productosForm.AplicarRolUsuario(rol, _usuarioActual?.IdUsuario ?? 0);
+
+                // RF-27/D-5: en el padrón, «Desactivar» y «Reactivar» se muestran solo
+                // a Administrador y Encargado; el Vendedor conserva Nuevo y Editar.
+                _clientesForm.AplicarRolUsuario(rol);
+                _proveedoresForm.AplicarRolUsuario(rol);
 
                 TabPage? pestañaASeleccionar = _pestañaAnterior;
                 if (pestañaASeleccionar == null ||
@@ -406,6 +424,24 @@ namespace CapaPresentacion
             if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Productos"))
             {
                 await _productosForm.CargarCategoriasAsync();
+            }
+        }
+
+        private async void tab_clientes_Enter(object? sender, EventArgs e)
+        {
+            // RF-16/RF-20: la grilla del padrón se recarga con datos reales al entrar
+            // en la pestaña, solo para los roles con acceso al módulo (RF-27).
+            if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Clientes"))
+            {
+                await _clientesForm.CargarClientesAsync();
+            }
+        }
+
+        private async void tab_proveedores_Enter(object? sender, EventArgs e)
+        {
+            if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Proveedores"))
+            {
+                await _proveedoresForm.CargarProveedoresAsync();
             }
         }
 

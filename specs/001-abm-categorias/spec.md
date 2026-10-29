@@ -1,5 +1,6 @@
 # Spec 001 — ABM de Categorías/Rubros
 Estado: aprobada
+Última revisión: 2026-10-26 (ronda de correcciones O-1/O-2/O-3; ver «Ronda de correcciones (2026-10-26)»)
 
 > **Cambio de requisito (reencuadre de acceso) — APROBADO por el usuario el 2026-10-19.** La gestión de categorías deja de ser un ítem del menú principal. Las categorías son una **característica del módulo Productos** (útiles para filtrar y para definir un producto) y su ABM se abre **desde la pantalla de Productos** mediante un botón "Gestionar categorías" que lo despliega en una **ventana modal**. El menú principal **no cambia** (no se agrega ni se quita ningún ítem distinto de la pestaña de categorías eliminada). Este reencuadre, además, elimina el fallo de arranque por la clave de imagen duplicada que aportaba la pestaña de categorías. El cambio fue aprobado por el usuario el **2026-10-19**; los RF afectados (RF-10, RF-12 y RNF-1/RNF-5) ya reflejan esta decisión y **el resto de los RF no cambia de semántica**. Decisión registrada como **D-4** en «Dudas abiertas».
 
@@ -79,6 +80,59 @@ Los productos del sistema comercial G70 se clasifican por categorías o rubros (
 - Decisiones cerradas con el usuario durante la entrevista original (siguen vigentes): listado completo con reactivación; descripción única ignorando mayúsculas/minúsculas; el ABM lo realizan Administrador y Encargado (el Vendedor no); la baja nunca se bloquea, sino que advierte con diálogo de confirmación si hay productos activos vinculados; descripción de 3 a 100 caracteres, admitiendo tildes y ñ; el diálogo de baja informa solo la cantidad de productos activos afectados (sin listado de productos); la unicidad de la descripción abarca categorías activas e inactivas (ante un nombre existente inactivo el alta se rechaza con un mensaje específico que distingue ese caso y sugiere reactivarla desde el listado; la reactivación es manual, nunca automática); los espacios extremos (espacios, tabuladores y saltos de línea de los bordes) se recortan antes de validar y la descripción se guarda ya recortada; la descripción se puede editar también en categorías inactivas, sin necesidad de reactivarlas antes.
 - Cerradas en la sesión de ajuste posterior a la entrevista: (D-1) duplicado sobre categoría inactiva ⇒ rechazo con mensaje específico que sugiere reactivarla, sin reactivación automática; (D-2) sí migración: se añade la configuración de unicidad/longitud en la base de datos; (D-3) RF-11/RNF-3 se cumplen en esta iteración únicamente con el combo de categorías de la pantalla de productos.
 - **[PENDIENTE — fuera de mi permiso de escritura]** Actualización de `MEMORY.md` para el reencuadre de acceso: este agente solo puede escribir dentro de `specs/`, por lo que el cambio de `MEMORY.md` quedó **bloqueado por permisos**. El texto exacto a incorporar figura al final de este archivo (`specs/001-abm-categorias/MEMORY-pendiente.md`) para que lo aplique quien tenga permiso.
+
+## Ronda de correcciones (2026-10-26)
+
+> **Origen**: tres observaciones recibidas sobre el código ya entregado. El usuario decidió **corregir la observación 1 y la observación 2**, y **documentar la observación 3 como ya resuelta** (sin refactorizar). Esta ronda **no modifica** los RF-1…RF-12 ni los RNF-1…RNF-5 ya aprobados: agrega requisitos nuevos a continuación con numeración propia.
+
+### Observación 1 — Lógica de negocio en la interfaz (O-1)
+
+**Situación detectada**: al dar de baja una categoría, la vista consultaba la cantidad de productos activos, **componía** el mensaje de advertencia según esa cantidad y recién entonces ejecutaba la baja. La regla de negocio (qué se informa y qué se permite) y el texto en español vivían en la interfaz; además, el conteo y la baja eran dos consultas separadas con una ventana de carrera entre ambas.
+
+**Resolución acordada (decisión del usuario, 2026-10-26)**: la regla y el mensaje pasan a la lógica de negocio, que entrega a la interfaz el resultado de la confirmación ya compuesto (descripción de la categoría, cantidad de productos activos, mensaje de confirmación en español y si la baja es posible). La vista **solo** muestra ese mensaje en el diálogo Sí/No y ejecuta la baja. La consulta de conteo se conserva porque la usan las pruebas de RF-6, pero deja de ser el insumo del diálogo.
+
+- RF-13: CUANDO un Administrador o Encargado solicita la baja lógica de una categoría, EL SISTEMA determina la cantidad de productos activos vinculados y entrega **un mensaje de confirmación ya compuesto en español**, que informa solo esa cantidad —sin listar productos—, distingue si hay productos activos o no e indica si la baja es posible; la interfaz **solo** presenta ese mensaje en el diálogo de confirmación y, si el usuario confirma, ejecuta la baja. SI el usuario cancela, ENTONCES EL SISTEMA no escribe ningún cambio y la categoría queda tal como estaba.
+- RF-14: SI la categoría sobre la que se solicita la baja no existe o ya está inactiva, ENTONCES EL SISTEMA no la da de baja, informa en español el motivo y no modifica ningún registro.
+- RF-15: EL SISTEMA resuelve en la lógica de negocio qué se informa y qué se permite al dar de baja una categoría; la interfaz no compone reglas de negocio ni textos de negocio propios para esa operación y se limita a presentar el mensaje recibido y a ejecutar la baja confirmada.
+
+Casos límite (O-1):
+
+- Cantidad de productos activos igual a cero: el mensaje compuesto es la confirmación simple (se mantiene RF-8).
+- Categoría inexistente o ya inactiva: se informa el motivo y no se escribe nada (RF-14).
+- Cancelar el diálogo: no se escribe nada (RF-13).
+- Carrera entre el conteo y la baja: al resolver el mensaje y la posibilidad de baja en una única operación de negocio, la vista deja de depender de dos consultas separadas; la baja no se bloquea en ningún caso (se mantiene la decisión original: siempre advierte, nunca impide).
+- Fallo o desconexión de la base de datos al componer el mensaje de baja: el sistema muestra un mensaje en español y no modifica la categoría.
+
+### Observación 2 — Escalabilidad de la validación de unicidad (O-2)
+
+**Situación detectada**: la validación de unicidad de la descripción traía todas las categorías de la tabla y comparaba en memoria; el costo y el consumo de memoria crecían con el tamaño del catálogo.
+
+**Resolución acordada (decisión del usuario, 2026-10-26)**: la comparación se resuelve **en la base de datos**, con una única consulta que devuelve como máximo una fila, insensible a mayúsculas y minúsculas, con proyección mínima y conservando la autoexclusión por identificador en la edición. El comportamiento del mensaje (categoría existente activa frente a inactiva) **no cambia**.
+
+- RF-16: CUANDO se valida la unicidad de la descripción de una categoría —en el alta o en la edición—, EL SISTEMA resuelve la comparación en la base de datos con una única consulta que devuelve como máximo una fila, considera iguales las descripciones que solo difieren en mayúsculas y minúsculas y excluye, en la edición, la categoría que se está editando; el mensaje resultante mantiene el comportamiento aprobado: duplicado genérico cuando la categoría existente está activa, y mensaje específico que indica que existe una categoría inactiva y sugiere reactivarla cuando la existente está inactiva.
+- RNF-6: La validación de unicidad de la descripción no debe materializar la tabla de categorías ni filtrar colecciones completas en memoria del cliente: la consulta debe devolver como máximo una fila y su costo y su consumo de memoria no deben crecer con la cantidad total de categorías. Se acepta como contrapartida que la comparación en mayúsculas dentro de la base de datos impida al motor aprovechar el índice para localizar la fila, porque el filtrado ya ocurre en la base y no se transfieren ni se retienen filas en el cliente.
+
+Casos límite (O-2):
+
+- Descripción que solo difiere en mayúsculas y minúsculas de una existente: se sigue rechazando con el mismo mensaje (comportamiento sin cambios).
+- Edición que no cambia la descripción: la autoexclusión por identificador evita el falso duplicado.
+- La consulta devuelve como máximo una fila; que existan varias coincidencias no es posible bajo la unicidad vigente y no altera el mensaje.
+
+### Nota de alcance de la ronda
+
+- Las decisiones **D-3** (baja en dos pasos con el diálogo compuesto por la interfaz) y **D-6** (comparación de unicidad en memoria) del `plan.md` de esta spec quedan **sustituidas** por las correcciones O-1 y O-2. El plan y las tareas se actualizan después de la aprobación de este diff.
+
+### Observación 3 — Combo de categorías por descripción (O-3): ya resuelto, sin cambios
+
+Se verificó el código actual del combo de categorías usado en el filtro y en el alta/edición de productos: cada opción conserva el **identificador** de la categoría, la opción "Todas" usa un identificador nulo y la consulta filtra por identificador, nunca por descripción. El requisito ya está exigido en la spec `002-abm-productos` (RF-15 y RF-17), por lo que **no requiere cambios** ni nueva numeración en esta spec.
+
+### Trazabilidad de la ronda
+
+| Requisito nuevo | Observación de origen | Decisión del usuario (2026-10-26) |
+|---|---|---|
+| RF-13, RF-14, RF-15 | O-1 — lógica de negocio y mensajes en la interfaz | Corregir |
+| RF-16, RNF-6 | O-2 — tabla completa en memoria | Corregir |
+| Nota de la observación 3 (sin RF nuevo) | O-3 — mapeo del combo por descripción | Documentar como ya resuelto |
 
 ## Apéndice — Cambio pendiente en `MEMORY.md` (texto exacto)
 
