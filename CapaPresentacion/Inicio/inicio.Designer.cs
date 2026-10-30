@@ -207,7 +207,9 @@
             Font = new Font("Segoe UI", 15F);
             Margin = new Padding(5, 6, 5, 6);
             Name = "inicio";
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "Sistema de Ventas";
+            WindowState = FormWindowState.Maximized;
             Shown += inicio_Shown;
             materialTabControl1.ResumeLayout(false);
             ResumeLayout(false);

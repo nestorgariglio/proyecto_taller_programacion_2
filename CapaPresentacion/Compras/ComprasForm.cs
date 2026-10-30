@@ -15,14 +15,16 @@ using MaterialSkin.Controls;
 namespace CapaPresentacion.Compras
 {
     /// <summary>
-    /// Pantalla de carga de compras a proveedores organizada en cuatro bloques:
-    /// producto, proveedor, compra actual e historial. El producto y el proveedor
-    /// se buscan a demanda (RF-9 … RF-17) y la selección es bidireccional: elegir
-    /// un producto propone los proveedores que ya lo vendieron y elegir un
-    /// proveedor acota el listado a los productos de su historial (RF-12 y RF-53).
-    /// La pantalla no valida, no calcula importes ni redacta mensajes: solo invoca
-    /// <see cref="CompraNegocio"/> y muestra el <c>Mensaje</c> que este devuelve
-    /// (RF-55, RNF-6 y RNF-13).
+    /// Pantalla de carga de compras a proveedores organizada en tres bloques:
+    /// producto y proveedor (búsquedas a demanda), compra actual y barra de
+    /// acciones. El producto y el proveedor se buscan a demanda (RF-9 … RF-17) y
+    /// la selección es bidireccional: elegir un producto propone los proveedores
+    /// que ya lo vendieron y elegir un proveedor acota el listado a los productos
+    /// de su historial (RF-12 y RF-53). El historial ya no se lista dentro de la
+    /// pantalla: la barra de acciones abre <see cref="DetalleCompraForm"/> en modo
+    /// lista (RF-52 … RF-54). La pantalla no valida, no calcula importes ni
+    /// redacta mensajes: solo invoca <see cref="CompraNegocio"/> y muestra el
+    /// <c>Mensaje</c> que este devuelve (RF-55, RNF-6 y RNF-13).
     /// </summary>
     public partial class ComprasForm : UserControl
     {
@@ -32,11 +34,6 @@ namespace CapaPresentacion.Compras
         private const string ColumnaLineaSubtotal = "colLineaSubtotal";
         private const string ColumnaLineaEditar = "colLineaEditar";
         private const string ColumnaLineaQuitar = "colLineaQuitar";
-        private const string ColumnaHistorialFecha = "colHistorialFecha";
-        private const string ColumnaHistorialTotal = "colHistorialTotal";
-        private const string ColumnaHistorialEstado = "colHistorialEstado";
-        private const string FormatoFecha = "dd/MM/yyyy HH:mm";
-        private const string FormatoImporte = "N2";
 
         private const string TextoProveedorSinElegir = "Sin proveedor seleccionado";
         private const string TextoDocumentoSinElegir = "Documento: —";
@@ -68,8 +65,13 @@ namespace CapaPresentacion.Compras
         private int _idUsuario;
         private string? _rolActual;
         private bool _registrando;
-        private bool _cargandoHistorial;
-        private bool _actualizandoControles;
+
+        /// <summary>
+        /// Nivel de supresión de eventos de las grillas. Es un contador para que
+        /// las supresiones anidadas (limpieza, rebind y selección) no se pisen:
+        /// los manejadores salen mientras el valor sea mayor que cero.
+        /// </summary>
+        private int _nivelActualizando;
 
         /// <summary>
         /// Inicializa la pantalla de compras con el servicio de negocio inyectado
@@ -88,7 +90,6 @@ namespace CapaPresentacion.Compras
             AplicarEstiloGrilla(gridProductos);
             AplicarEstiloGrilla(gridProveedores);
             AplicarEstiloGrilla(gridLineas);
-            AplicarEstiloGrilla(gridHistorial);
 
             // Los listados arrancan vacíos: solo se llenan al tipear (RF-10, RF-16).
             MostrarProductos(null);
@@ -116,9 +117,7 @@ namespace CapaPresentacion.Compras
             gridLineas.CellFormatting += gridLineas_CellFormatting;
             btnRegistrar.Click += btnRegistrar_Click;
             btnLimpiar.Click += btnLimpiar_Click;
-            btnVerDetalle.Click += btnVerDetalle_Click;
-            gridHistorial.CellFormatting += gridHistorial_CellFormatting;
-            gridHistorial.CellDoubleClick += gridHistorial_CellDoubleClick;
+            btnVerHistorial.Click += btnVerHistorial_Click;
 
             RefrescarGrillaLineas();
         }
@@ -146,50 +145,21 @@ namespace CapaPresentacion.Compras
             txtPrecioVenta.Enabled = habilitado;
             btnAgregarLinea.Enabled = habilitado;
             btnLimpiar.Enabled = habilitado;
-            btnVerDetalle.Enabled = habilitado;
+            btnVerHistorial.Enabled = habilitado;
             btnRegistrar.Enabled = habilitado && !_registrando;
         }
 
         /// <summary>
-        /// Recarga el historial de compras con el rol de la sesión. El mensaje que
-        /// se muestra es siempre el que devuelve el negocio (RF-49 … RF-52).
+        /// Se conserva como punto de entrada público porque la pestaña de compras
+        /// lo invoca al recibir el foco (<c>inicio.cs</c>, <c>tab_compras.Enter</c>)
+        /// y porque <see cref="RegistrarCompraAsync"/> lo llama tras un registro
+        /// correcto (RF-52). Ya no carga ninguna grilla: el historial se consulta
+        /// dentro de <see cref="DetalleCompraForm"/> en modo lista, que lee el
+        /// negocio cada vez que se abre, así que la pantalla no necesita refrescar
+        /// ningún control. No se elimina la firma para no romper a sus llamadores.
         /// </summary>
-        /// <returns>Tarea que representa la consulta del historial.</returns>
-        public async Task CargarHistorialAsync()
-        {
-            if (_cargandoHistorial)
-            {
-                return;
-            }
-
-            _cargandoHistorial = true;
-
-            try
-            {
-                RespuestaHistorialCompras respuesta =
-                    await _negocio.ObtenerHistorialAsync(_rolActual);
-
-                _actualizandoControles = true;
-
-                try
-                {
-                    gridHistorial.DataSource = null;
-                    gridHistorial.DataSource = respuesta.Compras.ToList();
-                    gridHistorial.ClearSelection();
-                    gridHistorial.CurrentCell = null;
-                }
-                finally
-                {
-                    _actualizandoControles = false;
-                }
-
-                lblMensajeHistorial.Text = respuesta.Mensaje;
-            }
-            finally
-            {
-                _cargandoHistorial = false;
-            }
-        }
+        /// <returns>Tarea completada; no hay trabajo pendiente en la pantalla.</returns>
+        public Task CargarHistorialAsync() => Task.CompletedTask;
 
         // =====================================================================
         // 1. ESTILO DE LAS GRILLAS (MaterialSkin 2, dark)
@@ -239,7 +209,7 @@ namespace CapaPresentacion.Compras
 
         private void txtBuscarProveedor_TextChanged(object? sender, EventArgs e)
         {
-            if (_actualizandoControles)
+            if (_nivelActualizando > 0)
             {
                 return;
             }
@@ -261,28 +231,43 @@ namespace CapaPresentacion.Compras
         /// <returns>Tarea que representa la búsqueda.</returns>
         private async Task BuscarProveedoresAsync()
         {
-            if (string.IsNullOrWhiteSpace(txtBuscarProveedor.Text))
+            string texto = txtBuscarProveedor.Text;
+
+            if (string.IsNullOrWhiteSpace(texto))
             {
-                _proveedoresBuscados.Clear();
-                _proveedoresHistoricos.Clear();
-                MostrarProveedores(null);
+                using (SuspenderEventos())
+                {
+                    _proveedoresBuscados.Clear();
+                    _proveedoresHistoricos.Clear();
+                    MostrarProveedores(null);
+                }
+
                 lblMensajeProveedores.Text = string.Empty;
                 return;
             }
 
             RespuestaBusquedaProveedoresCompra respuesta =
-                await _negocio.BuscarProveedoresAsync(txtBuscarProveedor.Text);
+                await _negocio.BuscarProveedoresAsync(texto);
 
-            _proveedoresBuscados.Clear();
-            _proveedoresBuscados.AddRange(respuesta.Proveedores);
-            _proveedoresHistoricos.Clear();
-            MostrarProveedores(_proveedoresBuscados);
+            if (EsRespuestaObsoleta(texto, txtBuscarProveedor.Text))
+            {
+                return;
+            }
+
+            using (SuspenderEventos())
+            {
+                _proveedoresBuscados.Clear();
+                _proveedoresBuscados.AddRange(respuesta.Proveedores);
+                _proveedoresHistoricos.Clear();
+                MostrarProveedores(_proveedoresBuscados.ToList());
+            }
+
             lblMensajeProveedores.Text = respuesta.Mensaje;
         }
 
         private void txtBuscarProducto_TextChanged(object? sender, EventArgs e)
         {
-            if (_actualizandoControles)
+            if (_nivelActualizando > 0)
             {
                 return;
             }
@@ -304,33 +289,55 @@ namespace CapaPresentacion.Compras
         /// <returns>Tarea que representa la búsqueda.</returns>
         private async Task BuscarProductosAsync()
         {
-            if (string.IsNullOrWhiteSpace(txtBuscarProducto.Text))
+            string texto = txtBuscarProducto.Text;
+
+            if (string.IsNullOrWhiteSpace(texto))
             {
-                _productosBuscados.Clear();
-                _productosHistoricos.Clear();
-                MostrarProductos(null);
+                using (SuspenderEventos())
+                {
+                    _productosBuscados.Clear();
+                    _productosHistoricos.Clear();
+                    MostrarProductos(null);
+                }
+
                 lblMensajeProductos.Text = string.Empty;
                 return;
             }
 
             RespuestaBusquedaProductosCompra respuesta =
-                await _negocio.BuscarProductosAsync(txtBuscarProducto.Text);
+                await _negocio.BuscarProductosAsync(texto);
 
-            _productosBuscados.Clear();
-            _productosBuscados.AddRange(respuesta.Productos);
-            _productosHistoricos.Clear();
-            MostrarProductos(_productosBuscados);
+            if (EsRespuestaObsoleta(texto, txtBuscarProducto.Text))
+            {
+                return;
+            }
+
+            using (SuspenderEventos())
+            {
+                _productosBuscados.Clear();
+                _productosBuscados.AddRange(respuesta.Productos);
+                _productosHistoricos.Clear();
+                MostrarProductos(_productosBuscados.ToList());
+            }
+
             lblMensajeProductos.Text = respuesta.Mensaje;
         }
 
         private async void gridProductos_SelectionChanged(object? sender, EventArgs e)
         {
-            if (_actualizandoControles || gridProductos.CurrentRow is null)
+            if (_nivelActualizando > 0 || gridProductos.DataSource is null)
             {
                 return;
             }
 
-            if (!TryObtenerProductoSeleccionado(gridProductos.CurrentRow.DataBoundItem, out int idProducto,
+            DataGridViewRow? fila = gridProductos.CurrentRow;
+
+            if (fila is null || fila.Index < 0)
+            {
+                return;
+            }
+
+            if (!TryObtenerProductoSeleccionado(fila.DataBoundItem, out int idProducto,
                     out string codigo, out string nombre))
             {
                 return;
@@ -350,6 +357,11 @@ namespace CapaPresentacion.Compras
             {
                 await PrellenarPreciosAsync(idProducto);
 
+                if (IsDisposed || _idProductoElegido != idProducto)
+                {
+                    return;
+                }
+
                 // RF-38 / RF-39: el foco queda en Cantidad con el texto seleccionado.
                 txtCantidad.Focus();
                 txtCantidad.SelectAll();
@@ -360,12 +372,19 @@ namespace CapaPresentacion.Compras
 
         private async void gridProveedores_SelectionChanged(object? sender, EventArgs e)
         {
-            if (_actualizandoControles || gridProveedores.CurrentRow is null)
+            if (_nivelActualizando > 0 || gridProveedores.DataSource is null)
             {
                 return;
             }
 
-            if (!TryObtenerProveedorSeleccionado(gridProveedores.CurrentRow.DataBoundItem,
+            DataGridViewRow? fila = gridProveedores.CurrentRow;
+
+            if (fila is null || fila.Index < 0)
+            {
+                return;
+            }
+
+            if (!TryObtenerProveedorSeleccionado(fila.DataBoundItem,
                     out int idProveedor, out string razonSocial, out string documento))
             {
                 return;
@@ -395,6 +414,11 @@ namespace CapaPresentacion.Compras
             RespuestaPreciosProducto respuesta =
                 await _negocio.ObtenerPreciosProductoAsync(idProducto);
 
+            if (IsDisposed || _idProductoElegido != idProducto)
+            {
+                return;
+            }
+
             lblMensajeProductos.Text = respuesta.Mensaje;
 
             if (respuesta.Precios is null)
@@ -420,44 +444,52 @@ namespace CapaPresentacion.Compras
             RespuestaProveedoresDeProducto respuesta =
                 await _negocio.ObtenerProveedoresDeProductoAsync(idProducto, _rolActual);
 
-            _proveedoresBuscados.Clear();
-            _proveedoresHistoricos.Clear();
-
-            switch (respuesta.Resultado)
+            if (IsDisposed || _idProductoElegido != idProducto)
             {
-                case ResultadoConsultaHistoricaCompra.ConResultados:
-                    _proveedoresHistoricos.AddRange(respuesta.Proveedores);
-                    MostrarProveedores(_proveedoresHistoricos);
+                return;
+            }
 
-                    if (_proveedoresHistoricos.Count == 1)
-                    {
-                        ProveedorDeProductoDto unico = _proveedoresHistoricos[0];
+            using (SuspenderEventos())
+            {
+                _proveedoresBuscados.Clear();
+                _proveedoresHistoricos.Clear();
 
-                        // RF-12: con un solo proveedor histórico se autocompleta,
-                        // salvo que ya hubiera uno elegido, que no se descarta (RF-13).
-                        if (!_idProveedorElegido.HasValue)
+                switch (respuesta.Resultado)
+                {
+                    case ResultadoConsultaHistoricaCompra.ConResultados:
+                        _proveedoresHistoricos.AddRange(respuesta.Proveedores);
+                        MostrarProveedores(_proveedoresHistoricos.ToList());
+
+                        if (_proveedoresHistoricos.Count == 1)
                         {
-                            _idProveedorElegido = unico.IdProveedor;
-                            _razonSocialProveedor = unico.RazonSocial;
-                            _documentoProveedor = unico.Documento;
-                            MostrarDatosProveedor();
-                            SeleccionarProveedorEnGrilla(unico.IdProveedor);
+                            ProveedorDeProductoDto unico = _proveedoresHistoricos[0];
+
+                            // RF-12: con un solo proveedor histórico se autocompleta,
+                            // salvo que ya hubiera uno elegido, que no se descarta (RF-13).
+                            if (!_idProveedorElegido.HasValue)
+                            {
+                                _idProveedorElegido = unico.IdProveedor;
+                                _razonSocialProveedor = unico.RazonSocial;
+                                _documentoProveedor = unico.Documento;
+                                MostrarDatosProveedor();
+                                SeleccionarProveedorEnGrilla(unico.IdProveedor);
+                            }
                         }
-                    }
 
-                    lblMensajeProveedores.Text = _proveedoresHistoricos.Count == 1
-                        ? respuesta.Mensaje
-                        : TextoSeleccioneProveedor;
-                    return;
+                        lblMensajeProveedores.Text = _proveedoresHistoricos.Count == 1
+                            ? respuesta.Mensaje
+                            : TextoSeleccioneProveedor;
+                        return;
 
-                case ResultadoConsultaHistoricaCompra.SinResultados:
-                    MostrarProveedores(null);
-                    lblMensajeProveedores.Text = respuesta.Mensaje;
-                    return;
+                    case ResultadoConsultaHistoricaCompra.SinResultados:
+                        MostrarProveedores(null);
+                        lblMensajeProveedores.Text = respuesta.Mensaje;
+                        return;
 
-                default:
-                    lblMensajeProveedores.Text = respuesta.Mensaje;
-                    return;
+                    default:
+                        lblMensajeProveedores.Text = respuesta.Mensaje;
+                        return;
+                }
             }
         }
 
@@ -473,17 +505,25 @@ namespace CapaPresentacion.Compras
             RespuestaProductosDeProveedor respuesta =
                 await _negocio.ObtenerProductosDeProveedorAsync(idProveedor, _rolActual);
 
-            _productosBuscados.Clear();
-            _productosHistoricos.Clear();
-
-            if (respuesta.Resultado == ResultadoConsultaHistoricaCompra.ConResultados)
+            if (IsDisposed || _idProveedorElegido != idProveedor)
             {
-                _productosHistoricos.AddRange(respuesta.Productos);
-                MostrarProductos(_productosHistoricos);
+                return;
             }
-            else if (respuesta.Resultado == ResultadoConsultaHistoricaCompra.SinResultados)
+
+            using (SuspenderEventos())
             {
-                MostrarProductos(null);
+                _productosBuscados.Clear();
+                _productosHistoricos.Clear();
+
+                if (respuesta.Resultado == ResultadoConsultaHistoricaCompra.ConResultados)
+                {
+                    _productosHistoricos.AddRange(respuesta.Productos);
+                    MostrarProductos(_productosHistoricos.ToList());
+                }
+                else if (respuesta.Resultado == ResultadoConsultaHistoricaCompra.SinResultados)
+                {
+                    MostrarProductos(null);
+                }
             }
 
             lblMensajeProductos.Text = respuesta.Mensaje;
@@ -584,7 +624,26 @@ namespace CapaPresentacion.Compras
 
         private void gridLineas_CellContentClick(object? sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0)
+            if (_nivelActualizando > 0 || gridLineas.DataSource is null)
+            {
+                return;
+            }
+
+            if (e.RowIndex < 0 || e.ColumnIndex < 0
+                || e.RowIndex >= gridLineas.Rows.Count
+                || e.ColumnIndex >= gridLineas.Columns.Count)
+            {
+                return;
+            }
+
+            if (gridLineas.Rows[e.RowIndex].DataBoundItem is not LineaCompraDto linea)
+            {
+                return;
+            }
+
+            int indice = _lineas.IndexOf(linea);
+
+            if (indice < 0)
             {
                 return;
             }
@@ -593,21 +652,26 @@ namespace CapaPresentacion.Compras
 
             if (columna == ColumnaLineaQuitar)
             {
-                QuitarLineaDeGrilla(e.RowIndex);
+                QuitarLineaDeGrilla(indice);
             }
             else if (columna == ColumnaLineaEditar)
             {
-                EditarLineaEnCaptura(e.RowIndex);
+                EditarLineaEnCaptura(indice);
             }
         }
 
         /// <summary>
         /// Quita la línea indicada con el resultado del negocio: si falla muestra
-        /// su mensaje y no toca la grilla (RF-29).
+        /// su mensaje y no toca la grilla (RF-29). Sin un índice válido no hace nada.
         /// </summary>
         /// <param name="indice">Fila de la grilla seleccionada.</param>
         private void QuitarLineaDeGrilla(int indice)
         {
+            if (_nivelActualizando > 0 || indice < 0 || indice >= _lineas.Count)
+            {
+                return;
+            }
+
             RespuestaCompraEnCarga respuesta = _negocio.QuitarLinea(_lineas.ToList(), indice);
 
             lblMensaje.Text = respuesta.Mensaje;
@@ -630,11 +694,17 @@ namespace CapaPresentacion.Compras
 
         /// <summary>
         /// Carga en el área de captura la línea indicada y activa el modo edición
-        /// (RF-30 y RF-62). No consulta la base ni recalcula importes.
+        /// (RF-30 y RF-62). No consulta la base ni recalcula importes. Sin un
+        /// índice válido no hace nada.
         /// </summary>
         /// <param name="indice">Fila de la grilla seleccionada.</param>
         private void EditarLineaEnCaptura(int indice)
         {
+            if (_nivelActualizando > 0 || indice < 0 || indice >= _lineas.Count)
+            {
+                return;
+            }
+
             LineaCompraDto linea = _lineas[indice];
 
             _indiceEdicion = indice;
@@ -656,8 +726,12 @@ namespace CapaPresentacion.Compras
         /// </summary>
         private void RefrescarGrillaLineas()
         {
-            gridLineas.DataSource = null;
-            gridLineas.DataSource = _lineas.ToList();
+            using (SuspenderEventos())
+            {
+                gridLineas.CurrentCell = null;
+                gridLineas.DataSource = null;
+                gridLineas.DataSource = _lineas.ToList();
+            }
 
             decimal montoTotal =
                 CalculoImportesCompra.CalcularMontoTotal(_lineas.Select(linea => linea.Subtotal));
@@ -666,7 +740,7 @@ namespace CapaPresentacion.Compras
         }
 
         // =====================================================================
-        // 4. REGISTRO, LIMPIEZA E HISTORIAL
+        // 4. REGISTRO, LIMPIEZA E HISTORIAL (el historial se abre en el modal)
         // =====================================================================
 
         private async void btnRegistrar_Click(object? sender, EventArgs e)
@@ -751,35 +825,13 @@ namespace CapaPresentacion.Compras
             lblMensaje.Text = string.Empty;
         }
 
-        private void btnVerDetalle_Click(object? sender, EventArgs e)
+        private void btnVerHistorial_Click(object? sender, EventArgs e)
         {
-            AbrirDetalleSeleccionado();
-        }
-
-        private void gridHistorial_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0)
-            {
-                return;
-            }
-
-            AbrirDetalleSeleccionado();
-        }
-
-        /// <summary>
-        /// Abre el modal de solo lectura con el detalle de la compra marcada en la
-        /// grilla del historial (RF-53 y RF-54). Sin fila seleccionada no hace nada
-        /// y no altera la compra en carga.
-        /// </summary>
-        private void AbrirDetalleSeleccionado()
-        {
-            if (gridHistorial.CurrentRow?.DataBoundItem is not HistorialCompraDto compra)
-            {
-                return;
-            }
-
-            using DetalleCompraForm detalle = new DetalleCompraForm(_negocio, compra.IdCompra, _rolActual);
-            detalle.ShowDialog(this);
+            // El historial vive ahora en el modal (RF-49 … RF-54): se abre en modo
+            // lista y cada fila elegida carga su detalle. Al cerrarse no altera la
+            // compra en carga.
+            using DetalleCompraForm historial = new DetalleCompraForm(_negocio, _rolActual);
+            historial.ShowDialog(this);
         }
 
         /// <summary>
@@ -788,30 +840,22 @@ namespace CapaPresentacion.Compras
         /// </summary>
         private void LimpiarTrasRegistro()
         {
-            _idProveedorElegido = null;
-            _razonSocialProveedor = null;
-            _documentoProveedor = null;
-            _proveedoresBuscados.Clear();
-            _proveedoresHistoricos.Clear();
-            _temporizadorProveedores.Stop();
-
-            _actualizandoControles = true;
-
-            try
+            using (SuspenderEventos())
             {
+                _idProveedorElegido = null;
+                _razonSocialProveedor = null;
+                _documentoProveedor = null;
+                _proveedoresBuscados.Clear();
+                _proveedoresHistoricos.Clear();
+                _temporizadorProveedores.Stop();
                 txtBuscarProveedor.Text = string.Empty;
+                MostrarProveedores(null);
+                lblMensajeProveedores.Text = string.Empty;
+                MostrarDatosProveedor();
+                _lineas.Clear();
+                LimpiarCaptura();
+                RefrescarGrillaLineas();
             }
-            finally
-            {
-                _actualizandoControles = false;
-            }
-
-            MostrarProveedores(null);
-            lblMensajeProveedores.Text = string.Empty;
-            MostrarDatosProveedor();
-            _lineas.Clear();
-            LimpiarCaptura();
-            RefrescarGrillaLineas();
         }
 
         /// <summary>
@@ -820,32 +864,25 @@ namespace CapaPresentacion.Compras
         /// </summary>
         private void LimpiarCaptura()
         {
-            _indiceEdicion = null;
-            _idProductoElegido = null;
-            _codigoProductoElegido = null;
-            _nombreProductoElegido = null;
-            _productosBuscados.Clear();
-            _productosHistoricos.Clear();
-            _temporizadorProductos.Stop();
-
-            _actualizandoControles = true;
-
-            try
+            using (SuspenderEventos())
             {
+                _indiceEdicion = null;
+                _idProductoElegido = null;
+                _codigoProductoElegido = null;
+                _nombreProductoElegido = null;
+                _productosBuscados.Clear();
+                _productosHistoricos.Clear();
+                _temporizadorProductos.Stop();
                 txtBuscarProducto.Text = string.Empty;
                 txtCantidad.Text = string.Empty;
                 txtPrecioCompra.Text = string.Empty;
                 txtPrecioVenta.Text = string.Empty;
-            }
-            finally
-            {
-                _actualizandoControles = false;
+                MostrarProductos(null);
+                lblMensajeProductos.Text = string.Empty;
+                MostrarDatosProducto();
+                btnAgregarLinea.Text = TextoBotonAgregar;
             }
 
-            MostrarProductos(null);
-            lblMensajeProductos.Text = string.Empty;
-            MostrarDatosProducto();
-            btnAgregarLinea.Text = TextoBotonAgregar;
             ActualizarSubtotalPreparacion();
         }
 
@@ -855,45 +892,53 @@ namespace CapaPresentacion.Compras
 
         /// <summary>
         /// Vuelve a enlazar el listado de productos sin disparar la selección
-        /// automática de la primera fila.
+        /// automática de la primera fila. El enlace usa siempre una copia nueva de
+        /// los resultados, de modo que vaciar la lista de campo no altera el
+        /// <c>DataSource</c> ni deja el <c>CurrencyManager</c> en una fila inválida.
         /// </summary>
         /// <param name="origen">Lista de resultados o <see langword="null"/> para vaciarlo.</param>
         private void MostrarProductos(object? origen)
         {
-            _actualizandoControles = true;
-
-            try
+            object? copia = origen switch
             {
+                IEnumerable<ProductoBuscadoDto> buscados => buscados.ToList(),
+                IEnumerable<ProductoDeProveedorDto> historicos => historicos.ToList(),
+                _ => null
+            };
+
+            using (SuspenderEventos())
+            {
+                gridProductos.CurrentCell = null;
                 gridProductos.DataSource = null;
-                gridProductos.DataSource = origen;
+                gridProductos.DataSource = copia;
                 gridProductos.ClearSelection();
                 gridProductos.CurrentCell = null;
-            }
-            finally
-            {
-                _actualizandoControles = false;
             }
         }
 
         /// <summary>
         /// Vuelve a enlazar el listado de proveedores sin disparar la selección
-        /// automática de la primera fila.
+        /// automática de la primera fila. El enlace usa siempre una copia nueva de
+        /// los resultados, de modo que vaciar la lista de campo no altera el
+        /// <c>DataSource</c> ni deja el <c>CurrencyManager</c> en una fila inválida.
         /// </summary>
         /// <param name="origen">Lista de resultados o <see langword="null"/> para vaciarlo.</param>
         private void MostrarProveedores(object? origen)
         {
-            _actualizandoControles = true;
-
-            try
+            object? copia = origen switch
             {
+                IEnumerable<ProveedorSeleccionadoDto> buscados => buscados.ToList(),
+                IEnumerable<ProveedorDeProductoDto> historicos => historicos.ToList(),
+                _ => null
+            };
+
+            using (SuspenderEventos())
+            {
+                gridProveedores.CurrentCell = null;
                 gridProveedores.DataSource = null;
-                gridProveedores.DataSource = origen;
+                gridProveedores.DataSource = copia;
                 gridProveedores.ClearSelection();
                 gridProveedores.CurrentCell = null;
-            }
-            finally
-            {
-                _actualizandoControles = false;
             }
         }
 
@@ -917,23 +962,28 @@ namespace CapaPresentacion.Compras
 
         private void SeleccionarProveedorEnGrilla(int idProveedor)
         {
-            _actualizandoControles = true;
+            if (IsDisposed || !gridProveedores.IsHandleCreated)
+            {
+                return;
+            }
 
-            try
+            if (gridProveedores.Columns.Count == 0 || gridProveedores.Rows.Count == 0)
+            {
+                return;
+            }
+
+            using (SuspenderEventos())
             {
                 foreach (DataGridViewRow fila in gridProveedores.Rows)
                 {
                     if (fila.DataBoundItem is ProveedorDeProductoDto proveedor
-                        && proveedor.IdProveedor == idProveedor)
+                        && proveedor.IdProveedor == idProveedor
+                        && fila.Cells.Count > 0)
                     {
                         gridProveedores.CurrentCell = fila.Cells[0];
                         break;
                     }
                 }
-            }
-            finally
-            {
-                _actualizandoControles = false;
             }
         }
 
@@ -993,7 +1043,14 @@ namespace CapaPresentacion.Compras
 
         private void gridLineas_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0)
+            if (_nivelActualizando > 0 || gridLineas.DataSource is null)
+            {
+                return;
+            }
+
+            if (e.RowIndex < 0 || e.ColumnIndex < 0
+                || e.RowIndex >= gridLineas.Rows.Count
+                || e.ColumnIndex >= gridLineas.Columns.Count)
             {
                 return;
             }
@@ -1021,40 +1078,67 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        /// <summary>
-        /// Aplica el formato de presentación de la barra de historial: fecha y
-        /// hora, importes con <c>N2</c> y estado como «Activa»/«Inactiva»
-        /// (RNF-12). La grilla solo presenta los datos del negocio.
-        /// </summary>
-        private void gridHistorial_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0)
-            {
-                return;
-            }
-
-            string columna = gridHistorial.Columns[e.ColumnIndex].Name;
-
-            if (columna == ColumnaHistorialFecha && e.Value is DateTime fecha)
-            {
-                e.Value = fecha.ToString(FormatoFecha, CultureInfo.CurrentCulture);
-                e.FormattingApplied = true;
-            }
-            else if (columna == ColumnaHistorialTotal && e.Value is decimal total)
-            {
-                e.Value = total.ToString(FormatoImporte, CultureInfo.CurrentCulture);
-                e.FormattingApplied = true;
-            }
-            else if (columna == ColumnaHistorialEstado && e.Value is bool estado)
-            {
-                e.Value = estado ? "Activa" : "Inactiva";
-                e.FormattingApplied = true;
-            }
-        }
-
         // =====================================================================
         // 7. AYUDA COMÚN DE LOS MANEJADORES
         // =====================================================================
+
+        /// <summary>
+        /// Indica si la respuesta de una búsqueda llegó tarde: la pantalla ya se
+        /// liberó o el texto consultado ya no es el que está escrito. La respuesta
+        /// obsoleta se descarta sin tocar la grilla (RF-10, RF-16, RNF-11).
+        /// </summary>
+        /// <param name="textoConsultado">Texto con el que se hizo la consulta.</param>
+        /// <param name="textoActual">Texto vigente en el cuadro de búsqueda.</param>
+        /// <returns><see langword="true"/> si la respuesta debe descartarse.</returns>
+        private bool EsRespuestaObsoleta(string textoConsultado, string textoActual)
+            => IsDisposed || !string.Equals(textoConsultado, textoActual, StringComparison.Ordinal);
+
+        /// <summary>
+        /// Suspende los manejadores de las grillas mientras dure la mutación de
+        /// datos y el rebindeo. Se apoya en un contador para que las supresiones
+        /// anidadas restauren el nivel previo en lugar de forzarlo a cero.
+        /// </summary>
+        /// <returns>Objeto desechable que restaura el nivel al liberarse.</returns>
+        private IDisposable SuspenderEventos() => new Suspension(this);
+
+        /// <summary>
+        /// Restauración del nivel de supresión al liberar el bloque <c>using</c>.
+        /// </summary>
+        private sealed class Suspension : IDisposable
+        {
+            private readonly ComprasForm _formulario;
+            private bool _liberada;
+
+            /// <summary>
+            /// Incrementa el nivel de supresión del formulario.
+            /// </summary>
+            /// <param name="formulario">Formulario que suspende sus manejadores.</param>
+            public Suspension(ComprasForm formulario)
+            {
+                ArgumentNullException.ThrowIfNull(formulario);
+
+                _formulario = formulario;
+                _formulario._nivelActualizando++;
+            }
+
+            /// <summary>
+            /// Decrementa el nivel de supresión sin ponerlo nunca por debajo de cero.
+            /// </summary>
+            public void Dispose()
+            {
+                if (_liberada)
+                {
+                    return;
+                }
+
+                _liberada = true;
+
+                if (_formulario._nivelActualizando > 0)
+                {
+                    _formulario._nivelActualizando--;
+                }
+            }
+        }
 
         /// <summary>
         /// Ejecuta una operación asíncrona de la pantalla sin bloquear el hilo de

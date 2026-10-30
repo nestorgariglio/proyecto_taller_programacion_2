@@ -1,6 +1,12 @@
 # AGENTS.md - Sistema Comercial G70
 Sistema ERP y Punto de Venta (POS) en C# .NET con arquitectura en 4 capas.
 
+## Agentes y Subagentes
+- **coordinator** (Orquestador Principal): Recibe el pedido del usuario, coordina el flujo en orden estricto (`@reviewer` → `@planner` → `@implementer`), exige la aprobación explícita del usuario tras el plan y nunca escribe código directamente.
+- **@reviewer**: Audita el estado del repositorio, ejecuta `dotnet build` y `dotnet test`, y valida la arquitectura (aislamiento de capas, 0 AppDbContext en UI).
+- **@planner**: Diseña el plan en `tasks.md`, desglosa tareas (T1, T2...), especifica RF/RNF y **SE DETIENE OBLIGATORIAMENTE** a esperar aprobación del usuario.
+- **@implementer**: Escribe el código en las capas correspondientes únicamente cuando el plan fue aprobado por el usuario.
+
 ## Stack y Estructura
 - **Stack**: .NET 8 / C# WinForms, MaterialSkin 2, LiveCharts, Entity Framework Core, SQL Server, BCrypt.Net-Next.
 - **Estructura**:
@@ -43,6 +49,7 @@ Sistema ERP y Punto de Venta (POS) en C# .NET con arquitectura en 4 capas.
 - ✅ **Siempre**: actualizar `MEMORY.md` al terminar cada tarea.
 - ⚠ **Pregunta antes**: Crear migraciones, instalar paquetes NuGet o modificar contratos de datos.
 - 🚫 **Nunca**: Borrar filas físicamente (`DELETE`), exponer hashes en DTOs o escribir lógica de negocio en eventos visuales de WinForms.
+- 🚫 **Nunca**: Ejecutar `git commit` o `git push` de forma automática. El control de versiones es responsabilidad exclusiva del usuario.
 
 ## Verificación
 - Antes de dar una tarea por terminada, verificar la compilación limpia con `dotnet build`.

@@ -30,6 +30,13 @@ namespace CapaPresentacion.Compras
         {
             tblPrincipal = new TableLayoutPanel();
             lblTituloDetalle = new MaterialSkin.Controls.MaterialLabel();
+            gridListaCompras = new DataGridView();
+            colListaNumero = new DataGridViewTextBoxColumn();
+            colListaFecha = new DataGridViewTextBoxColumn();
+            colListaProveedor = new DataGridViewTextBoxColumn();
+            colListaUsuario = new DataGridViewTextBoxColumn();
+            colListaTotal = new DataGridViewTextBoxColumn();
+            colListaEstado = new DataGridViewTextBoxColumn();
             tblCabecera = new TableLayoutPanel();
             lblNumeroCompra = new MaterialSkin.Controls.MaterialLabel();
             lblFechaDetalle = new MaterialSkin.Controls.MaterialLabel();
@@ -44,6 +51,7 @@ namespace CapaPresentacion.Compras
             colDetalleSubtotal = new DataGridViewTextBoxColumn();
             lblMensajeDetalle = new MaterialSkin.Controls.MaterialLabel();
             tblPrincipal.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)gridListaCompras).BeginInit();
             tblCabecera.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridDetalle).BeginInit();
             SuspendLayout();
@@ -53,16 +61,18 @@ namespace CapaPresentacion.Compras
             tblPrincipal.ColumnCount = 1;
             tblPrincipal.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tblPrincipal.Controls.Add(lblTituloDetalle, 0, 0);
-            tblPrincipal.Controls.Add(tblCabecera, 0, 1);
-            tblPrincipal.Controls.Add(gridDetalle, 0, 2);
-            tblPrincipal.Controls.Add(lblMensajeDetalle, 0, 3);
+            tblPrincipal.Controls.Add(gridListaCompras, 0, 1);
+            tblPrincipal.Controls.Add(tblCabecera, 0, 2);
+            tblPrincipal.Controls.Add(gridDetalle, 0, 3);
+            tblPrincipal.Controls.Add(lblMensajeDetalle, 0, 4);
             tblPrincipal.Dock = DockStyle.Fill;
             tblPrincipal.Location = new Point(0, 0);
             tblPrincipal.Margin = new Padding(0);
             tblPrincipal.Name = "tblPrincipal";
             tblPrincipal.Padding = new Padding(16, 12, 16, 12);
-            tblPrincipal.RowCount = 4;
+            tblPrincipal.RowCount = 5;
             tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 170F));
             tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 68F));
             tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
@@ -84,6 +94,82 @@ namespace CapaPresentacion.Compras
             lblTituloDetalle.Text = "Detalle de la compra";
             lblTituloDetalle.TextAlign = ContentAlignment.MiddleLeft;
             //
+            // gridListaCompras
+            //
+            gridListaCompras.AllowUserToAddRows = false;
+            gridListaCompras.AllowUserToDeleteRows = false;
+            gridListaCompras.AllowUserToResizeRows = false;
+            gridListaCompras.AutoGenerateColumns = false;
+            gridListaCompras.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            gridListaCompras.ColumnHeadersHeight = 32;
+            gridListaCompras.Columns.AddRange(new DataGridViewColumn[] { colListaNumero, colListaFecha, colListaProveedor, colListaUsuario, colListaTotal, colListaEstado });
+            gridListaCompras.Dock = DockStyle.Fill;
+            gridListaCompras.Location = new Point(16, 46);
+            gridListaCompras.Margin = new Padding(0);
+            gridListaCompras.MultiSelect = false;
+            gridListaCompras.Name = "gridListaCompras";
+            gridListaCompras.ReadOnly = true;
+            gridListaCompras.RowHeadersVisible = false;
+            gridListaCompras.RowTemplate.Height = 26;
+            gridListaCompras.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            gridListaCompras.Size = new Size(868, 170);
+            gridListaCompras.TabIndex = 1;
+            gridListaCompras.Visible = false;
+            //
+            // colListaNumero
+            //
+            colListaNumero.DataPropertyName = "IdCompra";
+            colListaNumero.FillWeight = 10F;
+            colListaNumero.HeaderText = "N° compra";
+            colListaNumero.Name = "colListaNumero";
+            colListaNumero.ReadOnly = true;
+            colListaNumero.SortMode = DataGridViewColumnSortMode.NotSortable;
+            //
+            // colListaFecha
+            //
+            colListaFecha.DataPropertyName = "FechaRegistro";
+            colListaFecha.FillWeight = 18F;
+            colListaFecha.HeaderText = "Fecha y hora";
+            colListaFecha.Name = "colListaFecha";
+            colListaFecha.ReadOnly = true;
+            colListaFecha.SortMode = DataGridViewColumnSortMode.NotSortable;
+            //
+            // colListaProveedor
+            //
+            colListaProveedor.DataPropertyName = "RazonSocialProveedor";
+            colListaProveedor.FillWeight = 30F;
+            colListaProveedor.HeaderText = "Proveedor";
+            colListaProveedor.Name = "colListaProveedor";
+            colListaProveedor.ReadOnly = true;
+            colListaProveedor.SortMode = DataGridViewColumnSortMode.NotSortable;
+            //
+            // colListaUsuario
+            //
+            colListaUsuario.DataPropertyName = "NombreUsuario";
+            colListaUsuario.FillWeight = 18F;
+            colListaUsuario.HeaderText = "Usuario";
+            colListaUsuario.Name = "colListaUsuario";
+            colListaUsuario.ReadOnly = true;
+            colListaUsuario.SortMode = DataGridViewColumnSortMode.NotSortable;
+            //
+            // colListaTotal
+            //
+            colListaTotal.DataPropertyName = "MontoTotal";
+            colListaTotal.FillWeight = 14F;
+            colListaTotal.HeaderText = "Total";
+            colListaTotal.Name = "colListaTotal";
+            colListaTotal.ReadOnly = true;
+            colListaTotal.SortMode = DataGridViewColumnSortMode.NotSortable;
+            //
+            // colListaEstado
+            //
+            colListaEstado.DataPropertyName = "Estado";
+            colListaEstado.FillWeight = 10F;
+            colListaEstado.HeaderText = "Estado";
+            colListaEstado.Name = "colListaEstado";
+            colListaEstado.ReadOnly = true;
+            colListaEstado.SortMode = DataGridViewColumnSortMode.NotSortable;
+            //
             // tblCabecera
             //
             tblCabecera.ColumnCount = 4;
@@ -98,7 +184,7 @@ namespace CapaPresentacion.Compras
             tblCabecera.Controls.Add(lblProveedorDetalle, 0, 1);
             tblCabecera.Controls.Add(lblUsuarioDetalle, 2, 1);
             tblCabecera.Dock = DockStyle.Fill;
-            tblCabecera.Location = new Point(16, 46);
+            tblCabecera.Location = new Point(16, 216);
             tblCabecera.Margin = new Padding(0);
             tblCabecera.Name = "tblCabecera";
             tblCabecera.RowCount = 2;
@@ -209,7 +295,7 @@ namespace CapaPresentacion.Compras
             gridDetalle.ColumnHeadersHeight = 38;
             gridDetalle.Columns.AddRange(new DataGridViewColumn[] { colDetalleProducto, colDetalleCantidad, colDetallePrecioCompra, colDetalleSubtotal });
             gridDetalle.Dock = DockStyle.Fill;
-            gridDetalle.Location = new Point(16, 114);
+            gridDetalle.Location = new Point(16, 284);
             gridDetalle.Margin = new Padding(0);
             gridDetalle.MultiSelect = false;
             gridDetalle.Name = "gridDetalle";
@@ -217,7 +303,7 @@ namespace CapaPresentacion.Compras
             gridDetalle.RowHeadersVisible = false;
             gridDetalle.RowTemplate.Height = 32;
             gridDetalle.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            gridDetalle.Size = new Size(868, 406);
+            gridDetalle.Size = new Size(868, 236);
             gridDetalle.TabIndex = 2;
             //
             // colDetalleProducto
@@ -284,6 +370,7 @@ namespace CapaPresentacion.Compras
             StartPosition = FormStartPosition.CenterParent;
             Text = "Detalle de compra";
             tblPrincipal.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)gridListaCompras).EndInit();
             tblCabecera.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridDetalle).EndInit();
             ResumeLayout(false);
@@ -293,6 +380,13 @@ namespace CapaPresentacion.Compras
 
         private TableLayoutPanel tblPrincipal;
         private MaterialSkin.Controls.MaterialLabel lblTituloDetalle;
+        private DataGridView gridListaCompras;
+        private DataGridViewTextBoxColumn colListaNumero;
+        private DataGridViewTextBoxColumn colListaFecha;
+        private DataGridViewTextBoxColumn colListaProveedor;
+        private DataGridViewTextBoxColumn colListaUsuario;
+        private DataGridViewTextBoxColumn colListaTotal;
+        private DataGridViewTextBoxColumn colListaEstado;
         private TableLayoutPanel tblCabecera;
         private MaterialSkin.Controls.MaterialLabel lblNumeroCompra;
         private MaterialSkin.Controls.MaterialLabel lblFechaDetalle;

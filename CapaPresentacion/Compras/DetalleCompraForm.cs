@@ -12,8 +12,10 @@ using MaterialSkin.Controls;
 namespace CapaPresentacion.Compras
 {
     /// <summary>
-    /// Modal de solo lectura con la cabecera y las líneas de la compra elegida en
-    /// la barra de historial (RF-53 y RF-54). Consume únicamente
+    /// Modal de solo lectura con el historial de compras y su detalle (RF-49 …
+    /// RF-54). Se abre en dos modos: <b>detalle</b>, con una compra elegida, que
+    /// muestra su cabecera y sus líneas; y <b>lista</b>, sin compra, que lista las
+    /// compras y carga el detalle de la fila seleccionada. Consume únicamente
     /// <see cref="CompraNegocio"/>: no accede al origen de datos, no calcula
     /// importes ni redacta mensajes, y muestra el <c>Mensaje</c> del negocio tal
     /// cual (RF-55 y RNF-13).
@@ -28,41 +30,168 @@ namespace CapaPresentacion.Compras
         private const string ColumnaDetalleProducto = "colDetalleProducto";
         private const string ColumnaDetallePrecioCompra = "colDetallePrecioCompra";
         private const string ColumnaDetalleSubtotal = "colDetalleSubtotal";
+        private const string ColumnaListaFecha = "colListaFecha";
+        private const string ColumnaListaTotal = "colListaTotal";
+        private const string ColumnaListaEstado = "colListaEstado";
         private const string FormatoFecha = "dd/MM/yyyy HH:mm";
         private const string FormatoImporte = "N2";
+        private const float AltoListaHistorial = 170F;
 
         private readonly CompraNegocio _negocio;
         private readonly string? _rol;
-        private readonly int _idCompra;
 
         /// <summary>
-        /// Inicializa el modal de detalle de compras.
+        /// Compra mostrada en el detalle. Cero significa modo <b>lista</b>: el
+        /// modal no abre con una compra fija y espera la elección del historial.
         /// </summary>
-        /// <param name="negocio">Servicio que resuelve el detalle de la compra.</param>
-        /// <param name="idCompra">Compra elegida en el historial.</param>
+        private int _idCompra;
+
+        /// <summary>
+        /// Suprime la selección mientras se enlaza el historial, para no cargar
+        /// un detalle que el usuario no pidió.
+        /// </summary>
+        private bool _cargandoLista;
+
+        /// <summary>
+        /// Inicializa el modal en modo <b>lista</b>: lista las compras del
+        /// historial y, al elegir una fila, muestra su detalle.
+        /// </summary>
+        /// <param name="negocio">Servicio que resuelve el historial y el detalle.</param>
         /// <param name="rol">Rol de la sesión con el que el negocio evalúa el permiso.</param>
-        public DetalleCompraForm(CompraNegocio negocio, int idCompra, string? rol)
+        public DetalleCompraForm(CompraNegocio negocio, string? rol)
         {
             ArgumentNullException.ThrowIfNull(negocio);
 
             _negocio = negocio;
-            _idCompra = idCompra;
             _rol = rol;
+            _idCompra = 0;
 
             InitializeComponent();
 
             MaterialSkinManager.Instance.AddFormToManage(this);
             BackColor = MaterialSkinManager.Instance.BackdropColor;
             AplicarEstiloGrilla(gridDetalle);
+            AplicarEstiloGrilla(gridListaCompras);
 
             MostrarCabecera(null);
 
             Load += DetalleCompraForm_Load;
             gridDetalle.CellFormatting += gridDetalle_CellFormatting;
+            gridListaCompras.CellFormatting += gridListaCompras_CellFormatting;
+            gridListaCompras.SelectionChanged += gridListaCompras_SelectionChanged;
+        }
+
+        /// <summary>
+        /// Inicializa el modal en modo <b>detalle</b> con la compra indicada.
+        /// </summary>
+        /// <param name="negocio">Servicio que resuelve el detalle de la compra.</param>
+        /// <param name="idCompra">Compra elegida en el historial.</param>
+        /// <param name="rol">Rol de la sesión con el que el negocio evalúa el permiso.</param>
+        public DetalleCompraForm(CompraNegocio negocio, int idCompra, string? rol)
+            : this(negocio, rol)
+        {
+            _idCompra = idCompra;
         }
 
         private async void DetalleCompraForm_Load(object? sender, EventArgs e)
         {
+            if (_idCompra > 0)
+            {
+                AplicarModoDetalle();
+                await CargarDetalleAsync();
+                return;
+            }
+
+            AplicarModoLista();
+            await CargarHistorialAsync();
+        }
+
+        /// <summary>
+        /// Deja el modal mostrando solo la compra elegida: oculta el historial y
+        /// cede su alto al detalle.
+        /// </summary>
+        private void AplicarModoDetalle()
+        {
+            Text = "Detalle de compra";
+            lblTituloDetalle.Text = "Detalle de la compra";
+            gridListaCompras.Visible = false;
+            tblPrincipal.RowStyles[1].Height = 0F;
+        }
+
+        /// <summary>
+        /// Deja el modal mostrando el historial sobre el detalle de la compra
+        /// seleccionada.
+        /// </summary>
+        private void AplicarModoLista()
+        {
+            Text = "Historial de compras";
+            lblTituloDetalle.Text = "Historial de compras";
+            gridListaCompras.Visible = true;
+            tblPrincipal.RowStyles[1].Height = AltoListaHistorial;
+        }
+
+        /// <summary>
+        /// Consulta el historial de compras con el rol de la sesión y lo enlaza,
+        /// sin cargar ningún detalle hasta que el usuario elija una fila. El
+        /// mensaje que se muestra es siempre el que devuelve el negocio
+        /// (RF-49 … RF-52).
+        /// </summary>
+        /// <returns>Tarea que representa la consulta del historial.</returns>
+        private async Task CargarHistorialAsync()
+        {
+            _cargandoLista = true;
+
+            try
+            {
+                RespuestaHistorialCompras respuesta =
+                    await _negocio.ObtenerHistorialAsync(_rol);
+
+                if (IsDisposed)
+                {
+                    return;
+                }
+
+                gridListaCompras.CurrentCell = null;
+                gridListaCompras.DataSource = null;
+                gridListaCompras.DataSource = respuesta.Compras.ToList();
+                gridListaCompras.ClearSelection();
+                gridListaCompras.CurrentCell = null;
+
+                LimpiarDetalle();
+                lblMensajeDetalle.Text = respuesta.Mensaje;
+            }
+            catch (Exception excepcion)
+            {
+                lblMensajeDetalle.Text = excepcion.Message;
+                LimpiarDetalle();
+            }
+            finally
+            {
+                _cargandoLista = false;
+            }
+        }
+
+        private async void gridListaCompras_SelectionChanged(object? sender, EventArgs e)
+        {
+            if (_cargandoLista || gridListaCompras.DataSource is null)
+            {
+                return;
+            }
+
+            DataGridViewRow? fila = gridListaCompras.CurrentRow;
+
+            if (fila is null || fila.Index < 0)
+            {
+                return;
+            }
+
+            if (fila.DataBoundItem is not HistorialCompraDto compra
+                || compra.IdCompra == _idCompra)
+            {
+                return;
+            }
+
+            _idCompra = compra.IdCompra;
             await CargarDetalleAsync();
         }
 
@@ -202,6 +331,39 @@ namespace CapaPresentacion.Compras
             if (esImporte && e.Value is decimal importe)
             {
                 e.Value = importe.ToString(FormatoImporte, CultureInfo.CurrentCulture);
+                e.FormattingApplied = true;
+            }
+        }
+
+        /// <summary>
+        /// Aplica el formato de presentación del historial: fecha y hora,
+        /// importes con <c>N2</c> y estado como «Activa»/«Inactiva» (RNF-12). La
+        /// grilla solo presenta los datos del negocio.
+        /// </summary>
+        private void gridListaCompras_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0
+                || e.RowIndex >= gridListaCompras.Rows.Count
+                || e.ColumnIndex >= gridListaCompras.Columns.Count)
+            {
+                return;
+            }
+
+            string columna = gridListaCompras.Columns[e.ColumnIndex].Name;
+
+            if (columna == ColumnaListaFecha && e.Value is DateTime fecha)
+            {
+                e.Value = fecha.ToString(FormatoFecha, CultureInfo.CurrentCulture);
+                e.FormattingApplied = true;
+            }
+            else if (columna == ColumnaListaTotal && e.Value is decimal total)
+            {
+                e.Value = total.ToString(FormatoImporte, CultureInfo.CurrentCulture);
+                e.FormattingApplied = true;
+            }
+            else if (columna == ColumnaListaEstado && e.Value is bool estado)
+            {
+                e.Value = estado ? "Activa" : "Inactiva";
                 e.FormattingApplied = true;
             }
         }
