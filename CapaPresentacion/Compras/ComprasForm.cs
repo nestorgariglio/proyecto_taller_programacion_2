@@ -15,9 +15,11 @@ using MaterialSkin.Controls;
 namespace CapaPresentacion.Compras
 {
     /// <summary>
-    /// Pantalla de carga de compras a proveedores: proveedor elegido, búsqueda de
-    /// productos, área de captura con prellenado editable, grilla de líneas con
-    /// edición y quita, total general y historial de compras registradas.
+    /// Pantalla de carga de compras a proveedores organizada en cuatro bloques:
+    /// producto, proveedor, compra actual e historial. El producto y el proveedor
+    /// se buscan a demanda (RF-9 … RF-17) y la selección es bidireccional: elegir
+    /// un producto propone los proveedores que ya lo vendieron y elegir un
+    /// proveedor acota el listado a los productos de su historial (RF-12 y RF-53).
     /// La pantalla no valida, no calcula importes ni redacta mensajes: solo invoca
     /// <see cref="CompraNegocio"/> y muestra el <c>Mensaje</c> que este devuelve
     /// (RF-55, RNF-6 y RNF-13).
@@ -33,8 +35,17 @@ namespace CapaPresentacion.Compras
         private const string ColumnaHistorialFecha = "colHistorialFecha";
         private const string ColumnaHistorialTotal = "colHistorialTotal";
         private const string ColumnaHistorialEstado = "colHistorialEstado";
-        private const string TextoProveedorSinElegir = "Proveedor: —";
+        private const string FormatoFecha = "dd/MM/yyyy HH:mm";
+        private const string FormatoImporte = "N2";
+
+        private const string TextoProveedorSinElegir = "Sin proveedor seleccionado";
+        private const string TextoDocumentoSinElegir = "Documento: —";
+        private const string TextoProductoSinElegir = "(Sin producto seleccionado)";
+        private const string TextoCodigoSinElegir = "Código: —";
         private const string TextoSubtotalInvalido = "Subtotal: —";
+        private const string TextoSeleccioneProveedor = "Seleccione el proveedor...";
+        private const string TextoBotonAgregar = "Agregar a la compra";
+        private const string TextoBotonGuardar = "Guardar línea";
 
         private readonly CompraNegocio _negocio;
         private readonly System.Windows.Forms.Timer _temporizadorProveedores =
@@ -42,31 +53,17 @@ namespace CapaPresentacion.Compras
         private readonly System.Windows.Forms.Timer _temporizadorProductos =
             new() { Interval = 350 };
         private readonly List<LineaCompraDto> _lineas = new();
-        private readonly List<ProveedorSeleccionadoDto> _proveedoresEncontrados = new();
-        private readonly List<ProductoBuscadoDto> _productosEncontrados = new();
+        private readonly List<ProveedorSeleccionadoDto> _proveedoresBuscados = new();
+        private readonly List<ProveedorDeProductoDto> _proveedoresHistoricos = new();
+        private readonly List<ProductoBuscadoDto> _productosBuscados = new();
+        private readonly List<ProductoDeProveedorDto> _productosHistoricos = new();
 
-        private MaterialLabel _lblTitulo = null!;
-        private MaterialTextBox2 _txtBuscarProveedor = null!;
-        private MaterialComboBox _cboResultadosProveedor = null!;
-        private MaterialLabel _lblProveedorElegido = null!;
-        private MaterialTextBox2 _txtBuscarProducto = null!;
-        private MaterialComboBox _cboResultadosProducto = null!;
-        private MaterialTextBox2 _txtCantidad = null!;
-        private MaterialTextBox2 _txtPrecioCompra = null!;
-        private MaterialTextBox2 _txtPrecioVenta = null!;
-        private MaterialLabel _lblSubtotalPreparacion = null!;
-        private MaterialButton _btnAgregarLinea = null!;
-        private DataGridView _gridLineas = null!;
-        private MaterialLabel _lblMontoTotal = null!;
-        private MaterialButton _btnRegistrar = null!;
-        private MaterialButton _btnLimpiar = null!;
-        private MaterialLabel _lblMensaje = null!;
-        private MaterialLabel _lblTituloHistorial = null!;
-        private DataGridView _gridHistorial = null!;
-        private MaterialLabel _lblMensajeHistorial = null!;
-
-        private ProveedorSeleccionadoDto? _proveedorElegido;
-        private ProductoBuscadoDto? _productoElegido;
+        private int? _idProveedorElegido;
+        private string? _razonSocialProveedor;
+        private string? _documentoProveedor;
+        private int? _idProductoElegido;
+        private string? _codigoProductoElegido;
+        private string? _nombreProductoElegido;
         private int? _indiceEdicion;
         private int _idUsuario;
         private string? _rolActual;
@@ -84,8 +81,20 @@ namespace CapaPresentacion.Compras
             ArgumentNullException.ThrowIfNull(negocio);
 
             _negocio = negocio;
+
+            InitializeComponent();
+
             BackColor = TemaAplicacion.FondoPrincipal;
-            ArmarInterfazMaterial();
+            AplicarEstiloGrilla(gridProductos);
+            AplicarEstiloGrilla(gridProveedores);
+            AplicarEstiloGrilla(gridLineas);
+            AplicarEstiloGrilla(gridHistorial);
+
+            // Los listados arrancan vacíos: solo se llenan al tipear (RF-10, RF-16).
+            MostrarProductos(null);
+            MostrarProveedores(null);
+            MostrarDatosProducto();
+            MostrarDatosProveedor();
 
             _temporizadorProveedores.Tick += temporizadorProveedores_Tick;
             _temporizadorProductos.Tick += temporizadorProductos_Tick;
@@ -94,6 +103,22 @@ namespace CapaPresentacion.Compras
                 _temporizadorProveedores.Dispose();
                 _temporizadorProductos.Dispose();
             };
+
+            txtBuscarProveedor.TextChanged += txtBuscarProveedor_TextChanged;
+            txtBuscarProducto.TextChanged += txtBuscarProducto_TextChanged;
+            gridProveedores.SelectionChanged += gridProveedores_SelectionChanged;
+            gridProductos.SelectionChanged += gridProductos_SelectionChanged;
+            txtCantidad.TextChanged += captura_TextChanged;
+            txtPrecioCompra.TextChanged += captura_TextChanged;
+            txtPrecioVenta.TextChanged += captura_TextChanged;
+            btnAgregarLinea.Click += btnAgregarLinea_Click;
+            gridLineas.CellContentClick += gridLineas_CellContentClick;
+            gridLineas.CellFormatting += gridLineas_CellFormatting;
+            btnRegistrar.Click += btnRegistrar_Click;
+            btnLimpiar.Click += btnLimpiar_Click;
+            btnVerDetalle.Click += btnVerDetalle_Click;
+            gridHistorial.CellFormatting += gridHistorial_CellFormatting;
+            gridHistorial.CellDoubleClick += gridHistorial_CellDoubleClick;
 
             RefrescarGrillaLineas();
         }
@@ -112,16 +137,17 @@ namespace CapaPresentacion.Compras
             _rolActual = rol;
 
             bool habilitado = PoliticaAcceso.PuedeOperarCompras(_rolActual);
-            _txtBuscarProveedor.Enabled = habilitado;
-            _cboResultadosProveedor.Enabled = habilitado;
-            _txtBuscarProducto.Enabled = habilitado;
-            _cboResultadosProducto.Enabled = habilitado;
-            _txtCantidad.Enabled = habilitado;
-            _txtPrecioCompra.Enabled = habilitado;
-            _txtPrecioVenta.Enabled = habilitado;
-            _btnAgregarLinea.Enabled = habilitado;
-            _btnLimpiar.Enabled = habilitado;
-            _btnRegistrar.Enabled = habilitado && !_registrando;
+            txtBuscarProveedor.Enabled = habilitado;
+            gridProveedores.Enabled = habilitado;
+            txtBuscarProducto.Enabled = habilitado;
+            gridProductos.Enabled = habilitado;
+            txtCantidad.Enabled = habilitado;
+            txtPrecioCompra.Enabled = habilitado;
+            txtPrecioVenta.Enabled = habilitado;
+            btnAgregarLinea.Enabled = habilitado;
+            btnLimpiar.Enabled = habilitado;
+            btnVerDetalle.Enabled = habilitado;
+            btnRegistrar.Enabled = habilitado && !_registrando;
         }
 
         /// <summary>
@@ -143,9 +169,21 @@ namespace CapaPresentacion.Compras
                 RespuestaHistorialCompras respuesta =
                     await _negocio.ObtenerHistorialAsync(_rolActual);
 
-                _gridHistorial.DataSource = null;
-                _gridHistorial.DataSource = respuesta.Compras.ToList();
-                _lblMensajeHistorial.Text = respuesta.Mensaje;
+                _actualizandoControles = true;
+
+                try
+                {
+                    gridHistorial.DataSource = null;
+                    gridHistorial.DataSource = respuesta.Compras.ToList();
+                    gridHistorial.ClearSelection();
+                    gridHistorial.CurrentCell = null;
+                }
+                finally
+                {
+                    _actualizandoControles = false;
+                }
+
+                lblMensajeHistorial.Text = respuesta.Mensaje;
             }
             finally
             {
@@ -154,446 +192,58 @@ namespace CapaPresentacion.Compras
         }
 
         // =====================================================================
-        // 1. CONSTRUCCIÓN DE LA INTERFAZ (MaterialSkin 2, dark)
+        // 1. ESTILO DE LAS GRILLAS (MaterialSkin 2, dark)
         // =====================================================================
 
-        private void ArmarInterfazMaterial()
-        {
-            Controls.Clear();
-
-            Panel panelPrincipal = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = TemaAplicacion.FondoPrincipal,
-                Padding = new Padding(15),
-                AutoScroll = true
-            };
-
-            // Encabezado: rótulo propio de la carga de compras (RF-2).
-            _lblTitulo = new MaterialLabel
-            {
-                Text = "Registro de Compras a Proveedores",
-                FontType = MaterialSkinManager.fontType.H6,
-                Location = new Point(20, 15),
-                AutoSize = true,
-                ForeColor = Color.White,
-                Depth = 0
-            };
-
-            // Bloque de proveedor: búsqueda rápida, resultados y proveedor elegido
-            // (RF-12 y RF-13). Elegir otro proveedor no toca las líneas cargadas.
-            _txtBuscarProveedor = new MaterialTextBox2
-            {
-                Hint = "Buscar proveedor...",
-                Location = new Point(20, 52),
-                Width = 300,
-                AnimateReadOnly = true,
-                Depth = 0
-            };
-
-            _cboResultadosProveedor = new MaterialComboBox
-            {
-                Hint = "Resultados",
-                Location = new Point(330, 52),
-                Width = 360,
-                Depth = 0
-            };
-
-            _lblProveedorElegido = new MaterialLabel
-            {
-                Text = TextoProveedorSinElegir,
-                Location = new Point(20, 106),
-                AutoSize = true,
-                FontType = MaterialSkinManager.fontType.Body1,
-                ForeColor = Color.Gainsboro,
-                Depth = 0
-            };
-
-            // Área de captura en una fila: producto, cantidad, precios y subtotal.
-            TableLayoutPanel panelCaptura = new TableLayoutPanel
-            {
-                Location = new Point(20, 140),
-                Width = 940,
-                Height = 64,
-                ColumnCount = 7,
-                RowCount = 1,
-                BackColor = TemaAplicacion.FondoPrincipal,
-                Margin = new Padding(0)
-            };
-            panelCaptura.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190F));
-            panelCaptura.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220F));
-            panelCaptura.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
-            panelCaptura.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115F));
-            panelCaptura.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115F));
-            panelCaptura.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
-            panelCaptura.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
-            panelCaptura.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
-
-            _txtBuscarProducto = new MaterialTextBox2
-            {
-                Hint = "Buscar producto...",
-                Width = 184,
-                AnimateReadOnly = true,
-                Depth = 0,
-                Margin = new Padding(0, 6, 6, 0)
-            };
-
-            _cboResultadosProducto = new MaterialComboBox
-            {
-                Hint = "Resultados",
-                Width = 214,
-                Depth = 0,
-                Margin = new Padding(0, 6, 6, 0)
-            };
-
-            _txtCantidad = new MaterialTextBox2
-            {
-                Hint = "Cantidad",
-                Width = 74,
-                Depth = 0,
-                Margin = new Padding(0, 6, 6, 0)
-            };
-
-            _txtPrecioCompra = new MaterialTextBox2
-            {
-                Hint = "Precio compra",
-                Width = 109,
-                Depth = 0,
-                Margin = new Padding(0, 6, 6, 0)
-            };
-
-            _txtPrecioVenta = new MaterialTextBox2
-            {
-                Hint = "Precio venta",
-                Width = 109,
-                Depth = 0,
-                Margin = new Padding(0, 6, 6, 0)
-            };
-
-            _lblSubtotalPreparacion = new MaterialLabel
-            {
-                Text = TextoSubtotalInvalido,
-                Width = 94,
-                Height = 48,
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleLeft,
-                FontType = MaterialSkinManager.fontType.Body2,
-                ForeColor = Color.Gainsboro,
-                Depth = 0,
-                Margin = new Padding(0, 6, 6, 0)
-            };
-
-            _btnAgregarLinea = new MaterialButton
-            {
-                Text = "Agregar línea",
-                Width = 116,
-                Height = 40,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Type = MaterialButton.MaterialButtonType.Contained,
-                HighEmphasis = true,
-                UseAccentColor = true,
-                Depth = 0,
-                Margin = new Padding(0, 8, 0, 0)
-            };
-
-            panelCaptura.Controls.Add(_txtBuscarProducto, 0, 0);
-            panelCaptura.Controls.Add(_cboResultadosProducto, 1, 0);
-            panelCaptura.Controls.Add(_txtCantidad, 2, 0);
-            panelCaptura.Controls.Add(_txtPrecioCompra, 3, 0);
-            panelCaptura.Controls.Add(_txtPrecioVenta, 4, 0);
-            panelCaptura.Controls.Add(_lblSubtotalPreparacion, 5, 0);
-            panelCaptura.Controls.Add(_btnAgregarLinea, 6, 0);
-
-            // Mensaje: siempre el texto del negocio, tal cual (RF-55).
-            _lblMensaje = new MaterialLabel
-            {
-                Location = new Point(20, 208),
-                Width = 1000,
-                Height = 38,
-                AutoSize = false,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                FontType = MaterialSkinManager.fontType.Body2,
-                ForeColor = Color.Gainsboro,
-                Depth = 0
-            };
-
-            // Grilla de líneas en carga: producto, cantidad, precios, subtotal y
-            // las acciones Editar/Quitar por fila (RF-29 y RF-30).
-            _gridLineas = CrearGrilla();
-            _gridLineas.Location = new Point(20, 250);
-            _gridLineas.Height = 160;
-            _gridLineas.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = ColumnaLineaProducto,
-                HeaderText = "Producto",
-                DataPropertyName = nameof(LineaCompraDto.NombreProducto),
-                FillWeight = 34,
-                SortMode = DataGridViewColumnSortMode.NotSortable
-            });
-            _gridLineas.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = "colLineaCantidad",
-                HeaderText = "Cantidad",
-                DataPropertyName = nameof(LineaCompraDto.Cantidad),
-                FillWeight = 10,
-                SortMode = DataGridViewColumnSortMode.NotSortable
-            });
-            _gridLineas.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = ColumnaLineaPrecioCompra,
-                HeaderText = "Precio compra",
-                DataPropertyName = nameof(LineaCompraDto.PrecioCompra),
-                FillWeight = 14,
-                SortMode = DataGridViewColumnSortMode.NotSortable
-            });
-            _gridLineas.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = ColumnaLineaPrecioVenta,
-                HeaderText = "Precio venta",
-                DataPropertyName = nameof(LineaCompraDto.PrecioVenta),
-                FillWeight = 14,
-                SortMode = DataGridViewColumnSortMode.NotSortable
-            });
-            _gridLineas.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = ColumnaLineaSubtotal,
-                HeaderText = "Subtotal",
-                DataPropertyName = nameof(LineaCompraDto.Subtotal),
-                FillWeight = 14,
-                SortMode = DataGridViewColumnSortMode.NotSortable
-            });
-            _gridLineas.Columns.Add(new DataGridViewButtonColumn
-            {
-                Name = ColumnaLineaEditar,
-                HeaderText = string.Empty,
-                Text = "Editar",
-                UseColumnTextForButtonValue = true,
-                FillWeight = 7,
-                FlatStyle = FlatStyle.Flat,
-                SortMode = DataGridViewColumnSortMode.NotSortable
-            });
-            _gridLineas.Columns.Add(new DataGridViewButtonColumn
-            {
-                Name = ColumnaLineaQuitar,
-                HeaderText = string.Empty,
-                Text = "Quitar",
-                UseColumnTextForButtonValue = true,
-                FillWeight = 7,
-                FlatStyle = FlatStyle.Flat,
-                SortMode = DataGridViewColumnSortMode.NotSortable
-            });
-
-            // Total general: solo los subtotales de las líneas de la grilla
-            // (RF-7 y RF-65). La línea en preparación no suma.
-            _lblMontoTotal = new MaterialLabel
-            {
-                Text = "Total: 0,00",
-                Location = new Point(20, 420),
-                AutoSize = true,
-                FontType = MaterialSkinManager.fontType.H6,
-                ForeColor = Color.White,
-                Depth = 0
-            };
-
-            FlowLayoutPanel panelAcciones = new FlowLayoutPanel
-            {
-                Location = new Point(300, 412),
-                Width = 720,
-                Height = 55,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                FlowDirection = FlowDirection.RightToLeft,
-                WrapContents = false,
-                AutoScroll = true,
-                BackColor = TemaAplicacion.FondoPrincipal,
-                Padding = new Padding(0, 2, 0, 2)
-            };
-
-            _btnRegistrar = new MaterialButton
-            {
-                Text = "Registrar compra",
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Height = 40,
-                Type = MaterialButton.MaterialButtonType.Contained,
-                HighEmphasis = true,
-                UseAccentColor = true,
-                Depth = 0,
-                Margin = new Padding(4, 6, 4, 6)
-            };
-
-            _btnLimpiar = new MaterialButton
-            {
-                Text = "Cancelar compra",
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Height = 40,
-                Type = MaterialButton.MaterialButtonType.Contained,
-                HighEmphasis = true,
-                UseAccentColor = false,
-                Depth = 0,
-                Margin = new Padding(4, 6, 4, 6)
-            };
-
-            panelAcciones.Controls.Add(_btnRegistrar);
-            panelAcciones.Controls.Add(_btnLimpiar);
-
-            // Historial de compras registradas (RF-49 … RF-52).
-            _lblTituloHistorial = new MaterialLabel
-            {
-                Text = "Historial de compras",
-                Location = new Point(20, 475),
-                AutoSize = true,
-                FontType = MaterialSkinManager.fontType.Subtitle1,
-                ForeColor = Color.White,
-                Depth = 0
-            };
-
-            _lblMensajeHistorial = new MaterialLabel
-            {
-                Location = new Point(210, 482),
-                AutoSize = true,
-                FontType = MaterialSkinManager.fontType.Body2,
-                ForeColor = Color.Gainsboro,
-                Depth = 0
-            };
-
-            _gridHistorial = CrearGrilla();
-            _gridHistorial.Location = new Point(20, 505);
-            _gridHistorial.Height = 180;
-            _gridHistorial.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = "colHistorialNumero",
-                HeaderText = "N° Compra",
-                DataPropertyName = nameof(HistorialCompraDto.IdCompra),
-                FillWeight = 10
-            });
-            _gridHistorial.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = ColumnaHistorialFecha,
-                HeaderText = "Fecha y hora",
-                DataPropertyName = nameof(HistorialCompraDto.FechaRegistro),
-                FillWeight = 18
-            });
-            _gridHistorial.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = "colHistorialProveedor",
-                HeaderText = "Proveedor",
-                DataPropertyName = nameof(HistorialCompraDto.RazonSocialProveedor),
-                FillWeight = 30
-            });
-            _gridHistorial.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = "colHistorialUsuario",
-                HeaderText = "Usuario",
-                DataPropertyName = nameof(HistorialCompraDto.NombreUsuario),
-                FillWeight = 18
-            });
-            _gridHistorial.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = ColumnaHistorialTotal,
-                HeaderText = "Total",
-                DataPropertyName = nameof(HistorialCompraDto.MontoTotal),
-                FillWeight = 14
-            });
-            _gridHistorial.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = ColumnaHistorialEstado,
-                HeaderText = "Estado",
-                DataPropertyName = nameof(HistorialCompraDto.Estado),
-                FillWeight = 10
-            });
-
-            panelPrincipal.Controls.Add(_lblTitulo);
-            panelPrincipal.Controls.Add(_txtBuscarProveedor);
-            panelPrincipal.Controls.Add(_cboResultadosProveedor);
-            panelPrincipal.Controls.Add(_lblProveedorElegido);
-            panelPrincipal.Controls.Add(panelCaptura);
-            panelPrincipal.Controls.Add(_lblMensaje);
-            panelPrincipal.Controls.Add(_gridLineas);
-            panelPrincipal.Controls.Add(_lblMontoTotal);
-            panelPrincipal.Controls.Add(panelAcciones);
-            panelPrincipal.Controls.Add(_lblTituloHistorial);
-            panelPrincipal.Controls.Add(_lblMensajeHistorial);
-            panelPrincipal.Controls.Add(_gridHistorial);
-
-            Controls.Add(panelPrincipal);
-
-            // Eventos delgados (plan §10.3): cada manejador solo orquesta y
-            // bindea; las reglas viven en CompraNegocio.
-            _txtBuscarProveedor.TextChanged += txtBuscarProveedor_TextChanged;
-            _txtBuscarProducto.TextChanged += txtBuscarProducto_TextChanged;
-            _cboResultadosProveedor.SelectedIndexChanged += cboResultadosProveedor_SelectedIndexChanged;
-            _cboResultadosProducto.SelectedIndexChanged += cboResultadosProducto_SelectedIndexChanged;
-            _txtCantidad.TextChanged += captura_TextChanged;
-            _txtPrecioCompra.TextChanged += captura_TextChanged;
-            _txtPrecioVenta.TextChanged += captura_TextChanged;
-            _btnAgregarLinea.Click += btnAgregarLinea_Click;
-            _gridLineas.CellContentClick += gridLineas_CellContentClick;
-            _gridLineas.CellFormatting += gridLineas_CellFormatting;
-            _btnRegistrar.Click += btnRegistrar_Click;
-            _btnLimpiar.Click += btnLimpiar_Click;
-            _gridHistorial.CellFormatting += gridHistorial_CellFormatting;
-        }
-
         /// <summary>
-        /// Crea una grilla de solo lectura con el estilo oscuro compartido por las
-        /// pantallas de la aplicación (RNF-7).
+        /// Aplica el estilo oscuro compartido por las pantallas de la aplicación a
+        /// una grilla ya declarada en el diseñador (RNF-7).
         /// </summary>
-        /// <returns>Grilla configurada, sin columnas.</returns>
-        private static DataGridView CrearGrilla()
+        /// <param name="grilla">Grilla a estilizar.</param>
+        private static void AplicarEstiloGrilla(DataGridView grilla)
         {
-            DataGridView grilla = new DataGridView
-            {
-                Width = 1000,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AllowUserToResizeRows = false,
-                AutoGenerateColumns = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.FromArgb(48, 48, 48),
-                BorderStyle = BorderStyle.None,
-                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
-                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
-                RowHeadersVisible = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                MultiSelect = false,
-                EnableHeadersVisualStyles = false
-            };
+            grilla.BackgroundColor = Color.FromArgb(48, 48, 48);
+            grilla.BorderStyle = BorderStyle.None;
+            grilla.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+            grilla.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
+            grilla.EnableHeadersVisualStyles = false;
 
             grilla.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 Alignment = DataGridViewContentAlignment.MiddleLeft,
                 BackColor = Color.FromArgb(55, 71, 79),
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 ForeColor = Color.White,
                 SelectionBackColor = Color.FromArgb(55, 71, 79),
                 SelectionForeColor = Color.White,
                 WrapMode = DataGridViewTriState.True
             };
-            grilla.ColumnHeadersHeight = 42;
 
             grilla.DefaultCellStyle = new DataGridViewCellStyle
             {
                 Alignment = DataGridViewContentAlignment.MiddleLeft,
                 BackColor = Color.FromArgb(48, 48, 48),
-                Font = new Font("Segoe UI", 10F),
+                Font = new Font("Segoe UI", 9.5F),
                 ForeColor = Color.White,
                 SelectionBackColor = Color.FromArgb(255, 87, 34),
                 SelectionForeColor = Color.White,
                 WrapMode = DataGridViewTriState.False
             };
-            grilla.GridColor = Color.FromArgb(80, 80, 80);
-            grilla.RowTemplate.Height = 36;
 
-            return grilla;
+            grilla.GridColor = Color.FromArgb(80, 80, 80);
         }
 
         // =====================================================================
-        // 2. BÚSQUEDAS Y PRELLENADO
+        // 2. BÚSQUEDAS A DEMANDA Y SELECCIÓN BIDIRECCIONAL
         // =====================================================================
 
         private void txtBuscarProveedor_TextChanged(object? sender, EventArgs e)
         {
+            if (_actualizandoControles)
+            {
+                return;
+            }
+
             _temporizadorProveedores.Stop();
             _temporizadorProveedores.Start();
         }
@@ -606,66 +256,37 @@ namespace CapaPresentacion.Compras
 
         /// <summary>
         /// Consulta proveedores activos con el texto actual. Con el texto vacío no
-        /// se invoca el negocio (RF-10).
+        /// se invoca el negocio y el listado queda vacío (RF-10).
         /// </summary>
         /// <returns>Tarea que representa la búsqueda.</returns>
         private async Task BuscarProveedoresAsync()
         {
-            if (string.IsNullOrWhiteSpace(_txtBuscarProveedor.Text))
+            if (string.IsNullOrWhiteSpace(txtBuscarProveedor.Text))
             {
+                _proveedoresBuscados.Clear();
+                _proveedoresHistoricos.Clear();
+                MostrarProveedores(null);
+                lblMensajeProveedores.Text = string.Empty;
                 return;
             }
 
             RespuestaBusquedaProveedoresCompra respuesta =
-                await _negocio.BuscarProveedoresAsync(_txtBuscarProveedor.Text);
+                await _negocio.BuscarProveedoresAsync(txtBuscarProveedor.Text);
 
-            _proveedoresEncontrados.Clear();
-            _proveedoresEncontrados.AddRange(respuesta.Proveedores);
-
-            _actualizandoControles = true;
-
-            try
-            {
-                _cboResultadosProveedor.Items.Clear();
-
-                foreach (ProveedorSeleccionadoDto proveedor in _proveedoresEncontrados)
-                {
-                    _cboResultadosProveedor.Items.Add(
-                        $"{proveedor.RazonSocial} — {proveedor.Documento}");
-                }
-
-                _cboResultadosProveedor.SelectedIndex = -1;
-            }
-            finally
-            {
-                _actualizandoControles = false;
-            }
-
-            _lblMensaje.Text = respuesta.Mensaje;
+            _proveedoresBuscados.Clear();
+            _proveedoresBuscados.AddRange(respuesta.Proveedores);
+            _proveedoresHistoricos.Clear();
+            MostrarProveedores(_proveedoresBuscados);
+            lblMensajeProveedores.Text = respuesta.Mensaje;
         }
 
-        private void cboResultadosProveedor_SelectedIndexChanged(object? sender, EventArgs e)
+        private void txtBuscarProducto_TextChanged(object? sender, EventArgs e)
         {
             if (_actualizandoControles)
             {
                 return;
             }
 
-            int indice = _cboResultadosProveedor.SelectedIndex;
-
-            if (indice < 0 || indice >= _proveedoresEncontrados.Count)
-            {
-                return;
-            }
-
-            // RF-12 y RF-13: fijar el proveedor no limpia las líneas en carga.
-            _proveedorElegido = _proveedoresEncontrados[indice];
-            _lblProveedorElegido.Text =
-                $"Proveedor: {_proveedorElegido.RazonSocial} — {_proveedorElegido.Documento}";
-        }
-
-        private void txtBuscarProducto_TextChanged(object? sender, EventArgs e)
-        {
             _temporizadorProductos.Stop();
             _temporizadorProductos.Start();
         }
@@ -678,61 +299,89 @@ namespace CapaPresentacion.Compras
 
         /// <summary>
         /// Consulta productos activos con el texto actual. Con el texto vacío no se
-        /// invoca el negocio (RF-16).
+        /// invoca el negocio y el listado queda vacío (RF-16).
         /// </summary>
         /// <returns>Tarea que representa la búsqueda.</returns>
         private async Task BuscarProductosAsync()
         {
-            if (string.IsNullOrWhiteSpace(_txtBuscarProducto.Text))
+            if (string.IsNullOrWhiteSpace(txtBuscarProducto.Text))
             {
+                _productosBuscados.Clear();
+                _productosHistoricos.Clear();
+                MostrarProductos(null);
+                lblMensajeProductos.Text = string.Empty;
                 return;
             }
 
             RespuestaBusquedaProductosCompra respuesta =
-                await _negocio.BuscarProductosAsync(_txtBuscarProducto.Text);
+                await _negocio.BuscarProductosAsync(txtBuscarProducto.Text);
 
-            _productosEncontrados.Clear();
-            _productosEncontrados.AddRange(respuesta.Productos);
-
-            _actualizandoControles = true;
-
-            try
-            {
-                _cboResultadosProducto.Items.Clear();
-
-                foreach (ProductoBuscadoDto producto in _productosEncontrados)
-                {
-                    _cboResultadosProducto.Items.Add($"{producto.Codigo} — {producto.Nombre}");
-                }
-
-                _cboResultadosProducto.SelectedIndex = -1;
-            }
-            finally
-            {
-                _actualizandoControles = false;
-            }
-
-            _lblMensaje.Text = respuesta.Mensaje;
+            _productosBuscados.Clear();
+            _productosBuscados.AddRange(respuesta.Productos);
+            _productosHistoricos.Clear();
+            MostrarProductos(_productosBuscados);
+            lblMensajeProductos.Text = respuesta.Mensaje;
         }
 
-        private async void cboResultadosProducto_SelectedIndexChanged(object? sender, EventArgs e)
+        private async void gridProductos_SelectionChanged(object? sender, EventArgs e)
         {
-            if (_actualizandoControles)
+            if (_actualizandoControles || gridProductos.CurrentRow is null)
             {
                 return;
             }
 
-            int indice = _cboResultadosProducto.SelectedIndex;
-
-            if (indice < 0 || indice >= _productosEncontrados.Count)
+            if (!TryObtenerProductoSeleccionado(gridProductos.CurrentRow.DataBoundItem, out int idProducto,
+                    out string codigo, out string nombre))
             {
                 return;
             }
 
-            _productoElegido = _productosEncontrados[indice];
-            int idProducto = _productoElegido.IdProducto;
+            if (_idProductoElegido == idProducto)
+            {
+                return;
+            }
 
-            await EjecutarAsync(() => PrellenarPreciosAsync(idProducto));
+            _idProductoElegido = idProducto;
+            _codigoProductoElegido = codigo;
+            _nombreProductoElegido = nombre;
+            MostrarDatosProducto();
+
+            await EjecutarAsync(async () =>
+            {
+                await PrellenarPreciosAsync(idProducto);
+
+                // RF-38 / RF-39: el foco queda en Cantidad con el texto seleccionado.
+                txtCantidad.Focus();
+                txtCantidad.SelectAll();
+
+                await ResolverProveedoresDelProductoAsync(idProducto);
+            });
+        }
+
+        private async void gridProveedores_SelectionChanged(object? sender, EventArgs e)
+        {
+            if (_actualizandoControles || gridProveedores.CurrentRow is null)
+            {
+                return;
+            }
+
+            if (!TryObtenerProveedorSeleccionado(gridProveedores.CurrentRow.DataBoundItem,
+                    out int idProveedor, out string razonSocial, out string documento))
+            {
+                return;
+            }
+
+            if (_idProveedorElegido == idProveedor)
+            {
+                return;
+            }
+
+            _idProveedorElegido = idProveedor;
+            _razonSocialProveedor = razonSocial;
+            _documentoProveedor = documento;
+            MostrarDatosProveedor();
+
+            await EjecutarAsync(() => FiltrarProductosDelProveedorAsync(idProveedor));
         }
 
         /// <summary>
@@ -746,17 +395,98 @@ namespace CapaPresentacion.Compras
             RespuestaPreciosProducto respuesta =
                 await _negocio.ObtenerPreciosProductoAsync(idProducto);
 
-            _lblMensaje.Text = respuesta.Mensaje;
+            lblMensajeProductos.Text = respuesta.Mensaje;
 
             if (respuesta.Precios is null)
             {
                 return;
             }
 
-            _txtPrecioCompra.Text =
+            txtPrecioCompra.Text =
                 respuesta.Precios.PrecioCompra.ToString("0.00", CultureInfo.CurrentCulture);
-            _txtPrecioVenta.Text =
+            txtPrecioVenta.Text =
                 respuesta.Precios.PrecioVenta.ToString("0.00", CultureInfo.CurrentCulture);
+        }
+
+        /// <summary>
+        /// Resuelve los proveedores históricos del producto elegido (RF-12): con
+        /// uno solo se autocompleta el proveedor activo; con varios se acota el
+        /// listado y se pide elegir; sin históricos el listado queda libre.
+        /// </summary>
+        /// <param name="idProducto">Producto elegido en la búsqueda.</param>
+        /// <returns>Tarea que representa la consulta.</returns>
+        private async Task ResolverProveedoresDelProductoAsync(int idProducto)
+        {
+            RespuestaProveedoresDeProducto respuesta =
+                await _negocio.ObtenerProveedoresDeProductoAsync(idProducto, _rolActual);
+
+            _proveedoresBuscados.Clear();
+            _proveedoresHistoricos.Clear();
+
+            switch (respuesta.Resultado)
+            {
+                case ResultadoConsultaHistoricaCompra.ConResultados:
+                    _proveedoresHistoricos.AddRange(respuesta.Proveedores);
+                    MostrarProveedores(_proveedoresHistoricos);
+
+                    if (_proveedoresHistoricos.Count == 1)
+                    {
+                        ProveedorDeProductoDto unico = _proveedoresHistoricos[0];
+
+                        // RF-12: con un solo proveedor histórico se autocompleta,
+                        // salvo que ya hubiera uno elegido, que no se descarta (RF-13).
+                        if (!_idProveedorElegido.HasValue)
+                        {
+                            _idProveedorElegido = unico.IdProveedor;
+                            _razonSocialProveedor = unico.RazonSocial;
+                            _documentoProveedor = unico.Documento;
+                            MostrarDatosProveedor();
+                            SeleccionarProveedorEnGrilla(unico.IdProveedor);
+                        }
+                    }
+
+                    lblMensajeProveedores.Text = _proveedoresHistoricos.Count == 1
+                        ? respuesta.Mensaje
+                        : TextoSeleccioneProveedor;
+                    return;
+
+                case ResultadoConsultaHistoricaCompra.SinResultados:
+                    MostrarProveedores(null);
+                    lblMensajeProveedores.Text = respuesta.Mensaje;
+                    return;
+
+                default:
+                    lblMensajeProveedores.Text = respuesta.Mensaje;
+                    return;
+            }
+        }
+
+        /// <summary>
+        /// Acota el listado de productos a los que el proveedor elegido ya vendió
+        /// (RF-15). Si no hay históricos, el listado queda libre para la búsqueda
+        /// por texto y se muestra el mensaje del negocio.
+        /// </summary>
+        /// <param name="idProveedor">Proveedor elegido.</param>
+        /// <returns>Tarea que representa la consulta.</returns>
+        private async Task FiltrarProductosDelProveedorAsync(int idProveedor)
+        {
+            RespuestaProductosDeProveedor respuesta =
+                await _negocio.ObtenerProductosDeProveedorAsync(idProveedor, _rolActual);
+
+            _productosBuscados.Clear();
+            _productosHistoricos.Clear();
+
+            if (respuesta.Resultado == ResultadoConsultaHistoricaCompra.ConResultados)
+            {
+                _productosHistoricos.AddRange(respuesta.Productos);
+                MostrarProductos(_productosHistoricos);
+            }
+            else if (respuesta.Resultado == ResultadoConsultaHistoricaCompra.SinResultados)
+            {
+                MostrarProductos(null);
+            }
+
+            lblMensajeProductos.Text = respuesta.Mensaje;
         }
 
         // =====================================================================
@@ -775,12 +505,12 @@ namespace CapaPresentacion.Compras
         private void ActualizarSubtotalPreparacion()
         {
             SubtotalLineaDto subtotal = _negocio.CalcularSubtotalEnPreparacion(
-                _productoElegido?.IdProducto,
-                _txtCantidad.Text,
-                _txtPrecioCompra.Text,
-                _txtPrecioVenta.Text);
+                _idProductoElegido,
+                txtCantidad.Text,
+                txtPrecioCompra.Text,
+                txtPrecioVenta.Text);
 
-            _lblSubtotalPreparacion.Text =
+            lblSubtotalPreparacion.Text =
                 subtotal.EsValido && subtotal.Subtotal.HasValue
                     ? $"Subtotal: {subtotal.Subtotal.Value.ToString("N2", CultureInfo.CurrentCulture)}"
                     : TextoSubtotalInvalido;
@@ -799,8 +529,15 @@ namespace CapaPresentacion.Compras
         /// <returns>Tarea que representa la operación de línea.</returns>
         private async Task GuardarLineaAsync()
         {
+            if (!_idProveedorElegido.HasValue)
+            {
+                lblMensajeProveedores.Text = TextoSeleccioneProveedor;
+                txtBuscarProveedor.Focus();
+                return;
+            }
+
             IReadOnlyList<LineaCompraDto> lineasActuales = _lineas.ToList();
-            int idProducto = _productoElegido?.IdProducto ?? 0;
+            int idProducto = _idProductoElegido ?? 0;
             RespuestaOperacionLineaCompra respuesta;
 
             if (_indiceEdicion is int indiceEdicion)
@@ -809,9 +546,9 @@ namespace CapaPresentacion.Compras
                 {
                     IndiceLinea = indiceEdicion,
                     IdProducto = idProducto,
-                    Cantidad = _txtCantidad.Text,
-                    PrecioCompra = _txtPrecioCompra.Text,
-                    PrecioVenta = _txtPrecioVenta.Text,
+                    Cantidad = txtCantidad.Text,
+                    PrecioCompra = txtPrecioCompra.Text,
+                    PrecioVenta = txtPrecioVenta.Text,
                     LineasActuales = lineasActuales
                 });
             }
@@ -820,14 +557,14 @@ namespace CapaPresentacion.Compras
                 respuesta = await _negocio.AgregarLineaAsync(new SolicitudAgregarLineaCompraDto
                 {
                     IdProducto = idProducto,
-                    Cantidad = _txtCantidad.Text,
-                    PrecioCompra = _txtPrecioCompra.Text,
-                    PrecioVenta = _txtPrecioVenta.Text,
+                    Cantidad = txtCantidad.Text,
+                    PrecioCompra = txtPrecioCompra.Text,
+                    PrecioVenta = txtPrecioVenta.Text,
                     LineasActuales = lineasActuales
                 });
             }
 
-            _lblMensaje.Text = respuesta.Mensaje;
+            lblMensaje.Text = respuesta.Mensaje;
 
             bool esExito =
                 respuesta.Resultado == ResultadoOperacionLineaCompra.Exito
@@ -852,7 +589,7 @@ namespace CapaPresentacion.Compras
                 return;
             }
 
-            string columna = _gridLineas.Columns[e.ColumnIndex].Name;
+            string columna = gridLineas.Columns[e.ColumnIndex].Name;
 
             if (columna == ColumnaLineaQuitar)
             {
@@ -873,7 +610,7 @@ namespace CapaPresentacion.Compras
         {
             RespuestaCompraEnCarga respuesta = _negocio.QuitarLinea(_lineas.ToList(), indice);
 
-            _lblMensaje.Text = respuesta.Mensaje;
+            lblMensaje.Text = respuesta.Mensaje;
 
             if (!respuesta.Exito)
             {
@@ -901,33 +638,15 @@ namespace CapaPresentacion.Compras
             LineaCompraDto linea = _lineas[indice];
 
             _indiceEdicion = indice;
-            _productoElegido = new ProductoBuscadoDto
-            {
-                IdProducto = linea.IdProducto,
-                Codigo = linea.CodigoProducto,
-                Nombre = linea.NombreProducto
-            };
+            _idProductoElegido = linea.IdProducto;
+            _codigoProductoElegido = linea.CodigoProducto;
+            _nombreProductoElegido = linea.NombreProducto;
+            MostrarDatosProducto();
 
-            _productosEncontrados.Clear();
-            _productosEncontrados.Add(_productoElegido);
-
-            _actualizandoControles = true;
-
-            try
-            {
-                _cboResultadosProducto.Items.Clear();
-                _cboResultadosProducto.Items.Add($"{linea.CodigoProducto} — {linea.NombreProducto}");
-                _cboResultadosProducto.SelectedIndex = 0;
-            }
-            finally
-            {
-                _actualizandoControles = false;
-            }
-
-            _txtCantidad.Text = linea.Cantidad.ToString(CultureInfo.CurrentCulture);
-            _txtPrecioCompra.Text = linea.PrecioCompra.ToString("0.00", CultureInfo.CurrentCulture);
-            _txtPrecioVenta.Text = linea.PrecioVenta.ToString("0.00", CultureInfo.CurrentCulture);
-            _btnAgregarLinea.Text = "Guardar línea";
+            txtCantidad.Text = linea.Cantidad.ToString(CultureInfo.CurrentCulture);
+            txtPrecioCompra.Text = linea.PrecioCompra.ToString("0.00", CultureInfo.CurrentCulture);
+            txtPrecioVenta.Text = linea.PrecioVenta.ToString("0.00", CultureInfo.CurrentCulture);
+            btnAgregarLinea.Text = TextoBotonGuardar;
             ActualizarSubtotalPreparacion();
         }
 
@@ -937,13 +656,13 @@ namespace CapaPresentacion.Compras
         /// </summary>
         private void RefrescarGrillaLineas()
         {
-            _gridLineas.DataSource = null;
-            _gridLineas.DataSource = _lineas.ToList();
+            gridLineas.DataSource = null;
+            gridLineas.DataSource = _lineas.ToList();
 
             decimal montoTotal =
                 CalculoImportesCompra.CalcularMontoTotal(_lineas.Select(linea => linea.Subtotal));
 
-            _lblMontoTotal.Text = $"Total: {montoTotal.ToString("N2", CultureInfo.CurrentCulture)}";
+            lblMontoTotal.Text = $"Total: {montoTotal.ToString("N2", CultureInfo.CurrentCulture)}";
         }
 
         // =====================================================================
@@ -969,21 +688,28 @@ namespace CapaPresentacion.Compras
                 return;
             }
 
+            if (!_idProveedorElegido.HasValue)
+            {
+                lblMensajeProveedores.Text = TextoSeleccioneProveedor;
+                txtBuscarProveedor.Focus();
+                return;
+            }
+
             _registrando = true;
-            _btnRegistrar.Enabled = false;
+            btnRegistrar.Enabled = false;
 
             try
             {
                 SolicitudRegistrarCompraDto solicitud = new()
                 {
-                    IdProveedor = _proveedorElegido?.IdProveedor,
+                    IdProveedor = _idProveedorElegido,
                     Lineas = _lineas.ToList()
                 };
 
                 RespuestaRegistroCompra respuesta =
                     await _negocio.RegistrarCompraAsync(solicitud, _idUsuario, _rolActual);
 
-                _lblMensaje.Text = respuesta.Mensaje;
+                lblMensaje.Text = respuesta.Mensaje;
 
                 if (respuesta.Resultado != ResultadoRegistroCompra.Exito)
                 {
@@ -996,7 +722,7 @@ namespace CapaPresentacion.Compras
             finally
             {
                 _registrando = false;
-                _btnRegistrar.Enabled = PoliticaAcceso.PuedeOperarCompras(_rolActual);
+                btnRegistrar.Enabled = PoliticaAcceso.PuedeOperarCompras(_rolActual);
             }
         }
 
@@ -1022,7 +748,38 @@ namespace CapaPresentacion.Compras
             }
 
             LimpiarTrasRegistro();
-            _lblMensaje.Text = string.Empty;
+            lblMensaje.Text = string.Empty;
+        }
+
+        private void btnVerDetalle_Click(object? sender, EventArgs e)
+        {
+            AbrirDetalleSeleccionado();
+        }
+
+        private void gridHistorial_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0)
+            {
+                return;
+            }
+
+            AbrirDetalleSeleccionado();
+        }
+
+        /// <summary>
+        /// Abre el modal de solo lectura con el detalle de la compra marcada en la
+        /// grilla del historial (RF-53 y RF-54). Sin fila seleccionada no hace nada
+        /// y no altera la compra en carga.
+        /// </summary>
+        private void AbrirDetalleSeleccionado()
+        {
+            if (gridHistorial.CurrentRow?.DataBoundItem is not HistorialCompraDto compra)
+            {
+                return;
+            }
+
+            using DetalleCompraForm detalle = new DetalleCompraForm(_negocio, compra.IdCompra, _rolActual);
+            detalle.ShowDialog(this);
         }
 
         /// <summary>
@@ -1031,59 +788,207 @@ namespace CapaPresentacion.Compras
         /// </summary>
         private void LimpiarTrasRegistro()
         {
-            _proveedorElegido = null;
-            _proveedoresEncontrados.Clear();
+            _idProveedorElegido = null;
+            _razonSocialProveedor = null;
+            _documentoProveedor = null;
+            _proveedoresBuscados.Clear();
+            _proveedoresHistoricos.Clear();
+            _temporizadorProveedores.Stop();
 
             _actualizandoControles = true;
 
             try
             {
-                _cboResultadosProveedor.Items.Clear();
-                _cboResultadosProveedor.SelectedIndex = -1;
-                _txtBuscarProveedor.Text = string.Empty;
+                txtBuscarProveedor.Text = string.Empty;
             }
             finally
             {
                 _actualizandoControles = false;
             }
 
-            _lblProveedorElegido.Text = TextoProveedorSinElegir;
+            MostrarProveedores(null);
+            lblMensajeProveedores.Text = string.Empty;
+            MostrarDatosProveedor();
             _lineas.Clear();
             LimpiarCaptura();
             RefrescarGrillaLineas();
         }
 
         /// <summary>
-        /// Deja el área de captura vacía y sin modo edición.
+        /// Deja el área de captura vacía y sin modo edición, y vuelve a dejar el
+        /// listado de productos vacío hasta la próxima búsqueda (RF-16).
         /// </summary>
         private void LimpiarCaptura()
         {
             _indiceEdicion = null;
-            _productoElegido = null;
-            _productosEncontrados.Clear();
+            _idProductoElegido = null;
+            _codigoProductoElegido = null;
+            _nombreProductoElegido = null;
+            _productosBuscados.Clear();
+            _productosHistoricos.Clear();
+            _temporizadorProductos.Stop();
 
             _actualizandoControles = true;
 
             try
             {
-                _cboResultadosProducto.Items.Clear();
-                _cboResultadosProducto.SelectedIndex = -1;
-                _txtBuscarProducto.Text = string.Empty;
-                _txtCantidad.Text = string.Empty;
-                _txtPrecioCompra.Text = string.Empty;
-                _txtPrecioVenta.Text = string.Empty;
+                txtBuscarProducto.Text = string.Empty;
+                txtCantidad.Text = string.Empty;
+                txtPrecioCompra.Text = string.Empty;
+                txtPrecioVenta.Text = string.Empty;
             }
             finally
             {
                 _actualizandoControles = false;
             }
 
-            _btnAgregarLinea.Text = "Agregar línea";
+            MostrarProductos(null);
+            lblMensajeProductos.Text = string.Empty;
+            MostrarDatosProducto();
+            btnAgregarLinea.Text = TextoBotonAgregar;
             ActualizarSubtotalPreparacion();
         }
 
         // =====================================================================
-        // 5. FORMATO DE PRESENTACIÓN (RNF-12)
+        // 5. PRESENTACIÓN DE LOS LISTADOS Y DATOS SELECCIONADOS
+        // =====================================================================
+
+        /// <summary>
+        /// Vuelve a enlazar el listado de productos sin disparar la selección
+        /// automática de la primera fila.
+        /// </summary>
+        /// <param name="origen">Lista de resultados o <see langword="null"/> para vaciarlo.</param>
+        private void MostrarProductos(object? origen)
+        {
+            _actualizandoControles = true;
+
+            try
+            {
+                gridProductos.DataSource = null;
+                gridProductos.DataSource = origen;
+                gridProductos.ClearSelection();
+                gridProductos.CurrentCell = null;
+            }
+            finally
+            {
+                _actualizandoControles = false;
+            }
+        }
+
+        /// <summary>
+        /// Vuelve a enlazar el listado de proveedores sin disparar la selección
+        /// automática de la primera fila.
+        /// </summary>
+        /// <param name="origen">Lista de resultados o <see langword="null"/> para vaciarlo.</param>
+        private void MostrarProveedores(object? origen)
+        {
+            _actualizandoControles = true;
+
+            try
+            {
+                gridProveedores.DataSource = null;
+                gridProveedores.DataSource = origen;
+                gridProveedores.ClearSelection();
+                gridProveedores.CurrentCell = null;
+            }
+            finally
+            {
+                _actualizandoControles = false;
+            }
+        }
+
+        private void MostrarDatosProducto()
+        {
+            bool hayProducto = _idProductoElegido.HasValue;
+            lblNombreProducto.Text = hayProducto ? _nombreProductoElegido : TextoProductoSinElegir;
+            lblCodigoProducto.Text = hayProducto
+                ? $"Código: {_codigoProductoElegido}"
+                : TextoCodigoSinElegir;
+        }
+
+        private void MostrarDatosProveedor()
+        {
+            bool hayProveedor = _idProveedorElegido.HasValue;
+            lblRazonSocialProveedor.Text = hayProveedor ? _razonSocialProveedor : TextoProveedorSinElegir;
+            lblDocumentoProveedor.Text = hayProveedor
+                ? $"Documento: {_documentoProveedor}"
+                : TextoDocumentoSinElegir;
+        }
+
+        private void SeleccionarProveedorEnGrilla(int idProveedor)
+        {
+            _actualizandoControles = true;
+
+            try
+            {
+                foreach (DataGridViewRow fila in gridProveedores.Rows)
+                {
+                    if (fila.DataBoundItem is ProveedorDeProductoDto proveedor
+                        && proveedor.IdProveedor == idProveedor)
+                    {
+                        gridProveedores.CurrentCell = fila.Cells[0];
+                        break;
+                    }
+                }
+            }
+            finally
+            {
+                _actualizandoControles = false;
+            }
+        }
+
+        private static bool TryObtenerProductoSeleccionado(
+            object? item, out int idProducto, out string codigo, out string nombre)
+        {
+            switch (item)
+            {
+                case ProductoBuscadoDto producto:
+                    idProducto = producto.IdProducto;
+                    codigo = producto.Codigo;
+                    nombre = producto.Nombre;
+                    return true;
+
+                case ProductoDeProveedorDto producto:
+                    idProducto = producto.IdProducto;
+                    codigo = producto.Codigo;
+                    nombre = producto.Nombre;
+                    return true;
+
+                default:
+                    idProducto = 0;
+                    codigo = string.Empty;
+                    nombre = string.Empty;
+                    return false;
+            }
+        }
+
+        private static bool TryObtenerProveedorSeleccionado(
+            object? item, out int idProveedor, out string razonSocial, out string documento)
+        {
+            switch (item)
+            {
+                case ProveedorSeleccionadoDto proveedor:
+                    idProveedor = proveedor.IdProveedor;
+                    razonSocial = proveedor.RazonSocial;
+                    documento = proveedor.Documento;
+                    return true;
+
+                case ProveedorDeProductoDto proveedor:
+                    idProveedor = proveedor.IdProveedor;
+                    razonSocial = proveedor.RazonSocial;
+                    documento = proveedor.Documento;
+                    return true;
+
+                default:
+                    idProveedor = 0;
+                    razonSocial = string.Empty;
+                    documento = string.Empty;
+                    return false;
+            }
+        }
+
+        // =====================================================================
+        // 6. FORMATO DE PRESENTACIÓN (RNF-12)
         // =====================================================================
 
         private void gridLineas_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
@@ -1093,11 +998,11 @@ namespace CapaPresentacion.Compras
                 return;
             }
 
-            string columna = _gridLineas.Columns[e.ColumnIndex].Name;
+            string columna = gridLineas.Columns[e.ColumnIndex].Name;
 
             if (columna == ColumnaLineaProducto
                 && e.Value is string nombreProducto
-                && _gridLineas.Rows[e.RowIndex].DataBoundItem is LineaCompraDto linea)
+                && gridLineas.Rows[e.RowIndex].DataBoundItem is LineaCompraDto linea)
             {
                 e.Value = $"{linea.CodigoProducto} — {nombreProducto}";
                 e.FormattingApplied = true;
@@ -1116,6 +1021,11 @@ namespace CapaPresentacion.Compras
             }
         }
 
+        /// <summary>
+        /// Aplica el formato de presentación de la barra de historial: fecha y
+        /// hora, importes con <c>N2</c> y estado como «Activa»/«Inactiva»
+        /// (RNF-12). La grilla solo presenta los datos del negocio.
+        /// </summary>
         private void gridHistorial_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0)
@@ -1123,16 +1033,16 @@ namespace CapaPresentacion.Compras
                 return;
             }
 
-            string columna = _gridHistorial.Columns[e.ColumnIndex].Name;
+            string columna = gridHistorial.Columns[e.ColumnIndex].Name;
 
             if (columna == ColumnaHistorialFecha && e.Value is DateTime fecha)
             {
-                e.Value = fecha.ToString("dd/MM/yyyy HH:mm", CultureInfo.CurrentCulture);
+                e.Value = fecha.ToString(FormatoFecha, CultureInfo.CurrentCulture);
                 e.FormattingApplied = true;
             }
             else if (columna == ColumnaHistorialTotal && e.Value is decimal total)
             {
-                e.Value = total.ToString("N2", CultureInfo.CurrentCulture);
+                e.Value = total.ToString(FormatoImporte, CultureInfo.CurrentCulture);
                 e.FormattingApplied = true;
             }
             else if (columna == ColumnaHistorialEstado && e.Value is bool estado)
@@ -1143,7 +1053,7 @@ namespace CapaPresentacion.Compras
         }
 
         // =====================================================================
-        // 6. AYUDA COMÚN DE LOS MANEJADORES
+        // 7. AYUDA COMÚN DE LOS MANEJADORES
         // =====================================================================
 
         /// <summary>
@@ -1161,7 +1071,7 @@ namespace CapaPresentacion.Compras
             }
             catch (Exception excepcion)
             {
-                _lblMensaje.Text = excepcion.Message;
+                lblMensaje.Text = excepcion.Message;
             }
         }
     }

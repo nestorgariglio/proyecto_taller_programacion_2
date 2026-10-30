@@ -76,6 +76,10 @@ public class CompraNegocio
     private const string MensajeUnaCompraEncontrada = "Se encontró 1 compra.";
     private const string MensajeCompraNoEncontrada = "La compra indicada no existe.";
 
+    // Respuestas de las consultas históricas producto ↔ proveedor (T11, RF-55).
+    private const string MensajeSinProveedoresHistoricos = "El producto indicado no tiene proveedores con compras registradas.";
+    private const string MensajeSinProductosHistoricos = "El proveedor indicado no tiene productos con compras registradas.";
+
     // Textos defensivos de las navegaciones nulas (§3.4, M11), idénticos en el
     // historial y en el detalle; no se formatean ni se construyen en la pantalla.
     private const string TextoSinProveedor = "(Sin proveedor)";
@@ -1086,6 +1090,197 @@ public class CompraNegocio
             return new RespuestaCompraConDetalle
             {
                 Resultado = ResultadoCompraConDetalle.ErrorPersistencia,
+                Mensaje = MensajeErrorPersistencia
+            };
+        }
+    }
+
+    // ---------- Consultas históricas producto ↔ proveedor (T11) ----------
+
+    /// <summary>
+    /// Proveedores que ya vendieron el producto indicado, según el historial de
+    /// compras (RF-12). Devuelve una fila por proveedor <b>activo</b> sin repetir
+    /// y en orden determinista por razón social e identificador.
+    /// </summary>
+    /// <param name="idProducto">Producto consultado; si no es positivo no se consulta el origen.</param>
+    /// <param name="rol">
+    /// Rol de la sesión. Se evalúa <b>primero</b> y sin tocar la base: solo
+    /// Administrador y Encargado pueden consultar compras (RF-59 y RF-61); el rol
+    /// no se relee del origen de datos (D-14).
+    /// </param>
+    /// <remarks>
+    /// Una sola consulta con <c>AsNoTracking</c> y <c>join</c> explícito
+    /// <c>DetallesCompra → Compras → Proveedores</c>, acotada por el producto y
+    /// sin filtrar por <c>Compra.Estado</c>, porque el historial incluye compras
+    /// inactivas (RF-49). El <c>join</c> descarta en silencio las filas huérfanas
+    /// en lugar de proyectar por navegación requerida, que lanzaría excepción
+    /// (§3.4). Un fallo de lectura se informa como <c>ErrorPersistencia</c> con el
+    /// texto único (RF-57).
+    /// </remarks>
+    public async Task<RespuestaProveedoresDeProducto> ObtenerProveedoresDeProductoAsync(
+        int idProducto, string? rol)
+    {
+        if (!PoliticaAcceso.PuedeOperarCompras(rol))
+        {
+            return new RespuestaProveedoresDeProducto
+            {
+                Resultado = ResultadoConsultaHistoricaCompra.PermisoDenegado,
+                Mensaje = MensajePermisoConsultarCompras
+            };
+        }
+
+        // Identificador no válido: resultado vacío sin consultar (patrón de RF-10).
+        if (idProducto <= 0)
+        {
+            return new RespuestaProveedoresDeProducto
+            {
+                Resultado = ResultadoConsultaHistoricaCompra.SinResultados,
+                Mensaje = string.Empty
+            };
+        }
+
+        try
+        {
+            var filas = await (
+                    from detalle in _context.DetallesCompra.AsNoTracking()
+                    join compra in _context.Compras.AsNoTracking()
+                        on detalle.IdCompra equals compra.IdCompra
+                    join proveedor in _context.Proveedores.AsNoTracking()
+                        on compra.IdProveedor equals proveedor.IdProveedor
+                    where detalle.IdProducto == idProducto && proveedor.Estado
+                    select new
+                    {
+                        proveedor.IdProveedor,
+                        proveedor.RazonSocial,
+                        proveedor.Cuit
+                    })
+                .Distinct()
+                .OrderBy(p => p.RazonSocial)
+                .ThenBy(p => p.IdProveedor)
+                .ToListAsync();
+
+            if (filas.Count == 0)
+            {
+                return new RespuestaProveedoresDeProducto
+                {
+                    Resultado = ResultadoConsultaHistoricaCompra.SinResultados,
+                    Mensaje = MensajeSinProveedoresHistoricos
+                };
+            }
+
+            return new RespuestaProveedoresDeProducto
+            {
+                Resultado = ResultadoConsultaHistoricaCompra.ConResultados,
+                Mensaje = string.Empty,
+                Proveedores = filas
+                    .Select(f => new ProveedorDeProductoDto
+                    {
+                        IdProveedor = f.IdProveedor,
+                        RazonSocial = f.RazonSocial ?? string.Empty,
+                        Documento = f.Cuit ?? string.Empty
+                    })
+                    .ToList()
+            };
+        }
+        catch (Exception excepcion) when (EsFalloDeOrigenDeDatos(excepcion))
+        {
+            return new RespuestaProveedoresDeProducto
+            {
+                Resultado = ResultadoConsultaHistoricaCompra.ErrorPersistencia,
+                Mensaje = MensajeErrorPersistencia
+            };
+        }
+    }
+
+    /// <summary>
+    /// Productos que el proveedor indicado ya vendió, según el historial de
+    /// compras (RF-15). Devuelve una fila por producto <b>activo</b> sin repetir
+    /// y en orden determinista por nombre e identificador.
+    /// </summary>
+    /// <param name="idProveedor">Proveedor consultado; si no es positivo no se consulta el origen.</param>
+    /// <param name="rol">
+    /// Rol de la sesión. Se evalúa <b>primero</b> y sin tocar la base: solo
+    /// Administrador y Encargado pueden consultar compras (RF-59 y RF-61); el rol
+    /// no se relee del origen de datos (D-14).
+    /// </param>
+    /// <remarks>
+    /// Una sola consulta con <c>AsNoTracking</c> y <c>join</c> explícito
+    /// <c>DetallesCompra → Compras → Productos</c>, acotada por el proveedor y
+    /// sin filtrar por <c>Compra.Estado</c>, porque el historial incluye compras
+    /// inactivas (RF-49). El <c>join</c> descarta en silencio las filas huérfanas
+    /// (§3.4). Un fallo de lectura se informa como <c>ErrorPersistencia</c> con el
+    /// texto único (RF-57).
+    /// </remarks>
+    public async Task<RespuestaProductosDeProveedor> ObtenerProductosDeProveedorAsync(
+        int idProveedor, string? rol)
+    {
+        if (!PoliticaAcceso.PuedeOperarCompras(rol))
+        {
+            return new RespuestaProductosDeProveedor
+            {
+                Resultado = ResultadoConsultaHistoricaCompra.PermisoDenegado,
+                Mensaje = MensajePermisoConsultarCompras
+            };
+        }
+
+        // Identificador no válido: resultado vacío sin consultar (patrón de RF-16).
+        if (idProveedor <= 0)
+        {
+            return new RespuestaProductosDeProveedor
+            {
+                Resultado = ResultadoConsultaHistoricaCompra.SinResultados,
+                Mensaje = string.Empty
+            };
+        }
+
+        try
+        {
+            var filas = await (
+                    from detalle in _context.DetallesCompra.AsNoTracking()
+                    join compra in _context.Compras.AsNoTracking()
+                        on detalle.IdCompra equals compra.IdCompra
+                    join producto in _context.Productos.AsNoTracking()
+                        on detalle.IdProducto equals producto.IdProducto
+                    where compra.IdProveedor == idProveedor && producto.Estado
+                    select new
+                    {
+                        producto.IdProducto,
+                        producto.Codigo,
+                        producto.Nombre
+                    })
+                .Distinct()
+                .OrderBy(p => p.Nombre)
+                .ThenBy(p => p.IdProducto)
+                .ToListAsync();
+
+            if (filas.Count == 0)
+            {
+                return new RespuestaProductosDeProveedor
+                {
+                    Resultado = ResultadoConsultaHistoricaCompra.SinResultados,
+                    Mensaje = MensajeSinProductosHistoricos
+                };
+            }
+
+            return new RespuestaProductosDeProveedor
+            {
+                Resultado = ResultadoConsultaHistoricaCompra.ConResultados,
+                Mensaje = string.Empty,
+                Productos = filas
+                    .Select(f => new ProductoDeProveedorDto
+                    {
+                        IdProducto = f.IdProducto,
+                        Codigo = f.Codigo ?? string.Empty,
+                        Nombre = f.Nombre ?? string.Empty
+                    })
+                    .ToList()
+            };
+        }
+        catch (Exception excepcion) when (EsFalloDeOrigenDeDatos(excepcion))
+        {
+            return new RespuestaProductosDeProveedor
+            {
+                Resultado = ResultadoConsultaHistoricaCompra.ErrorPersistencia,
                 Mensaje = MensajeErrorPersistencia
             };
         }
