@@ -74,10 +74,10 @@ namespace CapaPresentacion
             _proveedoresForm = proveedoresForm;
             tab_proveedores.Enter += tab_proveedores_Enter;
 
-            // La pantalla de compras también llega por DI (plan §10.1) y recarga
-            // el historial real al entrar en la pestaña.
+            // La pantalla de compras también llega por DI (plan §10.1). Ya no
+            // recarga ningún historial al entrar: el historial se consulta dentro
+            // del modal DetalleCompraForm, así que la pestaña no necesita manejador.
             _comprasForm = comprasForm;
-            tab_compras.Enter += tab_compras_Enter;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -453,16 +453,6 @@ namespace CapaPresentacion
             if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Proveedores"))
             {
                 await _proveedoresForm.CargarProveedoresAsync();
-            }
-        }
-
-        private async void tab_compras_Enter(object? sender, EventArgs e)
-        {
-            // RF-52: el historial se recarga con datos reales al entrar en la
-            // pestaña, solo para los roles con acceso al módulo (RF-8).
-            if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Compras"))
-            {
-                await _comprasForm.CargarHistorialAsync();
             }
         }
 

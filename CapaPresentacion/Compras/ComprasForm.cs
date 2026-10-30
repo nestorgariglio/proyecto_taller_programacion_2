@@ -17,13 +17,14 @@ namespace CapaPresentacion.Compras
     /// <summary>
     /// Pantalla de carga de compras a proveedores organizada en tres bloques:
     /// producto y proveedor (búsquedas a demanda), compra actual y barra de
-    /// acciones. El producto y el proveedor se buscan a demanda (RF-9 … RF-17) y
-    /// la selección es bidireccional: elegir un producto propone los proveedores
-    /// que ya lo vendieron y elegir un proveedor acota el listado a los productos
-    /// de su historial (RF-12 y RF-53). El historial ya no se lista dentro de la
-    /// pantalla: la barra de acciones abre <see cref="DetalleCompraForm"/> en modo
-    /// lista (RF-52 … RF-54). La pantalla no valida, no calcula importes ni
-    /// redacta mensajes: solo invoca <see cref="CompraNegocio"/> y muestra el
+    /// acciones. El producto y el proveedor se buscan a demanda (RF-9 … RF-17)
+    /// sobre catálogos independientes y la selección es unidireccional: elegir un
+    /// producto propone los proveedores que ya lo vendieron (RF-12), mientras que
+    /// elegir un proveedor solo actualiza el proveedor elegido sin tocar el
+    /// listado de productos. El historial ya no se lista dentro de la pantalla:
+    /// la barra de acciones abre <see cref="DetalleCompraForm"/> en modo lista
+    /// (RF-52 … RF-54). La pantalla no valida, no calcula importes ni redacta
+    /// mensajes: solo invoca <see cref="CompraNegocio"/> y muestra el
     /// <c>Mensaje</c> que este devuelve (RF-55, RNF-6 y RNF-13).
     /// </summary>
     public partial class ComprasForm : UserControl
@@ -53,7 +54,6 @@ namespace CapaPresentacion.Compras
         private readonly List<ProveedorSeleccionadoDto> _proveedoresBuscados = new();
         private readonly List<ProveedorDeProductoDto> _proveedoresHistoricos = new();
         private readonly List<ProductoBuscadoDto> _productosBuscados = new();
-        private readonly List<ProductoDeProveedorDto> _productosHistoricos = new();
 
         private int? _idProveedorElegido;
         private string? _razonSocialProveedor;
@@ -146,20 +146,22 @@ namespace CapaPresentacion.Compras
             btnAgregarLinea.Enabled = habilitado;
             btnLimpiar.Enabled = habilitado;
             btnVerHistorial.Enabled = habilitado;
-            btnRegistrar.Enabled = habilitado && !_registrando;
+            ActualizarEstadoAcciones();
         }
 
         /// <summary>
-        /// Se conserva como punto de entrada público porque la pestaña de compras
-        /// lo invoca al recibir el foco (<c>inicio.cs</c>, <c>tab_compras.Enter</c>)
-        /// y porque <see cref="RegistrarCompraAsync"/> lo llama tras un registro
-        /// correcto (RF-52). Ya no carga ninguna grilla: el historial se consulta
-        /// dentro de <see cref="DetalleCompraForm"/> en modo lista, que lee el
-        /// negocio cada vez que se abre, así que la pantalla no necesita refrescar
-        /// ningún control. No se elimina la firma para no romper a sus llamadores.
+        /// Habilita la acción primaria solo si la sesión puede operar el módulo, no
+        /// hay un registro en curso y la compra en carga tiene proveedor e ítems
+        /// (RF-58 y <c>desktop-ux-patterns</c> §3). No valida ni redacta mensajes:
+        /// solo refleja el estado de la pantalla.
         /// </summary>
-        /// <returns>Tarea completada; no hay trabajo pendiente en la pantalla.</returns>
-        public Task CargarHistorialAsync() => Task.CompletedTask;
+        private void ActualizarEstadoAcciones()
+        {
+            btnRegistrar.Enabled = PoliticaAcceso.PuedeOperarCompras(_rolActual)
+                && !_registrando
+                && _idProveedorElegido.HasValue
+                && _lineas.Count > 0;
+        }
 
         // =====================================================================
         // 1. ESTILO DE LAS GRILLAS (MaterialSkin 2, dark)
@@ -200,11 +202,22 @@ namespace CapaPresentacion.Compras
                 WrapMode = DataGridViewTriState.False
             };
 
+            // Filas alternadas para leer renglones largos (desktop-ux-patterns §2).
+            // Solo cambia el fondo; la alineación se hereda de DefaultCellStyle y de
+            // la alineación propia de cada columna numérica.
+            grilla.AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.FromArgb(56, 56, 56),
+                ForeColor = Color.White,
+                SelectionBackColor = Color.FromArgb(255, 87, 34),
+                SelectionForeColor = Color.White
+            };
+
             grilla.GridColor = Color.FromArgb(80, 80, 80);
         }
 
         // =====================================================================
-        // 2. BÚSQUEDAS A DEMANDA Y SELECCIÓN BIDIRECCIONAL
+        // 2. BÚSQUEDAS A DEMANDA Y SELECCIÓN PRODUCTO → PROVEEDORES
         // =====================================================================
 
         private void txtBuscarProveedor_TextChanged(object? sender, EventArgs e)
@@ -296,7 +309,6 @@ namespace CapaPresentacion.Compras
                 using (SuspenderEventos())
                 {
                     _productosBuscados.Clear();
-                    _productosHistoricos.Clear();
                     MostrarProductos(null);
                 }
 
@@ -316,7 +328,6 @@ namespace CapaPresentacion.Compras
             {
                 _productosBuscados.Clear();
                 _productosBuscados.AddRange(respuesta.Productos);
-                _productosHistoricos.Clear();
                 MostrarProductos(_productosBuscados.ToList());
             }
 
@@ -370,7 +381,7 @@ namespace CapaPresentacion.Compras
             });
         }
 
-        private async void gridProveedores_SelectionChanged(object? sender, EventArgs e)
+        private void gridProveedores_SelectionChanged(object? sender, EventArgs e)
         {
             if (_nivelActualizando > 0 || gridProveedores.DataSource is null)
             {
@@ -395,12 +406,28 @@ namespace CapaPresentacion.Compras
                 return;
             }
 
+            ActualizarProveedorSeleccionado(idProveedor, razonSocial, documento);
+        }
+
+        /// <summary>
+        /// Fija el proveedor elegido y refresca solo sus rótulos descriptivos y el
+        /// estado de la acción primaria (RF-12 y RF-58). No invoca el negocio ni
+        /// toca el listado de productos: las dos búsquedas son independientes
+        /// (RF-15, RF-16 y RF-17).
+        /// </summary>
+        /// <param name="idProveedor">Identificador del proveedor elegido.</param>
+        /// <param name="razonSocial">Razón social del proveedor elegido.</param>
+        /// <param name="documento">Documento del proveedor elegido.</param>
+        private void ActualizarProveedorSeleccionado(
+            int idProveedor, string razonSocial, string documento)
+        {
             _idProveedorElegido = idProveedor;
             _razonSocialProveedor = razonSocial;
             _documentoProveedor = documento;
-            MostrarDatosProveedor();
 
-            await EjecutarAsync(() => FiltrarProductosDelProveedorAsync(idProveedor));
+            // MostrarDatosProveedor refresca los dos rótulos y, con ellos, el
+            // estado de «REGISTRAR COMPRA» (RF-58).
+            MostrarDatosProveedor();
         }
 
         /// <summary>
@@ -468,10 +495,8 @@ namespace CapaPresentacion.Compras
                             // salvo que ya hubiera uno elegido, que no se descarta (RF-13).
                             if (!_idProveedorElegido.HasValue)
                             {
-                                _idProveedorElegido = unico.IdProveedor;
-                                _razonSocialProveedor = unico.RazonSocial;
-                                _documentoProveedor = unico.Documento;
-                                MostrarDatosProveedor();
+                                ActualizarProveedorSeleccionado(
+                                    unico.IdProveedor, unico.RazonSocial, unico.Documento);
                                 SeleccionarProveedorEnGrilla(unico.IdProveedor);
                             }
                         }
@@ -491,42 +516,6 @@ namespace CapaPresentacion.Compras
                         return;
                 }
             }
-        }
-
-        /// <summary>
-        /// Acota el listado de productos a los que el proveedor elegido ya vendió
-        /// (RF-15). Si no hay históricos, el listado queda libre para la búsqueda
-        /// por texto y se muestra el mensaje del negocio.
-        /// </summary>
-        /// <param name="idProveedor">Proveedor elegido.</param>
-        /// <returns>Tarea que representa la consulta.</returns>
-        private async Task FiltrarProductosDelProveedorAsync(int idProveedor)
-        {
-            RespuestaProductosDeProveedor respuesta =
-                await _negocio.ObtenerProductosDeProveedorAsync(idProveedor, _rolActual);
-
-            if (IsDisposed || _idProveedorElegido != idProveedor)
-            {
-                return;
-            }
-
-            using (SuspenderEventos())
-            {
-                _productosBuscados.Clear();
-                _productosHistoricos.Clear();
-
-                if (respuesta.Resultado == ResultadoConsultaHistoricaCompra.ConResultados)
-                {
-                    _productosHistoricos.AddRange(respuesta.Productos);
-                    MostrarProductos(_productosHistoricos.ToList());
-                }
-                else if (respuesta.Resultado == ResultadoConsultaHistoricaCompra.SinResultados)
-                {
-                    MostrarProductos(null);
-                }
-            }
-
-            lblMensajeProductos.Text = respuesta.Mensaje;
         }
 
         // =====================================================================
@@ -737,6 +726,8 @@ namespace CapaPresentacion.Compras
                 CalculoImportesCompra.CalcularMontoTotal(_lineas.Select(linea => linea.Subtotal));
 
             lblMontoTotal.Text = $"Total: {montoTotal.ToString("N2", CultureInfo.CurrentCulture)}";
+
+            ActualizarEstadoAcciones();
         }
 
         // =====================================================================
@@ -751,8 +742,9 @@ namespace CapaPresentacion.Compras
         /// <summary>
         /// Registra la compra con el proveedor elegido y las líneas de la grilla.
         /// Mientras dura la operación el botón queda deshabilitado y la bandera
-        /// ignora reentradas (RF-58). En éxito descarta la compra en carga (RF-32)
-        /// y recarga el historial (RF-52); en rechazo conserva todo (RNF-11).
+        /// ignora reentradas (RF-58). En éxito descarta la compra en carga (RF-32);
+        /// el historial ya no se refresca en esta pantalla (RF-52 se cumple desde
+        /// el modal). En rechazo conserva todo (RNF-11).
         /// </summary>
         /// <returns>Tarea que representa el registro de la compra.</returns>
         private async Task RegistrarCompraAsync()
@@ -791,12 +783,11 @@ namespace CapaPresentacion.Compras
                 }
 
                 LimpiarTrasRegistro();
-                await CargarHistorialAsync();
             }
             finally
             {
                 _registrando = false;
-                btnRegistrar.Enabled = PoliticaAcceso.PuedeOperarCompras(_rolActual);
+                ActualizarEstadoAcciones();
             }
         }
 
@@ -871,7 +862,6 @@ namespace CapaPresentacion.Compras
                 _codigoProductoElegido = null;
                 _nombreProductoElegido = null;
                 _productosBuscados.Clear();
-                _productosHistoricos.Clear();
                 _temporizadorProductos.Stop();
                 txtBuscarProducto.Text = string.Empty;
                 txtCantidad.Text = string.Empty;
@@ -896,21 +886,14 @@ namespace CapaPresentacion.Compras
         /// los resultados, de modo que vaciar la lista de campo no altera el
         /// <c>DataSource</c> ni deja el <c>CurrencyManager</c> en una fila inválida.
         /// </summary>
-        /// <param name="origen">Lista de resultados o <see langword="null"/> para vaciarlo.</param>
-        private void MostrarProductos(object? origen)
+        /// <param name="productos">Resultados a mostrar o <see langword="null"/> para vaciarlo.</param>
+        private void MostrarProductos(IEnumerable<ProductoBuscadoDto>? productos)
         {
-            object? copia = origen switch
-            {
-                IEnumerable<ProductoBuscadoDto> buscados => buscados.ToList(),
-                IEnumerable<ProductoDeProveedorDto> historicos => historicos.ToList(),
-                _ => null
-            };
-
             using (SuspenderEventos())
             {
                 gridProductos.CurrentCell = null;
                 gridProductos.DataSource = null;
-                gridProductos.DataSource = copia;
+                gridProductos.DataSource = productos?.ToList();
                 gridProductos.ClearSelection();
                 gridProductos.CurrentCell = null;
             }
@@ -958,6 +941,9 @@ namespace CapaPresentacion.Compras
             lblDocumentoProveedor.Text = hayProveedor
                 ? $"Documento: {_documentoProveedor}"
                 : TextoDocumentoSinElegir;
+
+            // RF-58: sin proveedor elegido la acción primaria queda deshabilitada.
+            ActualizarEstadoAcciones();
         }
 
         private void SeleccionarProveedorEnGrilla(int idProveedor)
@@ -990,26 +976,18 @@ namespace CapaPresentacion.Compras
         private static bool TryObtenerProductoSeleccionado(
             object? item, out int idProducto, out string codigo, out string nombre)
         {
-            switch (item)
+            if (item is ProductoBuscadoDto producto)
             {
-                case ProductoBuscadoDto producto:
-                    idProducto = producto.IdProducto;
-                    codigo = producto.Codigo;
-                    nombre = producto.Nombre;
-                    return true;
-
-                case ProductoDeProveedorDto producto:
-                    idProducto = producto.IdProducto;
-                    codigo = producto.Codigo;
-                    nombre = producto.Nombre;
-                    return true;
-
-                default:
-                    idProducto = 0;
-                    codigo = string.Empty;
-                    nombre = string.Empty;
-                    return false;
+                idProducto = producto.IdProducto;
+                codigo = producto.Codigo;
+                nombre = producto.Nombre;
+                return true;
             }
+
+            idProducto = 0;
+            codigo = string.Empty;
+            nombre = string.Empty;
+            return false;
         }
 
         private static bool TryObtenerProveedorSeleccionado(

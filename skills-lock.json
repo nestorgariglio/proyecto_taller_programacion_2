@@ -211,6 +211,18 @@
       "skillPath": "plugins/dotnet-advanced/skills/csharp-scripts/SKILL.md",
       "computedHash": "66fc0c59515a4f8ad15546477b39ce1f3817be4ef31533404370dcb0ab77da86"
     },
+    "design": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/design/SKILL.md",
+      "computedHash": "d1cbc4bc8f0bd4273fae84014c6576615b13508743cd9c5240d721dc5143dc83"
+    },
+    "design-system": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/design-system/SKILL.md",
+      "computedHash": "a8d1f1cd0f55979a872a2ce9717d3c33df23b0c378738b8d6adb574bfb266c77"
+    },
     "detect-static-dependencies": {
       "source": "dotnet/skills",
       "sourceType": "github",
@@ -264,6 +276,12 @@
       "sourceType": "github",
       "skillPath": "plugins/dotnet-diag/skills/dump-collect/SKILL.md",
       "computedHash": "8ebf8877ca6f36f6580109334b2c9f166be5b12db95fdf367c551986156f87c7"
+    },
+    "ef-core": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/ef-core/SKILL.md",
+      "computedHash": "23f0a7c7e8c050337d67303f0af339da1ab8f0aa6a334f13112c3f85250c329c"
     },
     "eliminate-redundant-restores": {
       "source": "dotnet/skills",
@@ -666,6 +684,18 @@
       "sourceType": "github",
       "skillPath": "plugins/dotnet-msbuild/skills/troubleshoot-binlog-mcp/SKILL.md",
       "computedHash": "ea95491a93ae43b100946da3b400be0c9dc7850d8cbadf83293ec769f1319c77"
+    },
+    "ui-styling": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-styling/SKILL.md",
+      "computedHash": "fa6d85097b0c131fb8708a6e7e08aff2af12fd2966cfe0a73bd258dcac99ea5b"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "bf7fef75af567d1f5be7bcb98b4af1f9b38a68ad26d71b513f629896747ee190"
     },
     "use-igniteui-blazor": {
       "source": "dotnet/skills",
