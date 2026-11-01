@@ -29,3 +29,8 @@ Devuelve:
 2. Archivos modificados.
 3. Resultado de `dotnet build` y `dotnet test`.
 4. Cualquier decisión que el plan no cubría.
+
+## Pruebas y timeouts
+- Ejecuta `dotnet build` y `dotnet test` con plazo acotado: si no terminan en el máximo declarado (política de `AGENTS.md`), informa `FAILED — TIMEOUT / POSIBLE BLOQUEO` en lugar de seguir esperando.
+- No reintentes en bucle ni repitas operaciones con efectos secundarios sin verificar antes si se completaron.
+- Implementa las correcciones que autorice el plan y mantén las instrucciones operativas; **no sustituyas al @reviewer en la validación**.

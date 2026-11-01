@@ -18,14 +18,18 @@ namespace CapaPresentacion.Compras
     /// Pantalla de carga de compras a proveedores organizada en tres bloques:
     /// producto y proveedor (búsquedas a demanda), compra actual y barra de
     /// acciones. El producto y el proveedor se buscan a demanda (RF-9 … RF-17)
-    /// sobre catálogos independientes y la selección es unidireccional: elegir un
-    /// producto propone los proveedores que ya lo vendieron (RF-12), mientras que
-    /// elegir un proveedor solo actualiza el proveedor elegido sin tocar el
-    /// listado de productos. El historial ya no se lista dentro de la pantalla:
-    /// la barra de acciones abre <see cref="DetalleCompraForm"/> en modo lista
-    /// (RF-52 … RF-54). La pantalla no valida, no calcula importes ni redacta
-    /// mensajes: solo invoca <see cref="CompraNegocio"/> y muestra el
-    /// <c>Mensaje</c> que este devuelve (RF-55, RNF-6 y RNF-13).
+    /// sobre catálogos independientes y la selección es bidireccional (D-22 y
+    /// RF-66): elegir un producto propone los proveedores que ya lo vendieron
+    /// (RF-12) y elegir un proveedor lista sus productos habituales (RF-66). La
+    /// búsqueda por texto tiene precedencia mientras el cuadro no esté vacío y,
+    /// al vaciarlo, se restituye el listado del proveedor desde lo ya cargado y
+    /// sin consultar (RF-16). La sincronización no encadena consultas ni bucles
+    /// de eventos y ninguna selección programática dispara el flujo inverso. El
+    /// historial ya no se lista dentro de la pantalla: la barra de acciones abre
+    /// <see cref="DetalleCompraForm"/> en modo lista (RF-52 … RF-54). La pantalla
+    /// no valida, no calcula importes ni redacta mensajes: solo invoca
+    /// <see cref="CompraNegocio"/> y muestra el <c>Mensaje</c> que este devuelve
+    /// (RF-55, RNF-6 y RNF-13).
     /// </summary>
     public partial class ComprasForm : UserControl
     {
@@ -54,6 +58,7 @@ namespace CapaPresentacion.Compras
         private readonly List<ProveedorSeleccionadoDto> _proveedoresBuscados = new();
         private readonly List<ProveedorDeProductoDto> _proveedoresHistoricos = new();
         private readonly List<ProductoBuscadoDto> _productosBuscados = new();
+        private readonly List<ProductoDeProveedorDto> _productosDelProveedor = new();
 
         private int? _idProveedorElegido;
         private string? _razonSocialProveedor;
@@ -62,9 +67,11 @@ namespace CapaPresentacion.Compras
         private string? _codigoProductoElegido;
         private string? _nombreProductoElegido;
         private int? _indiceEdicion;
+        private int? _idProveedorProductosVigente;
         private int _idUsuario;
         private string? _rolActual;
         private bool _registrando;
+        private bool _actualizandoSeleccion;
 
         /// <summary>
         /// Nivel de supresión de eventos de las grillas. Es un contador para que
@@ -118,9 +125,51 @@ namespace CapaPresentacion.Compras
             btnRegistrar.Click += btnRegistrar_Click;
             btnLimpiar.Click += btnLimpiar_Click;
             btnVerHistorial.Click += btnVerHistorial_Click;
+            pnlContenedor.SizeChanged += pnlContenedor_SizeChanged;
 
             RefrescarGrillaLineas();
         }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            AjustarTamanoTablaPrincipal();
+        }
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+
+            if (Visible)
+            {
+                AjustarTamanoTablaPrincipal();
+            }
+        }
+
+        /// <summary>
+        /// Ajusta la tabla principal al área cliente del contenedor descontando su
+        /// <see cref="Padding"/>, de modo que la tabla siga al contenedor pese a no
+        /// estar acoplada (<c>Dock = None</c>). El mínimo lo aporta el
+        /// <see cref="Control.MinimumSize"/> que fija el diseñador, por lo que no
+        /// hace falta una rama de DPI: el escalado ya viene aplicado en esa medida.
+        /// </summary>
+        private void AjustarTamanoTablaPrincipal()
+        {
+            if (IsDisposed || tblPrincipal.IsDisposed)
+            {
+                return;
+            }
+
+            Padding margen = pnlContenedor.Padding;
+
+            tblPrincipal.Location = new Point(margen.Left, margen.Top);
+            tblPrincipal.Size = new Size(
+                Math.Max(tblPrincipal.MinimumSize.Width, pnlContenedor.ClientSize.Width - margen.Horizontal),
+                Math.Max(tblPrincipal.MinimumSize.Height, pnlContenedor.ClientSize.Height - margen.Vertical));
+        }
+
+        private void pnlContenedor_SizeChanged(object? sender, EventArgs e)
+            => AjustarTamanoTablaPrincipal();
 
         /// <summary>
         /// Guarda la sesión con la que se registran las compras y se consultan el
@@ -180,38 +229,30 @@ namespace CapaPresentacion.Compras
             grilla.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             grilla.EnableHeadersVisualStyles = false;
 
-            grilla.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
-            {
-                Alignment = DataGridViewContentAlignment.MiddleLeft,
-                BackColor = Color.FromArgb(55, 71, 79),
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.White,
-                SelectionBackColor = Color.FromArgb(55, 71, 79),
-                SelectionForeColor = Color.White,
-                WrapMode = DataGridViewTriState.True
-            };
+            // Los estilos se clonan desde el diseñador y solo se mutan los colores,
+            // la fuente y el ajuste de línea: así se conservan la alineación de los
+            // importes a la derecha y el formato que aporta cada columna.
+            grilla.ColumnHeadersDefaultCellStyle = grilla.ColumnHeadersDefaultCellStyle.Clone();
+            grilla.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(55, 71, 79);
+            grilla.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            grilla.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(55, 71, 79);
+            grilla.ColumnHeadersDefaultCellStyle.SelectionForeColor = Color.White;
+            grilla.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            grilla.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.True;
 
-            grilla.DefaultCellStyle = new DataGridViewCellStyle
-            {
-                Alignment = DataGridViewContentAlignment.MiddleLeft,
-                BackColor = Color.FromArgb(48, 48, 48),
-                Font = new Font("Segoe UI", 9.5F),
-                ForeColor = Color.White,
-                SelectionBackColor = Color.FromArgb(255, 87, 34),
-                SelectionForeColor = Color.White,
-                WrapMode = DataGridViewTriState.False
-            };
+            grilla.DefaultCellStyle = grilla.DefaultCellStyle.Clone();
+            grilla.DefaultCellStyle.BackColor = Color.FromArgb(48, 48, 48);
+            grilla.DefaultCellStyle.ForeColor = Color.White;
+            grilla.DefaultCellStyle.SelectionBackColor = Color.FromArgb(255, 87, 34);
+            grilla.DefaultCellStyle.SelectionForeColor = Color.White;
+            grilla.DefaultCellStyle.Font = new Font("Segoe UI", 9.5F);
+            grilla.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
 
             // Filas alternadas para leer renglones largos (desktop-ux-patterns §2).
-            // Solo cambia el fondo; la alineación se hereda de DefaultCellStyle y de
-            // la alineación propia de cada columna numérica.
-            grilla.AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
-            {
-                BackColor = Color.FromArgb(56, 56, 56),
-                ForeColor = Color.White,
-                SelectionBackColor = Color.FromArgb(255, 87, 34),
-                SelectionForeColor = Color.White
-            };
+            // Se hereda de DefaultCellStyle y solo cambia el fondo; la alineación se
+            // sigue tomando de DefaultCellStyle y de cada columna numérica.
+            grilla.AlternatingRowsDefaultCellStyle = grilla.DefaultCellStyle.Clone();
+            grilla.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(56, 56, 56);
 
             grilla.GridColor = Color.FromArgb(80, 80, 80);
         }
@@ -309,7 +350,7 @@ namespace CapaPresentacion.Compras
                 using (SuspenderEventos())
                 {
                     _productosBuscados.Clear();
-                    MostrarProductos(null);
+                    RefrescarListadoProductosVigente();
                 }
 
                 lblMensajeProductos.Text = string.Empty;
@@ -336,7 +377,7 @@ namespace CapaPresentacion.Compras
 
         private async void gridProductos_SelectionChanged(object? sender, EventArgs e)
         {
-            if (_nivelActualizando > 0 || gridProductos.DataSource is null)
+            if (SeleccionSuspendida || gridProductos.DataSource is null)
             {
                 return;
             }
@@ -381,9 +422,9 @@ namespace CapaPresentacion.Compras
             });
         }
 
-        private void gridProveedores_SelectionChanged(object? sender, EventArgs e)
+        private async void gridProveedores_SelectionChanged(object? sender, EventArgs e)
         {
-            if (_nivelActualizando > 0 || gridProveedores.DataSource is null)
+            if (SeleccionSuspendida || gridProveedores.DataSource is null)
             {
                 return;
             }
@@ -407,13 +448,17 @@ namespace CapaPresentacion.Compras
             }
 
             ActualizarProveedorSeleccionado(idProveedor, razonSocial, documento);
+
+            // RF-66 / D-22: elegir proveedor lista sus productos habituales. La
+            // consulta la centraliza EjecutarAsync y no encadena otros eventos.
+            await EjecutarAsync(() => SincronizarProductosDelProveedorAsync(idProveedor));
         }
 
         /// <summary>
         /// Fija el proveedor elegido y refresca solo sus rótulos descriptivos y el
         /// estado de la acción primaria (RF-12 y RF-58). No invoca el negocio ni
-        /// toca el listado de productos: las dos búsquedas son independientes
-        /// (RF-15, RF-16 y RF-17).
+        /// toca por sí mismo el listado de productos: la búsqueda por texto manda
+        /// y la sincronización de habituales la resuelve su manejador (RF-66).
         /// </summary>
         /// <param name="idProveedor">Identificador del proveedor elegido.</param>
         /// <param name="razonSocial">Razón social del proveedor elegido.</param>
@@ -428,6 +473,61 @@ namespace CapaPresentacion.Compras
             // MostrarDatosProveedor refresca los dos rótulos y, con ellos, el
             // estado de «REGISTRAR COMPRA» (RF-58).
             MostrarDatosProveedor();
+        }
+
+        /// <summary>
+        /// Lista los productos habituales del proveedor elegido (RF-66). Con texto
+        /// en la búsqueda de productos no consulta ni toca la grilla, porque la
+        /// búsqueda tiene precedencia (D-22). La respuesta que llega tarde —otro
+        /// proveedor elegido o una búsqueda iniciada mientras viajaba— se descarta
+        /// sin alterar el listado (RNF-11).
+        /// </summary>
+        /// <param name="idProveedor">Proveedor recién elegido en la grilla.</param>
+        /// <returns>Tarea que representa la consulta de habituales.</returns>
+        private async Task SincronizarProductosDelProveedorAsync(int idProveedor)
+        {
+            if (!string.IsNullOrWhiteSpace(txtBuscarProducto.Text))
+            {
+                return;
+            }
+
+            RespuestaProductosDeProveedor respuesta =
+                await _negocio.ObtenerProductosDeProveedorAsync(idProveedor, _rolActual);
+
+            // Anti-obsolescencia: relectura del texto después del await.
+            if (EsRespuestaObsoleta(idProveedor, _idProveedorElegido)
+                || !string.IsNullOrWhiteSpace(txtBuscarProducto.Text))
+            {
+                return;
+            }
+
+            using (SuspenderSeleccion())
+            {
+                switch (respuesta.Resultado)
+                {
+                    case ResultadoConsultaHistoricaCompra.ConResultados:
+                        _productosBuscados.Clear();
+                        _productosDelProveedor.Clear();
+                        _productosDelProveedor.AddRange(respuesta.Productos);
+                        _idProveedorProductosVigente = idProveedor;
+                        MostrarProductos(_productosDelProveedor.ToList());
+                        SeleccionarProductoEnGrilla(_idProductoElegido);
+                        break;
+
+                    case ResultadoConsultaHistoricaCompra.SinResultados:
+                        _productosDelProveedor.Clear();
+                        _idProveedorProductosVigente = idProveedor;
+                        MostrarProductos(null);
+                        break;
+
+                    default:
+                        // PermisoDenegado o ErrorPersistencia: solo se informa el
+                        // mensaje del negocio, sin tocar la grilla (RF-57).
+                        break;
+                }
+            }
+
+            lblMensajeProductos.Text = respuesta.Mensaje;
         }
 
         /// <summary>
@@ -838,6 +938,8 @@ namespace CapaPresentacion.Compras
                 _documentoProveedor = null;
                 _proveedoresBuscados.Clear();
                 _proveedoresHistoricos.Clear();
+                _productosDelProveedor.Clear();
+                _idProveedorProductosVigente = null;
                 _temporizadorProveedores.Stop();
                 txtBuscarProveedor.Text = string.Empty;
                 MostrarProveedores(null);
@@ -850,8 +952,9 @@ namespace CapaPresentacion.Compras
         }
 
         /// <summary>
-        /// Deja el área de captura vacía y sin modo edición, y vuelve a dejar el
-        /// listado de productos vacío hasta la próxima búsqueda (RF-16).
+        /// Deja el área de captura vacía y sin modo edición. El listado de
+        /// productos vuelve a los habituales del proveedor vigente desde la caché,
+        /// sin consultar el origen de datos (RF-16 y RF-66).
         /// </summary>
         private void LimpiarCaptura()
         {
@@ -873,6 +976,8 @@ namespace CapaPresentacion.Compras
                 btnAgregarLinea.Text = TextoBotonAgregar;
             }
 
+            // Sin consultar: restituye los habituales del proveedor vigente.
+            RefrescarListadoProductosVigente();
             ActualizarSubtotalPreparacion();
         }
 
@@ -885,17 +990,50 @@ namespace CapaPresentacion.Compras
         /// automática de la primera fila. El enlace usa siempre una copia nueva de
         /// los resultados, de modo que vaciar la lista de campo no altera el
         /// <c>DataSource</c> ni deja el <c>CurrencyManager</c> en una fila inválida.
+        /// Admite tanto la búsqueda global como los habituales del proveedor
+        /// (RF-15 y RF-66).
         /// </summary>
-        /// <param name="productos">Resultados a mostrar o <see langword="null"/> para vaciarlo.</param>
-        private void MostrarProductos(IEnumerable<ProductoBuscadoDto>? productos)
+        /// <param name="origen">Lista de resultados o <see langword="null"/> para vaciarlo.</param>
+        private void MostrarProductos(object? origen)
         {
+            object? copia = origen switch
+            {
+                IEnumerable<ProductoBuscadoDto> buscados => buscados.ToList(),
+                IEnumerable<ProductoDeProveedorDto> habituales => habituales.ToList(),
+                _ => null
+            };
+
             using (SuspenderEventos())
             {
                 gridProductos.CurrentCell = null;
                 gridProductos.DataSource = null;
-                gridProductos.DataSource = productos?.ToList();
+                gridProductos.DataSource = copia;
                 gridProductos.ClearSelection();
                 gridProductos.CurrentCell = null;
+            }
+        }
+
+        /// <summary>
+        /// Restituye en el listado de productos lo que corresponde al estado
+        /// vigente sin consultar el origen de datos: los habituales del proveedor
+        /// elegido si su caché es coherente o un listado vacío. Con texto en la
+        /// búsqueda no hace nada, porque la búsqueda manda (RF-16 y D-22).
+        /// </summary>
+        private void RefrescarListadoProductosVigente()
+        {
+            if (!string.IsNullOrWhiteSpace(txtBuscarProducto.Text))
+            {
+                return;
+            }
+
+            using (SuspenderSeleccion())
+            {
+                MostrarProductos(
+                    _idProveedorElegido == _idProveedorProductosVigente
+                        && _productosDelProveedor.Count > 0
+                        ? _productosDelProveedor.ToList()
+                        : null);
+                SeleccionarProductoEnGrilla(_idProductoElegido);
             }
         }
 
@@ -962,9 +1100,10 @@ namespace CapaPresentacion.Compras
             {
                 foreach (DataGridViewRow fila in gridProveedores.Rows)
                 {
-                    if (fila.DataBoundItem is ProveedorDeProductoDto proveedor
-                        && proveedor.IdProveedor == idProveedor
-                        && fila.Cells.Count > 0)
+                    if (fila.Cells.Count > 0
+                        && TryObtenerProveedorSeleccionado(fila.DataBoundItem,
+                            out int idFila, out _, out _)
+                        && idFila == idProveedor)
                     {
                         gridProveedores.CurrentCell = fila.Cells[0];
                         break;
@@ -973,21 +1112,68 @@ namespace CapaPresentacion.Compras
             }
         }
 
+        /// <summary>
+        /// Restituye por identificador la fila del producto elegido en el listado
+        /// vigente, sin disparar el manejador de selección. Si el producto no está
+        /// en el listado no se toca la selección: sus rótulos y la captura siguen
+        /// intactos (RF-66 y RNF-11).
+        /// </summary>
+        /// <param name="idProducto">Producto elegido o <see langword="null"/>.</param>
+        private void SeleccionarProductoEnGrilla(int? idProducto)
+        {
+            if (idProducto is null || IsDisposed || !IsHandleCreated || gridProductos.IsDisposed)
+            {
+                return;
+            }
+
+            if (gridProductos.Columns.Count == 0 || gridProductos.Rows.Count == 0)
+            {
+                return;
+            }
+
+            using (SuspenderSeleccion())
+            {
+                foreach (DataGridViewRow fila in gridProductos.Rows)
+                {
+                    if (fila.Cells.Count == 0
+                        || !TryObtenerProductoSeleccionado(fila.DataBoundItem,
+                            out int idFila, out _, out _)
+                        || idFila != idProducto)
+                    {
+                        continue;
+                    }
+
+                    gridProductos.CurrentCell = fila.Cells[0];
+                    gridProductos.ClearSelection();
+                    fila.Selected = true;
+                    break;
+                }
+            }
+        }
+
         private static bool TryObtenerProductoSeleccionado(
             object? item, out int idProducto, out string codigo, out string nombre)
         {
-            if (item is ProductoBuscadoDto producto)
+            switch (item)
             {
-                idProducto = producto.IdProducto;
-                codigo = producto.Codigo;
-                nombre = producto.Nombre;
-                return true;
-            }
+                case ProductoBuscadoDto producto:
+                    idProducto = producto.IdProducto;
+                    codigo = producto.Codigo;
+                    nombre = producto.Nombre;
+                    return true;
 
-            idProducto = 0;
-            codigo = string.Empty;
-            nombre = string.Empty;
-            return false;
+                case ProductoDeProveedorDto producto:
+                    idProducto = producto.IdProducto;
+                    codigo = producto.Codigo;
+                    nombre = producto.Nombre;
+                    return true;
+
+                default:
+                    idProducto = 0;
+                    codigo = string.Empty;
+                    nombre = string.Empty;
+                    return false;
+            }
         }
 
         private static bool TryObtenerProveedorSeleccionado(
@@ -1072,12 +1258,80 @@ namespace CapaPresentacion.Compras
             => IsDisposed || !string.Equals(textoConsultado, textoActual, StringComparison.Ordinal);
 
         /// <summary>
+        /// Indica si la respuesta de una consulta por proveedor llegó tarde: la
+        /// pantalla ya se liberó o el proveedor vigente ya no es el consultado.
+        /// </summary>
+        /// <param name="idConsultado">Proveedor con el que se hizo la consulta.</param>
+        /// <param name="idVigente">Proveedor elegido actualmente.</param>
+        /// <returns><see langword="true"/> si la respuesta debe descartarse.</returns>
+        private bool EsRespuestaObsoleta(int idConsultado, int? idVigente)
+            => IsDisposed || idVigente != idConsultado;
+
+        /// <summary>
+        /// Indica si la selección programática de las grillas está en curso. Los
+        /// dos manejadores de selección salen mientras valga <see langword="true"/>,
+        /// de modo que restituir una fila no dispara el flujo inverso.
+        /// </summary>
+        private bool SeleccionSuspendida => _actualizandoSeleccion || _nivelActualizando > 0;
+
+        /// <summary>
+        /// Suspende los manejadores de selección mientras dure el rebindeo y la
+        /// restitución de filas. La liberación restaura los valores previos, así
+        /// que las supresiones anidadas no se pisan y nunca se cruza un
+        /// <c>await</c>.
+        /// </summary>
+        /// <returns>Objeto desechable que restaura los valores al liberarse.</returns>
+        private IDisposable SuspenderSeleccion() => new SuspensionSeleccion(this);
+
+        /// <summary>
         /// Suspende los manejadores de las grillas mientras dure la mutación de
         /// datos y el rebindeo. Se apoya en un contador para que las supresiones
         /// anidadas restauren el nivel previo en lugar de forzarlo a cero.
         /// </summary>
         /// <returns>Objeto desechable que restaura el nivel al liberarse.</returns>
         private IDisposable SuspenderEventos() => new Suspension(this);
+
+        /// <summary>
+        /// Restauración de la suspensión de selección al liberar el bloque
+        /// <c>using</c>. Devuelve el contador y la bandera a sus valores previos.
+        /// </summary>
+        private sealed class SuspensionSeleccion : IDisposable
+        {
+            private readonly ComprasForm _formulario;
+            private readonly int _nivelPrevio;
+            private readonly bool _actualizandoSeleccionPrevio;
+            private bool _liberada;
+
+            /// <summary>
+            /// Incrementa el nivel de supresión y activa la bandera de selección.
+            /// </summary>
+            /// <param name="formulario">Formulario que suspende sus manejadores.</param>
+            public SuspensionSeleccion(ComprasForm formulario)
+            {
+                ArgumentNullException.ThrowIfNull(formulario);
+
+                _formulario = formulario;
+                _nivelPrevio = formulario._nivelActualizando;
+                _actualizandoSeleccionPrevio = formulario._actualizandoSeleccion;
+                _formulario._nivelActualizando++;
+                _formulario._actualizandoSeleccion = true;
+            }
+
+            /// <summary>
+            /// Restaura los valores previos de la suspensión.
+            /// </summary>
+            public void Dispose()
+            {
+                if (_liberada)
+                {
+                    return;
+                }
+
+                _liberada = true;
+                _formulario._nivelActualizando = _nivelPrevio;
+                _formulario._actualizandoSeleccion = _actualizandoSeleccionPrevio;
+            }
+        }
 
         /// <summary>
         /// Restauración del nivel de supresión al liberar el bloque <c>using</c>.

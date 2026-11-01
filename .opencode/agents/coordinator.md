@@ -54,3 +54,9 @@ Los subagentes NO ven esta conversación. En cada llamada pásales todo lo que n
 - Nunca te saltes una aprobación del usuario (spec, y plan con tareas).
 - No resuelvas tú las dudas: pregunta al usuario.
 - Informa al usuario en una línea al empezar cada fase.
+
+## Pruebas y timeouts (política de `AGENTS.md`)
+- Fija en cada delegación el tiempo máximo: arranque 20 s · respuesta visual 10 s · operación funcional 30 s · escenario 120 s · experimento 8 min. Sin espera indefinida.
+- Exige al @reviewer la declaración previa de la prueba (precondiciones, acción, esperado, tiempo máximo, criterio de éxito, criterio de fallo) y el registro `FAILED — TIMEOUT / POSIBLE BLOQUEO` con su diagnóstico de 10 puntos.
+- No dejes avanzar una fase con pruebas fallidas ni pidas repetir la operación para "ver si pasa". Un timeout es un defecto a diagnosticar, no un reintento.
+- Decide cuándo escalar al usuario si el mecanismo de timeout falla o el bloqueo no se puede terminar.

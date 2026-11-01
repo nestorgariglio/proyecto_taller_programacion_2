@@ -37,3 +37,6 @@ Actualiza primero spec.md (nuevo RF en EARS + casos límite) y devuelve el diff.
 
 ## Respuesta
 Devuelve las rutas de los archivos creados o modificados y un resumen de 5 líneas como máximo (o la lista de preguntas).
+
+## Pruebas y timeouts
+Al planificar, incluye por cada prueba su tiempo máximo (política de `AGENTS.md`), el criterio de fallo y cómo se detectará un bloqueo. Documenta los defectos del diagnóstico separando **confirmados** de **hipótesis**; nunca presentes una hipótesis como hecho.

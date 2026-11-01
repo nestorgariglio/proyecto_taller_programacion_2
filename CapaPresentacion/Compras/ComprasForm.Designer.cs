@@ -106,7 +106,7 @@ namespace CapaPresentacion.Compras
             // pnlContenedor
             //
             pnlContenedor.AutoScroll = true;
-            pnlContenedor.AutoScrollMinSize = new Size(0, 650);
+            pnlContenedor.AutoScrollMinSize = Size.Empty;
             pnlContenedor.BackColor = Color.FromArgb(33, 33, 33);
             pnlContenedor.Controls.Add(tblPrincipal);
             pnlContenedor.Dock = DockStyle.Fill;
@@ -119,6 +119,7 @@ namespace CapaPresentacion.Compras
             //
             // tblPrincipal
             //
+            tblPrincipal.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             tblPrincipal.AutoSize = false;
             tblPrincipal.ColumnCount = 2;
             // Bloques gemelos simétricos (winforms-ui-ux §2): exactamente 50/50, sin
@@ -134,23 +135,23 @@ namespace CapaPresentacion.Compras
             tblPrincipal.SetColumnSpan(pnlEncabezado, 2);
             tblPrincipal.SetColumnSpan(tblCompraActual, 2);
             tblPrincipal.SetColumnSpan(flpAcciones, 2);
-            tblPrincipal.Dock = DockStyle.Fill;
+            tblPrincipal.Dock = DockStyle.None;
             tblPrincipal.Location = new Point(12, 12);
             tblPrincipal.Margin = new Padding(0);
-            tblPrincipal.MinimumSize = new Size(980, 650);
+            tblPrincipal.MinimumSize = new Size(850, 454);
             tblPrincipal.Name = "tblPrincipal";
             tblPrincipal.Padding = new Padding(0);
-            // Filas: encabezado 35, bloques de búsqueda 230, compra actual con todo
-            // el resto y pie de acciones 55 ⇒ 35 + 230 + 55 = 320 px fijos. El mínimo
-            // de contenido de la fila 2 es 22 (título) + 180 (mínimo de gridLineas) +
-            // 50 (tblPieCompra) = 252, así que el mínimo vigente de 650 px (≥ 320 +
-            // 252 = 572) y el AutoScrollMinSize del contenedor siguen sincronizados.
+            // Filas: 30 + 240 + 50 = 320 fijos; mínimo de contenido
+            // 30 + 240 + 22 + 62 + 50 + 50 = 454 = alto útil real a 1053×478
+            // (478 − 24 de Padding). Dock = None es necesario para que
+            // pnlContenedor.AutoScroll genere barra: un hijo Fill con mínimo mayor
+            // que el viewport se recorta sin barra.
             tblPrincipal.RowCount = 4;
-            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 35F));
-            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 230F));
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 240F));
             tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 55F));
-            tblPrincipal.Size = new Size(980, 650);
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+            tblPrincipal.Size = new Size(1029, 454);
             tblPrincipal.TabIndex = 0;
             //
             // pnlEncabezado
@@ -178,7 +179,7 @@ namespace CapaPresentacion.Compras
             //
             // tblBloqueProducto
             //
-            // Bloque producto con datos a la izquierda (220 px fijos, ≤ 222) y
+            // Bloque producto con datos a la izquierda (220 px fijos, ≤ 240) y
             // listado a la derecha con el resto del ancho: la grilla crece con la
             // ventana y la columna de datos nunca supera el ancho previsto.
             tblBloqueProducto.ColumnCount = 2;
@@ -223,20 +224,22 @@ namespace CapaPresentacion.Compras
             tblDatosProducto.Location = new Point(10, 2);
             tblDatosProducto.Margin = new Padding(0);
             tblDatosProducto.Name = "tblDatosProducto";
-            // Filas: título 20, nombre y código 22 cada uno, las tres entradas 30 cada
-            // una, subtotal 22 y botón 40 ⇒ 216 px (≤ 222 de la fila 1 menos el
-            // Padding del panel). Sin fila de relleno: el bloque termina en el botón
-            // y no deja hueco muerto antes de «Compra Actual».
+            // Filas: título 20, nombre y código 22 cada uno, las tres entradas 36 cada
+            // una, subtotal 22 y botón 40 ⇒ 234 px (≤ 240 de la fila 1 menos el
+            // Padding del panel). Las entradas van a 36 px porque con el modo alto de
+            // MaterialTextBox2 desactivado su alto real cabe en la fila sin
+            // derramarse sobre la siguiente. Sin fila de relleno: el bloque termina
+            // en el botón y no deja hueco muerto antes de «Compra Actual».
             tblDatosProducto.RowCount = 8;
             tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
             tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
             tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
             tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            tblDatosProducto.Size = new Size(201, 226);
+            tblDatosProducto.Size = new Size(201, 236);
             tblDatosProducto.TabIndex = 0;
             //
             // lblTituloDatosProducto
@@ -283,7 +286,7 @@ namespace CapaPresentacion.Compras
             lblCodigoProducto.TabIndex = 1;
             lblCodigoProducto.Text = "Código: —";
             lblCodigoProducto.TextAlign = ContentAlignment.MiddleLeft;
-            // Cada entrada ocupa su propia fila de 30 px: el ancho útil de la columna
+            // Cada entrada ocupa su propia fila de 36 px: el ancho útil de la columna
             // de datos (211 px) no admite tres campos en línea.
             txtCantidad.AnimateReadOnly = false;
             txtCantidad.BackgroundImageLayout = ImageLayout.None;
@@ -295,7 +298,7 @@ namespace CapaPresentacion.Compras
             txtCantidad.Location = new Point(0, 68);
             txtCantidad.Margin = new Padding(0);
             txtCantidad.MaxLength = 32767;
-            txtCantidad.MinimumSize = new Size(100, 30);
+            txtCantidad.MinimumSize = new Size(100, 36);
             txtCantidad.MouseState = MaterialSkin.MouseState.OUT;
             txtCantidad.Name = "txtCantidad";
             txtCantidad.Padding = new Padding(2, 0, 2, 0);
@@ -311,6 +314,7 @@ namespace CapaPresentacion.Compras
             txtCantidad.TextAlign = HorizontalAlignment.Left;
             txtCantidad.TrailingIcon = null;
             txtCantidad.UseSystemPasswordChar = false;
+            txtCantidad.UseTallSize = false;
             //
             // txtPrecioCompra
             //
@@ -324,7 +328,7 @@ namespace CapaPresentacion.Compras
             txtPrecioCompra.Location = new Point(0, 98);
             txtPrecioCompra.Margin = new Padding(0);
             txtPrecioCompra.MaxLength = 32767;
-            txtPrecioCompra.MinimumSize = new Size(100, 30);
+            txtPrecioCompra.MinimumSize = new Size(100, 36);
             txtPrecioCompra.MouseState = MaterialSkin.MouseState.OUT;
             txtPrecioCompra.Name = "txtPrecioCompra";
             txtPrecioCompra.Padding = new Padding(2, 0, 2, 0);
@@ -340,6 +344,7 @@ namespace CapaPresentacion.Compras
             txtPrecioCompra.TextAlign = HorizontalAlignment.Left;
             txtPrecioCompra.TrailingIcon = null;
             txtPrecioCompra.UseSystemPasswordChar = false;
+            txtPrecioCompra.UseTallSize = false;
             //
             // txtPrecioVenta
             //
@@ -353,7 +358,7 @@ namespace CapaPresentacion.Compras
             txtPrecioVenta.Location = new Point(0, 128);
             txtPrecioVenta.Margin = new Padding(0);
             txtPrecioVenta.MaxLength = 32767;
-            txtPrecioVenta.MinimumSize = new Size(100, 30);
+            txtPrecioVenta.MinimumSize = new Size(100, 36);
             txtPrecioVenta.MouseState = MaterialSkin.MouseState.OUT;
             txtPrecioVenta.Name = "txtPrecioVenta";
             txtPrecioVenta.Padding = new Padding(2, 0, 2, 0);
@@ -369,6 +374,7 @@ namespace CapaPresentacion.Compras
             txtPrecioVenta.TextAlign = HorizontalAlignment.Left;
             txtPrecioVenta.TrailingIcon = null;
             txtPrecioVenta.UseSystemPasswordChar = false;
+            txtPrecioVenta.UseTallSize = false;
             //
             // lblSubtotalPreparacion
             //
@@ -421,7 +427,7 @@ namespace CapaPresentacion.Compras
             //
             // tblListadoProductos
             //
-            // Cuatro filas en una sola columna: rótulo, buscador propio (32 px) y
+            // Cuatro filas en una sola columna: rótulo, buscador propio (36 px) y
             // grilla, de modo que el buscador nunca comparte fila con la grilla ni
             // la tapa. Todo se posiciona con Dock = Fill: sin Location absoluto.
             tblListadoProductos.ColumnCount = 1;
@@ -436,7 +442,7 @@ namespace CapaPresentacion.Compras
             tblListadoProductos.Name = "tblListadoProductos";
             tblListadoProductos.RowCount = 4;
             tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             tblListadoProductos.Size = new Size(261, 226);
@@ -466,10 +472,11 @@ namespace CapaPresentacion.Compras
             txtBuscarProducto.Hint = "Buscar producto";
             txtBuscarProducto.Margin = new Padding(0);
             txtBuscarProducto.MaxLength = 32767;
-            // El buscador ocupa su propia fila de 32 px con Dock = Fill; el mínimo
+            // El buscador ocupa su propia fila de 36 px con Dock = Fill; el mínimo
             // nunca puede superar el alto de la fila (si lo supera, se derrama
-            // sobre el encabezado de la grilla).
-            txtBuscarProducto.MinimumSize = new Size(100, 32);
+            // sobre el encabezado de la grilla). El modo alto desactivado evita el
+            // alto de 48 px que MaterialTextBox2 impone por omisión.
+            txtBuscarProducto.MinimumSize = new Size(100, 36);
             txtBuscarProducto.MouseState = MaterialSkin.MouseState.OUT;
             txtBuscarProducto.Name = "txtBuscarProducto";
             txtBuscarProducto.Padding = new Padding(2, 0, 2, 0);
@@ -485,6 +492,7 @@ namespace CapaPresentacion.Compras
             txtBuscarProducto.TextAlign = HorizontalAlignment.Left;
             txtBuscarProducto.TrailingIcon = null;
             txtBuscarProducto.UseSystemPasswordChar = false;
+            txtBuscarProducto.UseTallSize = false;
             //
             // gridProductos
             //
@@ -496,7 +504,7 @@ namespace CapaPresentacion.Compras
             gridProductos.ColumnHeadersHeight = 26;
             gridProductos.Columns.AddRange(new DataGridViewColumn[] { colProductoCodigo, colProductoNombre });
             gridProductos.Dock = DockStyle.Fill;
-            gridProductos.Margin = new Padding(0);
+            gridProductos.Margin = new Padding(0, 4, 0, 0);
             // La grilla ocupa la fila "Percent 100" del listado y su propio alto se
             // resuelve por Dock; el mínimo garantiza cabecera y primeras filas. Con
             // ScrollBars = Vertical el alto del contenido no ensancha las columnas.
@@ -584,7 +592,7 @@ namespace CapaPresentacion.Compras
             tblDatosProveedor.Margin = new Padding(0);
             tblDatosProveedor.Name = "tblDatosProveedor";
             // Título 20 y los dos datos del proveedor elegido 30 cada uno ⇒ 80 px
-            // fijos (≤ 222). Sin fila de relleno: el bloque termina en el dato del
+            // fijos (≤ 240). Sin fila de relleno: el bloque termina en el dato del
             // documento y no deja hueco muerto.
             tblDatosProveedor.RowCount = 3;
             tblDatosProveedor.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
@@ -652,7 +660,7 @@ namespace CapaPresentacion.Compras
             //
             // tblListadoProveedores
             //
-            // Cuatro filas en una sola columna: rótulo, buscador propio (32 px) y
+            // Cuatro filas en una sola columna: rótulo, buscador propio (36 px) y
             // grilla, simétrico al listado de productos. Sin Location absoluto.
             tblListadoProveedores.ColumnCount = 1;
             tblListadoProveedores.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
@@ -666,7 +674,7 @@ namespace CapaPresentacion.Compras
             tblListadoProveedores.Name = "tblListadoProveedores";
             tblListadoProveedores.RowCount = 4;
             tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             tblListadoProveedores.Size = new Size(243, 226);
@@ -696,9 +704,10 @@ namespace CapaPresentacion.Compras
             txtBuscarProveedor.Hint = "Buscar proveedor";
             txtBuscarProveedor.Margin = new Padding(0);
             txtBuscarProveedor.MaxLength = 32767;
-            // El buscador ocupa su propia fila de 32 px con Dock = Fill; el mínimo
-            // nunca puede superar el alto de la fila.
-            txtBuscarProveedor.MinimumSize = new Size(100, 32);
+            // El buscador ocupa su propia fila de 36 px con Dock = Fill; el mínimo
+            // nunca puede superar el alto de la fila. El modo alto desactivado evita
+            // el alto de 48 px que MaterialTextBox2 impone por omisión.
+            txtBuscarProveedor.MinimumSize = new Size(100, 36);
             txtBuscarProveedor.MouseState = MaterialSkin.MouseState.OUT;
             txtBuscarProveedor.Name = "txtBuscarProveedor";
             txtBuscarProveedor.Padding = new Padding(2, 0, 2, 0);
@@ -714,6 +723,7 @@ namespace CapaPresentacion.Compras
             txtBuscarProveedor.TextAlign = HorizontalAlignment.Left;
             txtBuscarProveedor.TrailingIcon = null;
             txtBuscarProveedor.UseSystemPasswordChar = false;
+            txtBuscarProveedor.UseTallSize = false;
             //
             // gridProveedores
             //
@@ -725,7 +735,7 @@ namespace CapaPresentacion.Compras
             gridProveedores.ColumnHeadersHeight = 26;
             gridProveedores.Columns.AddRange(new DataGridViewColumn[] { colProveedorRazonSocial, colProveedorDocumento });
             gridProveedores.Dock = DockStyle.Fill;
-            gridProveedores.Margin = new Padding(0);
+            gridProveedores.Margin = new Padding(0, 4, 0, 0);
             // La grilla ocupa la fila "Percent 100" del listado; el alto se resuelve
             // por Dock y el mínimo garantiza cabecera y primeras filas. Con
             // ScrollBars = Vertical el contenido no ensancha las columnas.
@@ -815,15 +825,16 @@ namespace CapaPresentacion.Compras
             gridLineas.Columns.AddRange(new DataGridViewColumn[] { colLineaProducto, colLineaCantidad, colLineaPrecioCompra, colLineaPrecioVenta, colLineaSubtotal, colLineaEditar, colLineaQuitar });
             gridLineas.Dock = DockStyle.Fill;
             gridLineas.Margin = new Padding(0);
-            // Mínimo de 180 px: cabecera (40) más al menos tres líneas de 34. La
-            // barra vertical aparece sola y la horizontal solo si el ancho lo exige.
-            gridLineas.MinimumSize = new Size(0, 180);
+            // Mínimo de 62 px: cabecera (40) más el resto para la primera línea. La
+            // barra vertical aparece sola; la horizontal no se usa para que el
+            // contenido nunca ensanche las columnas.
+            gridLineas.MinimumSize = new Size(0, 62);
             gridLineas.MultiSelect = false;
             gridLineas.Name = "gridLineas";
             gridLineas.ReadOnly = true;
             gridLineas.RowHeadersVisible = false;
             gridLineas.RowTemplate.Height = 34;
-            gridLineas.ScrollBars = ScrollBars.Both;
+            gridLineas.ScrollBars = ScrollBars.Vertical;
             gridLineas.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             gridLineas.TabIndex = 1;
             //
@@ -991,18 +1002,18 @@ namespace CapaPresentacion.Compras
             btnLimpiar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             btnLimpiar.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
             btnLimpiar.Depth = 0;
-            btnLimpiar.HighEmphasis = true;
+            btnLimpiar.HighEmphasis = false;
             btnLimpiar.Icon = null;
             btnLimpiar.Margin = new Padding(6, 2, 6, 2);
             btnLimpiar.MinimumSize = new Size(0, 38);
             btnLimpiar.MouseState = MaterialSkin.MouseState.HOVER;
             btnLimpiar.Name = "btnLimpiar";
-            btnLimpiar.NoAccentTextColor = Color.Empty;
+            btnLimpiar.NoAccentTextColor = Color.FromArgb(224, 224, 224);
             btnLimpiar.Padding = new Padding(10, 0, 10, 0);
             btnLimpiar.Size = new Size(170, 38);
             btnLimpiar.TabIndex = 1;
             btnLimpiar.Text = "CANCELAR COMPRA";
-            btnLimpiar.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Outlined;
+            btnLimpiar.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Text;
             btnLimpiar.UseAccentColor = false;
             btnLimpiar.UseVisualStyleBackColor = true;
             //
@@ -1018,7 +1029,7 @@ namespace CapaPresentacion.Compras
             btnVerHistorial.MinimumSize = new Size(0, 38);
             btnVerHistorial.MouseState = MaterialSkin.MouseState.HOVER;
             btnVerHistorial.Name = "btnVerHistorial";
-            btnVerHistorial.NoAccentTextColor = Color.Empty;
+            btnVerHistorial.NoAccentTextColor = Color.White;
             btnVerHistorial.Padding = new Padding(10, 0, 10, 0);
             btnVerHistorial.Size = new Size(130, 38);
             btnVerHistorial.TabIndex = 2;
