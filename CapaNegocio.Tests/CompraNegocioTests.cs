@@ -6,6 +6,8 @@ using CapaNegocio.DTOs.Compras;
 using CapaNegocio.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Query;
+using System.Linq.Expressions;
 using Xunit;
 
 namespace CapaNegocio.Tests;
@@ -2090,6 +2092,100 @@ public class CompraNegocioTests
         Assert.Equal(81m, (await sano.DetallesCompra.AsNoTracking().ToListAsync()).Sum(d => d.Subtotal));
     }
 
+    // ---------- G10b · Fallo de lectura previo a la transacción (RF-55, RF-56, RNF-8, RNF-11) ----------
+
+    /// <summary>
+    /// Precondiciones: base en memoria sembrada (proveedor, usuario, 2 productos, solicitud válida) y una
+    /// lectura de <paramref name="entidad"/> que falla al compilarse la consulta (BD caída antes de la
+    /// transacción). Acción: <c>RegistrarCompraAsync</c> con rol Administrador. Resultado esperado:
+    /// <c>ErrorPersistencia</c> con el mensaje único, sin excepción, sin IdCompra, sin cabecera ni detalle
+    /// y PRODUCTO sin cambios. Tiempo máximo: 30 s. Criterio de éxito: todas las aserciones se cumplen.
+    /// Criterio de fallo: se propaga la excepción, el resultado/mensaje difiere, hay filas escritas,
+    /// PRODUCTO cambió o la prueba supera 30 s.
+    /// </summary>
+    [Theory]
+    [InlineData("Proveedor")]
+    [InlineData("Usuario")]
+    [InlineData("Producto")]
+    public async Task RegistrarCompra_ConFalloDeLecturaPrevia_DevuelveErrorPersistenciaSinEscribir(string entidad)
+    {
+        await using EscenarioLecturaFallida escenario = await CrearEscenarioLecturaFallidaAsync();
+        List<Producto> antes = await escenario.Db.Productos.AsNoTracking().OrderBy(p => p.IdProducto).ToListAsync();
+        escenario.Interceptor.Entidad = entidad switch
+        {
+            "Proveedor" => typeof(Proveedor),
+            "Usuario" => typeof(Usuario),
+            _ => typeof(Producto)
+        };
+
+        RespuestaRegistroCompra respuesta = await new CompraNegocio(escenario.Db).RegistrarCompraAsync(
+            escenario.Solicitud, escenario.IdUsuario, "Administrador");
+
+        escenario.Interceptor.Entidad = null;
+        Assert.Equal(ResultadoRegistroCompra.ErrorPersistencia, respuesta.Resultado);
+        Assert.Equal(MensajeErrorPersistencia, respuesta.Mensaje);
+        Assert.Null(respuesta.IdCompra);
+        Assert.Equal(2, escenario.Solicitud.Lineas.Count);
+        Assert.Empty(escenario.Db.ChangeTracker.Entries<Compra>());
+        Assert.Empty(escenario.Db.ChangeTracker.Entries<DetalleCompra>());
+        await AssertSinComprasAsync(escenario.Db);
+
+        List<Producto> despues = await escenario.Db.Productos.AsNoTracking().OrderBy(p => p.IdProducto).ToListAsync();
+        Assert.Equal(antes.Count, despues.Count);
+        for (int i = 0; i < antes.Count; i++)
+        {
+            Assert.Equal(antes[i].Stock, despues[i].Stock);
+            Assert.Equal(antes[i].PrecioCompra, despues[i].PrecioCompra);
+            Assert.Equal(antes[i].PrecioVenta, despues[i].PrecioVenta);
+            Assert.Equal(antes[i].Estado, despues[i].Estado);
+        }
+    }
+
+    /// <summary>
+    /// Precondiciones: base sembrada, una línea previa en carga y lectura de PRODUCTO fallando.
+    /// Acción: <c>AgregarLineaAsync</c> de otro producto. Resultado esperado: <c>ErrorPersistencia</c> con
+    /// el mensaje único, sin excepción, con las líneas previas intactas. Tiempo máximo: 30 s. Criterio de
+    /// éxito: aserciones cumplidas. Criterio de fallo: se propaga la excepción, cambia la lista o supera 30 s.
+    /// </summary>
+    [Fact]
+    public async Task AgregarLinea_ConFalloDeLecturaDeProducto_DevuelveErrorPersistenciaConLineasIntactas()
+    {
+        await using EscenarioLecturaFallida escenario = await CrearEscenarioLecturaFallidaAsync();
+        LineaCompraDto[] previas = { escenario.Solicitud.Lineas[0] };
+        escenario.Interceptor.Entidad = typeof(Producto);
+
+        RespuestaOperacionLineaCompra respuesta = await new CompraNegocio(escenario.Db).AgregarLineaAsync(
+            SolicitudAgregar(escenario.Solicitud.Lineas[1].IdProducto, lineas: previas));
+
+        escenario.Interceptor.Entidad = null;
+        Assert.Equal(ResultadoOperacionLineaCompra.ErrorPersistencia, respuesta.Resultado);
+        Assert.Equal(MensajeErrorPersistencia, respuesta.Mensaje);
+        AssertLineasIguales(previas, respuesta.Lineas);
+        Assert.Equal(previas[0].Subtotal, respuesta.MontoTotal);
+    }
+
+    /// <summary>
+    /// Precondiciones: base sembrada, dos líneas en carga y lectura de PRODUCTO fallando.
+    /// Acción: <c>EditarLineaAsync</c> de la primera línea. Resultado esperado: <c>ErrorPersistencia</c> con
+    /// el mensaje único, sin excepción, con las líneas intactas. Tiempo máximo: 30 s. Criterio de éxito:
+    /// aserciones cumplidas. Criterio de fallo: se propaga la excepción, cambia la lista o supera 30 s.
+    /// </summary>
+    [Fact]
+    public async Task EditarLinea_ConFalloDeLecturaDeProducto_DevuelveErrorPersistenciaConLineasIntactas()
+    {
+        await using EscenarioLecturaFallida escenario = await CrearEscenarioLecturaFallidaAsync();
+        IReadOnlyList<LineaCompraDto> previas = escenario.Solicitud.Lineas;
+        escenario.Interceptor.Entidad = typeof(Producto);
+
+        RespuestaOperacionLineaCompra respuesta = await new CompraNegocio(escenario.Db).EditarLineaAsync(
+            SolicitudEditar(0, previas[0].IdProducto, cantidad: "7", lineas: previas));
+
+        escenario.Interceptor.Entidad = null;
+        Assert.Equal(ResultadoOperacionLineaCompra.ErrorPersistencia, respuesta.Resultado);
+        Assert.Equal(MensajeErrorPersistencia, respuesta.Mensaje);
+        AssertLineasIguales(previas, respuesta.Lineas);
+    }
+
     // ---------- G12 · Historial de compras (RF-49 … RF-51, RF-53(a), RNF-5, RNF-12) ----------
 
     // RF-51: sin compras ⇒ SinCompras con el mensaje del catálogo.
@@ -3207,6 +3303,97 @@ public class CompraNegocioTests
                 Linea(uno.IdProducto, "COD1", "Uno", 2, 10.5m, 12m),
                 Linea(dos.IdProducto, "COD2", "Dos", 3, 20m, 25m))
         };
+    }
+
+    /// <summary>
+    /// Escenario con un único contexto cuyo interceptor hace fallar, a voluntad, la
+    /// lectura de una entidad concreta (BD caída antes de la transacción).
+    /// </summary>
+    private static async Task<EscenarioLecturaFallida> CrearEscenarioLecturaFallidaAsync()
+    {
+        var interceptor = new InterceptorLecturaFallida();
+        DbContextOptions<AppDbContext> opciones = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase($"CompraNegocioTests-LecturaFallida-{Guid.NewGuid()}")
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .AddInterceptors(interceptor)
+            .Options;
+
+        var db = new AppDbContext(opciones);
+        await db.Database.EnsureCreatedAsync();
+
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto uno = await SembrarProductoAsync(db, "COD1", "Uno");
+        Producto dos = await SembrarProductoAsync(db, "COD2", "Dos");
+
+        return new EscenarioLecturaFallida
+        {
+            Db = db,
+            Interceptor = interceptor,
+            IdUsuario = usuario.IdUsuario,
+            Solicitud = SolicitudRegistrar(
+                proveedor.IdProveedor,
+                Linea(uno.IdProducto, "COD1", "Uno", 2, 10.5m, 12m),
+                Linea(dos.IdProducto, "COD2", "Dos", 3, 20m, 25m))
+        };
+    }
+
+    private sealed class EscenarioLecturaFallida : IAsyncDisposable
+    {
+        public AppDbContext Db { get; init; } = null!;
+
+        public InterceptorLecturaFallida Interceptor { get; init; } = null!;
+
+        public int IdUsuario { get; init; }
+
+        public SolicitudRegistrarCompraDto Solicitud { get; init; } = null!;
+
+        public ValueTask DisposeAsync() => Db.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Doble de prueba: lanza <see cref="InvalidOperationException"/> al compilar una
+    /// consulta que lee <see cref="Entidad"/>, simulando el origen de datos caído.
+    /// Con <see cref="Entidad"/> en <see langword="null"/> no interfiere.
+    /// </summary>
+    private sealed class InterceptorLecturaFallida : IQueryExpressionInterceptor
+    {
+        public Type? Entidad { get; set; }
+
+        public Expression QueryCompilationStarting(
+            Expression queryExpression, QueryExpressionEventData eventData)
+        {
+            if (Entidad is not null)
+            {
+                var detector = new DetectorRaiz(Entidad);
+                detector.Visit(queryExpression);
+                if (detector.Encontrada)
+                {
+                    throw new InvalidOperationException("Fallo simulado del origen de datos.");
+                }
+            }
+
+            return queryExpression;
+        }
+
+        private sealed class DetectorRaiz : ExpressionVisitor
+        {
+            private readonly Type _tipo;
+
+            public DetectorRaiz(Type tipo) => _tipo = tipo;
+
+            public bool Encontrada { get; private set; }
+
+            protected override Expression VisitExtension(Expression node)
+            {
+                if (node is EntityQueryRootExpression raiz && raiz.EntityType.ClrType == _tipo)
+                {
+                    Encontrada = true;
+                }
+
+                return node;
+            }
+        }
     }
 
     /// <summary>Identificadores que no existen en la base de la prueba.</summary>

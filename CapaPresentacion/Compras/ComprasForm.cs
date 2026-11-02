@@ -125,51 +125,9 @@ namespace CapaPresentacion.Compras
             btnRegistrar.Click += btnRegistrar_Click;
             btnLimpiar.Click += btnLimpiar_Click;
             btnVerHistorial.Click += btnVerHistorial_Click;
-            pnlContenedor.SizeChanged += pnlContenedor_SizeChanged;
 
             RefrescarGrillaLineas();
         }
-
-        protected override void OnLoad(EventArgs e)
-        {
-            base.OnLoad(e);
-            AjustarTamanoTablaPrincipal();
-        }
-
-        protected override void OnVisibleChanged(EventArgs e)
-        {
-            base.OnVisibleChanged(e);
-
-            if (Visible)
-            {
-                AjustarTamanoTablaPrincipal();
-            }
-        }
-
-        /// <summary>
-        /// Ajusta la tabla principal al área cliente del contenedor descontando su
-        /// <see cref="Padding"/>, de modo que la tabla siga al contenedor pese a no
-        /// estar acoplada (<c>Dock = None</c>). El mínimo lo aporta el
-        /// <see cref="Control.MinimumSize"/> que fija el diseñador, por lo que no
-        /// hace falta una rama de DPI: el escalado ya viene aplicado en esa medida.
-        /// </summary>
-        private void AjustarTamanoTablaPrincipal()
-        {
-            if (IsDisposed || tblPrincipal.IsDisposed)
-            {
-                return;
-            }
-
-            Padding margen = pnlContenedor.Padding;
-
-            tblPrincipal.Location = new Point(margen.Left, margen.Top);
-            tblPrincipal.Size = new Size(
-                Math.Max(tblPrincipal.MinimumSize.Width, pnlContenedor.ClientSize.Width - margen.Horizontal),
-                Math.Max(tblPrincipal.MinimumSize.Height, pnlContenedor.ClientSize.Height - margen.Vertical));
-        }
-
-        private void pnlContenedor_SizeChanged(object? sender, EventArgs e)
-            => AjustarTamanoTablaPrincipal();
 
         /// <summary>
         /// Guarda la sesión con la que se registran las compras y se consultan el
@@ -249,10 +207,13 @@ namespace CapaPresentacion.Compras
             grilla.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
 
             // Filas alternadas para leer renglones largos (desktop-ux-patterns §2).
-            // Se hereda de DefaultCellStyle y solo cambia el fondo; la alineación se
-            // sigue tomando de DefaultCellStyle y de cada columna numérica.
+            // Se hereda de DefaultCellStyle y solo cambia el fondo. La alineación se deja
+            // sin definir (NotSet): el estilo de filas alternadas tiene prioridad sobre el
+            // de columna, y si copiara MiddleLeft de DefaultCellStyle los importes
+            // alineados a la derecha quedarían a la izquierda en las filas impares.
             grilla.AlternatingRowsDefaultCellStyle = grilla.DefaultCellStyle.Clone();
             grilla.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(56, 56, 56);
+            grilla.AlternatingRowsDefaultCellStyle.Alignment = DataGridViewContentAlignment.NotSet;
 
             grilla.GridColor = Color.FromArgb(80, 80, 80);
         }

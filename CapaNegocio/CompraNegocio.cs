@@ -337,23 +337,33 @@ public class CompraNegocio
 
         IReadOnlyList<LineaCompraDto> lineas = solicitud.Lineas ?? Array.Empty<LineaCompraDto>();
 
-        // Paso 2: proveedor.
-        string? mensajeProveedor = await ValidarProveedorAsync(solicitud.IdProveedor);
-        if (mensajeProveedor is not null)
-        {
-            return RechazoRegistro(ResultadoRegistroCompra.ProveedorInvalido, mensajeProveedor);
-        }
+        Dictionary<int, ProductoDeCompra> productos;
 
-        // Paso 3: usuario de la sesión (sin releer el rol, D-14).
-        string? mensajeUsuario = await ValidarUsuarioAsync(idUsuario);
-        if (mensajeUsuario is not null)
+        // Pasos 2–4: lecturas previas a la transacción. Un fallo del origen de
+        // datos aquí también se informa con el texto único (RF-55, RF-56 y RNF-8).
+        try
         {
-            return RechazoRegistro(ResultadoRegistroCompra.UsuarioInvalido, mensajeUsuario);
-        }
+            // Paso 2: proveedor.
+            string? mensajeProveedor = await ValidarProveedorAsync(solicitud.IdProveedor);
+            if (mensajeProveedor is not null)
+            {
+                return RechazoRegistro(ResultadoRegistroCompra.ProveedorInvalido, mensajeProveedor);
+            }
 
-        // Paso 4: una sola consulta acotada de los productos de la compra.
-        Dictionary<int, ProductoDeCompra> productos =
-            await ValidarProductosAsync(lineas.Select(l => l.IdProducto));
+            // Paso 3: usuario de la sesión (sin releer el rol, D-14).
+            string? mensajeUsuario = await ValidarUsuarioAsync(idUsuario);
+            if (mensajeUsuario is not null)
+            {
+                return RechazoRegistro(ResultadoRegistroCompra.UsuarioInvalido, mensajeUsuario);
+            }
+
+            // Paso 4: una sola consulta acotada de los productos de la compra.
+            productos = await ValidarProductosAsync(lineas.Select(l => l.IdProducto));
+        }
+        catch (Exception excepcion) when (EsFalloDeOrigenDeDatos(excepcion))
+        {
+            return RechazoRegistro(ResultadoRegistroCompra.ErrorPersistencia, MensajeErrorPersistencia);
+        }
 
         var idsVistos = new HashSet<int>();
         var subtotales = new List<decimal>(lineas.Count);
@@ -598,7 +608,15 @@ public class CompraNegocio
         IReadOnlyList<LineaCompraDto> lineas = solicitud.LineasActuales ?? Array.Empty<LineaCompraDto>();
         int indiceNuevaLinea = lineas.Count;
 
-        Dictionary<int, ProductoDeCompra> productos = await ValidarProductosAsync(new[] { solicitud.IdProducto });
+        Dictionary<int, ProductoDeCompra> productos;
+        try
+        {
+            productos = await ValidarProductosAsync(new[] { solicitud.IdProducto });
+        }
+        catch (Exception excepcion) when (EsFalloDeOrigenDeDatos(excepcion))
+        {
+            return Rechazo(ResultadoOperacionLineaCompra.ErrorPersistencia, MensajeErrorPersistencia, lineas);
+        }
 
         if (!productos.TryGetValue(solicitud.IdProducto, out ProductoDeCompra? producto))
         {
@@ -724,7 +742,15 @@ public class CompraNegocio
         }
 
         int numeroLinea = solicitud.IndiceLinea + 1;
-        Dictionary<int, ProductoDeCompra> productos = await ValidarProductosAsync(new[] { solicitud.IdProducto });
+        Dictionary<int, ProductoDeCompra> productos;
+        try
+        {
+            productos = await ValidarProductosAsync(new[] { solicitud.IdProducto });
+        }
+        catch (Exception excepcion) when (EsFalloDeOrigenDeDatos(excepcion))
+        {
+            return Rechazo(ResultadoOperacionLineaCompra.ErrorPersistencia, MensajeErrorPersistencia, lineas);
+        }
 
         if (!productos.TryGetValue(solicitud.IdProducto, out ProductoDeCompra? producto))
         {

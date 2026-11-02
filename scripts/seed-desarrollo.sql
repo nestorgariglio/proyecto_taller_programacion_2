@@ -1,11 +1,29 @@
 ﻿/*
     Datos semilla de desarrollo para probar manualmente HU-2, el ABM de
-    categorías (spec 001) y el ABM de productos.
+    categorías (spec 001), el ABM de productos, clientes y proveedores
+    (HU-09: compras a proveedores).
 
     Requisito previo: EF debe haber creado DB_SISTEMA_VENTA y las tablas ROL,
-    USUARIO, CATEGORIA y PRODUCTO. Este script crea solo datos de desarrollo;
-    no crea ni modifica tablas ni ningún otro elemento del esquema.
+    USUARIO, CATEGORIA, PRODUCTO, CLIENTE y PROVEEDOR. Este script crea solo
+    datos de desarrollo; no crea ni modifica tablas ni ningún otro elemento
+    del esquema. Todo se ejecuta dentro de UNA única transacción (todo o nada).
 
+    Contenido tras ejecutarlo:
+      - 3 roles; 4 usuarios (DNI 90000001-90000004: Administrador, Encargado,
+        Vendedora y un Encargado adicional).
+      - 6 categorías (5 activas + 1 inactiva).
+      - 201 productos: 12 base (7790001...), 188 de volumen (7790002000001 a
+        7790002000188) y 1 inactivo (7790003000001) => 200 activos.
+      - 12 clientes (CLI0000001 a CLI0000012).
+      - 11 proveedores: 2 activos + 1 inactivo base, y 8 activos adicionales.
+      - NO se insertan COMPRA ni DETALLE_COMPRA (RF-48: solo la aplicación
+        registra compras).
+
+    ADVERTENCIA: esta seed SOBRESCRIBE los datos de prueba (usuarios
+    90000001-90000004, categorías, productos 7790001/2/3..., clientes y
+    proveedores) en cada ejecución: restablece estado, stock, precios y nombres.
+    NO debe ejecutarse durante T10 ni entre sus pasos, porque alteraría el
+    stock y el estado de los registros y falsearía la verificación de RF-47.
 */
 
 SET ANSI_NULLS ON;
@@ -38,6 +56,12 @@ IF OBJECT_ID(N'dbo.CATEGORIA', N'U') IS NULL
 
 IF OBJECT_ID(N'dbo.PRODUCTO', N'U') IS NULL
     THROW 51005, N'No existe la tabla dbo.PRODUCTO. Ejecutá primero las migraciones de EF.', 1;
+
+IF OBJECT_ID(N'dbo.CLIENTE', N'U') IS NULL
+    THROW 51008, N'No existe la tabla dbo.CLIENTE. Ejecutá primero las migraciones de EF.', 1;
+
+IF OBJECT_ID(N'dbo.PROVEEDOR', N'U') IS NULL
+    THROW 51009, N'No existe la tabla dbo.PROVEEDOR. Ejecutá primero las migraciones de EF.', 1;
 GO
 
 SET XACT_ABORT ON;
@@ -95,6 +119,18 @@ BEGIN TRY
     IF @@ROWCOUNT = 0
         INSERT dbo.USUARIO (id_rol, dni, nombre, apellido, correo, sexo, clave, estado, intentos_fallidos, fecha_registro)
         VALUES (@idRolVendedor, 90000003, N'Vendedora', N'Desarrollo', N'vendedora.seed@ejemplo.invalid', N'F', N'$2a$12$L2JqegTxRoD8hsxuSJHRteY4piJbXTvueORhg5TSZBIBL0FuWm7eC', 1, 0, GETDATE());
+
+    -- Encargado adicional (escenario "Encargado inactivo con compras": registrar una
+    -- compra con este usuario desde la aplicación y luego darlo de baja).
+    -- Reutiliza el mismo hash de prueba del Encargado 90000002 (misma clave de prueba).
+    UPDATE dbo.USUARIO
+    SET id_rol = @idRolEncargado, nombre = N'Encargado', apellido = N'Adicional',
+        correo = N'encargado2.seed@ejemplo.invalid', sexo = N'F', clave = N'$2a$12$sD.QdOKFYYD7Nqv27DGA2eQMMuar5Fs.eVcRlct4bK7q3unW306n6',
+        estado = 1, intentos_fallidos = 0
+    WHERE dni = 90000004;
+    IF @@ROWCOUNT = 0
+        INSERT dbo.USUARIO (id_rol, dni, nombre, apellido, correo, sexo, clave, estado, intentos_fallidos, fecha_registro)
+        VALUES (@idRolEncargado, 90000004, N'Encargado', N'Adicional', N'encargado2.seed@ejemplo.invalid', N'F', N'$2a$12$sD.QdOKFYYD7Nqv27DGA2eQMMuar5Fs.eVcRlct4bK7q3unW306n6', 1, 0, GETDATE());
 
     ---------------------------------------------------------------------------
     -- Categorías de desarrollo: 5 activas + 1 inactiva (para probar
@@ -266,43 +302,63 @@ BEGIN TRY
         INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
         VALUES (@idCategoriaFrutas, @idUsuarioAdministrador, N'7790001000134', N'Tomate', N'Tomate redondo, por kilo', 20, 1100.00, 1799.00, 1, GETDATE());
 
-    COMMIT TRANSACTION;
-END TRY
-BEGIN CATCH
-    IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
-    THROW;
-END CATCH;
-GO
+    ---------------------------------------------------------------------------
+    -- Productos de volumen (RNF-9): 188 activos, códigos 7790002000001 a
+    -- 7790002000188 (13 dígitos), nombres "Producto Volumen 001" a "... 188".
+    -- Repartidos entre las 5 categorías activas. Stock 10-49 (> 0),
+    -- precio_venta = precio_compra + 300..750 (siempre mayor).
+    -- Con los 12 base suman 200 productos activos.
+    -- Idempotente: UPDATE por código; si no existe (@@ROWCOUNT = 0) se inserta.
+    ---------------------------------------------------------------------------
+    DECLARE @i int = 1;
+    DECLARE @codigoVol nvarchar(13);
+    DECLARE @nombreVol nvarchar(100);
+    DECLARE @idCategoriaVol int;
+    DECLARE @stockVol int;
+    DECLARE @compraVol decimal(18, 2);
+    DECLARE @ventaVol decimal(18, 2);
 
-  SELECT u.dni, u.nombre, u.apellido, u.sexo,
-         r.descripcion AS rol, u.estado, u.intentos_fallidos
-  FROM dbo.USUARIO u
-  INNER JOIN dbo.ROL r ON r.id_rol = u.id_rol
-  WHERE u.dni IN (90000001, 90000002, 90000003);
+    WHILE @i <= 188
+    BEGIN
+        SET @codigoVol = N'7790002' + RIGHT(N'000000' + CAST(@i AS nvarchar(6)), 6);
+        SET @nombreVol = N'Producto Volumen ' + RIGHT(N'000' + CAST(@i AS nvarchar(3)), 3);
+        SET @idCategoriaVol = CASE @i % 5
+            WHEN 0 THEN @idCategoriaBebidas
+            WHEN 1 THEN @idCategoriaAlmacen
+            WHEN 2 THEN @idCategoriaLacteos
+            WHEN 3 THEN @idCategoriaLimpieza
+            ELSE @idCategoriaFrutas
+        END;
+        SET @stockVol = 10 + (@i % 40);
+        SET @compraVol = CAST(500 + (@i * 7) AS decimal(18, 2));
+        SET @ventaVol = @compraVol + CAST(300 + ((@i % 10) * 50) AS decimal(18, 2));
 
-  SELECT c.id_categoria, c.descripcion, c.estado,
-         COUNT(p.id_producto) AS productos,
-         SUM(CASE WHEN p.estado = 1 THEN 1 ELSE 0 END) AS productos_activos
-  FROM dbo.CATEGORIA c
-  LEFT JOIN dbo.PRODUCTO p ON p.id_categoria = c.id_categoria
-  WHERE c.descripcion IN (N'Bebidas', N'Almacén', N'Lácteos', N'Limpieza', N'Frutas y Verduras', N'Kiosco')
-  GROUP BY c.id_categoria, c.descripcion, c.estado
-  ORDER BY c.descripcion;
+        UPDATE dbo.PRODUCTO
+        SET id_categoria = @idCategoriaVol, id_usuario = @idUsuarioAdministrador, nombre = @nombreVol,
+            descripcion = N'Producto ficticio de volumen para pruebas', stock = @stockVol,
+            precio_compra = @compraVol, precio_venta = @ventaVol, estado = 1, fecha_registro = GETDATE()
+        WHERE codigo = @codigoVol;
+        IF @@ROWCOUNT = 0
+            INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+            VALUES (@idCategoriaVol, @idUsuarioAdministrador, @codigoVol, @nombreVol, N'Producto ficticio de volumen para pruebas', @stockVol, @compraVol, @ventaVol, 1, GETDATE());
 
-  SELECT p.id_producto, p.codigo, p.nombre, c.descripcion AS categoria,
-         p.stock, p.precio_compra, p.precio_venta, p.estado
-  FROM dbo.PRODUCTO p
-  INNER JOIN dbo.CATEGORIA c ON c.id_categoria = p.id_categoria
-  WHERE p.codigo LIKE N'7790001000%'
-  ORDER BY p.id_producto;
+        SET @i = @i + 1;
+    END;
 
     ---------------------------------------------------------------------------
-    -- Proveedores de desarrollo: 3 activos e inactivos con campos variados
-    -- (con/sin correo, con/sin teléfono, activo/inactivo) para probar
-    -- baja/reactivación, unicidad de CUIT y búsqueda (RF-04).
-    -- Patrón idempotente: UPDATE ... IF @@ROWCOUNT = 0 THEN INSERT.
-    -- DNI = CUIT; todos los valores cumplen RF-4 (cuit solo dígitos,
-    -- sin letras ni símbolos, 11 dígitos; razón social vigente).
+    -- Producto INACTIVO (estado = 0) para probar RF-15 / RF-18 / V-17.
+    ---------------------------------------------------------------------------
+    UPDATE dbo.PRODUCTO
+    SET id_categoria = @idCategoriaAlmacen, id_usuario = @idUsuarioAdministrador, nombre = N'Producto Inactivo Prueba', descripcion = N'Producto ficticio dado de baja para pruebas', stock = 10,
+        precio_compra = 1000.00, precio_venta = 1500.00, estado = 0, fecha_registro = GETDATE()
+    WHERE codigo = N'7790003000001';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PRODUCTO (id_categoria, id_usuario, codigo, nombre, descripcion, stock, precio_compra, precio_venta, estado, fecha_registro)
+        VALUES (@idCategoriaAlmacen, @idUsuarioAdministrador, N'7790003000001', N'Producto Inactivo Prueba', N'Producto ficticio dado de baja para pruebas', 10, 1000.00, 1500.00, 0, GETDATE());
+
+    ---------------------------------------------------------------------------
+    -- Clientes de desarrollo: 12 (9 activos + 3 inactivos) con campos
+    -- variados (con/sin correo, con/sin teléfono, activo/inactivo).
     -- Patrón idempotente: UPDATE ... IF @@ROWCOUNT = 0 THEN INSERT
     -- DNI alfanumérico 7-20, nombre/apellido 2-100, correo/teléfono opcionales
     -- Cobertura: válidos, opcionales completos, opcionales nulos, activo/inactivo
@@ -327,27 +383,6 @@ GO
     IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000003', N'Carlos', N'Sánchez', N'carlos.sanchez@email.com', NULL, 1, GETDATE());
-
-    UPDATE dbo.PROVEEDOR
-    SET razon_social = N'Distribuidora Norte SRL', correo = N'ventas@norte.com', telefono = N'01145550000', estado = 1, fecha_registro = GETDATE()
-    WHERE cuit = N'30123456789';
-    IF @@ROWCOUNT = 0
-        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
-        VALUES (N'30123456789', N'Distribuidora Norte SRL', N'ventas@norte.com', N'01145550000', 1, GETDATE());
-
-    UPDATE dbo.PROVEEDOR
-    SET razon_social = N'Logitech Argentina SA', correo = N'contacto@logitech.com', telefono = NULL, estado = 1, fecha_registro = GETDATE()
-    WHERE cuit = N'20123456789';
-    IF @@ROWCOUNT = 0
-        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
-        VALUES (N'20123456789', N'Logitech Argentina SA', N'contacto@logitech.com', NULL, 1, GETDATE());
-
-    UPDATE dbo.PROVEEDOR
-    SET razon_social = N'Tecnologia Norte', correo = NULL, telefono = NULL, estado = 0, fecha_registro = GETDATE()
-    WHERE cuit = N'27123456789';
-    IF @@ROWCOUNT = 0
-        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
-        VALUES (N'27123456789', N'Tecnologia Norte', NULL, NULL, 0, GETDATE());
 
     UPDATE dbo.CLIENTE
     SET nombre = N'Laura', apellido = N'Díaz', correo = NULL, telefono = NULL, estado = 0, fecha_registro = GETDATE()
@@ -411,3 +446,135 @@ GO
     IF @@ROWCOUNT = 0
         INSERT dbo.CLIENTE (dni, nombre, apellido, correo, telefono, estado, fecha_registro)
         VALUES (N'CLI0000012', N'Elena', N'Vega', N'elenavega@email.com', N'1212345678', 1, GETDATE());
+
+    ---------------------------------------------------------------------------
+    -- Proveedores de desarrollo: 2 activos y 1 inactivo (base) + 8 activos
+    -- adicionales (V-11: listas con scroll), con campos variados (con/sin
+    -- correo, con/sin teléfono) para probar baja/reactivación, unicidad de
+    -- CUIT y búsqueda (RF-04).
+    -- Patrón idempotente: UPDATE ... IF @@ROWCOUNT = 0 THEN INSERT.
+    -- CUIT solo dígitos (11), razón social con letras/espacios (sin dígitos ni
+    -- puntos, para que pase la validación de edición de la aplicación) y
+    -- correos con dominio example.com. Las columnas son varchar (sin tildes).
+    ---------------------------------------------------------------------------
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Distribuidora Norte SRL', correo = N'ventas@norte.com', telefono = N'01145550000', estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'30123456789';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'30123456789', N'Distribuidora Norte SRL', N'ventas@norte.com', N'01145550000', 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Logitech Argentina SA', correo = N'contacto@logitech.com', telefono = NULL, estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'20123456789';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'20123456789', N'Logitech Argentina SA', N'contacto@logitech.com', NULL, 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Tecnologia Norte', correo = NULL, telefono = NULL, estado = 0, fecha_registro = GETDATE()
+    WHERE cuit = N'27123456789';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'27123456789', N'Tecnologia Norte', NULL, NULL, 0, GETDATE());
+
+    -- Proveedores activos adicionales (8).
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Alfa Distribuciones SA', correo = N'ventas@alfa-distribuciones.example.com', telefono = N'01140000001', estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'30711000001';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'30711000001', N'Alfa Distribuciones SA', N'ventas@alfa-distribuciones.example.com', N'01140000001', 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Beta Mayorista SRL', correo = N'contacto@beta-mayorista.example.com', telefono = N'01140000002', estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'30711000002';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'30711000002', N'Beta Mayorista SRL', N'contacto@beta-mayorista.example.com', N'01140000002', 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Gamma Alimentos SA', correo = NULL, telefono = N'01140000003', estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'30711000003';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'30711000003', N'Gamma Alimentos SA', NULL, N'01140000003', 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Delta Limpieza SRL', correo = N'ventas@delta-limpieza.example.com', telefono = NULL, estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'30711000004';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'30711000004', N'Delta Limpieza SRL', N'ventas@delta-limpieza.example.com', NULL, 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Epsilon Bebidas SA', correo = N'info@epsilon-bebidas.example.com', telefono = N'01140000005', estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'30711000005';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'30711000005', N'Epsilon Bebidas SA', N'info@epsilon-bebidas.example.com', N'01140000005', 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Zeta Lacteos SRL', correo = N'pedidos@zeta-lacteos.example.com', telefono = N'01140000006', estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'30711000006';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'30711000006', N'Zeta Lacteos SRL', N'pedidos@zeta-lacteos.example.com', N'01140000006', 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Eta Frutas y Verduras SA', correo = NULL, telefono = NULL, estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'30711000007';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'30711000007', N'Eta Frutas y Verduras SA', NULL, NULL, 1, GETDATE());
+
+    UPDATE dbo.PROVEEDOR
+    SET razon_social = N'Theta Almacen SRL', correo = N'compras@theta-almacen.example.com', telefono = N'01140000008', estado = 1, fecha_registro = GETDATE()
+    WHERE cuit = N'30711000008';
+    IF @@ROWCOUNT = 0
+        INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
+        VALUES (N'30711000008', N'Theta Almacen SRL', N'compras@theta-almacen.example.com', N'01140000008', 1, GETDATE());
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+
+-- Salida de control (solo lectura).
+SELECT u.dni, u.nombre, u.apellido, u.sexo,
+       r.descripcion AS rol, u.estado, u.intentos_fallidos
+FROM dbo.USUARIO u
+INNER JOIN dbo.ROL r ON r.id_rol = u.id_rol
+WHERE u.dni IN (90000001, 90000002, 90000003, 90000004);
+
+SELECT c.id_categoria, c.descripcion, c.estado,
+       COUNT(p.id_producto) AS productos,
+       SUM(CASE WHEN p.estado = 1 THEN 1 ELSE 0 END) AS productos_activos
+FROM dbo.CATEGORIA c
+LEFT JOIN dbo.PRODUCTO p ON p.id_categoria = c.id_categoria
+WHERE c.descripcion IN (N'Bebidas', N'Almacén', N'Lácteos', N'Limpieza', N'Frutas y Verduras', N'Kiosco')
+GROUP BY c.id_categoria, c.descripcion, c.estado
+ORDER BY c.descripcion;
+
+SELECT p.id_producto, p.codigo, p.nombre, c.descripcion AS categoria,
+       p.stock, p.precio_compra, p.precio_venta, p.estado
+FROM dbo.PRODUCTO p
+INNER JOIN dbo.CATEGORIA c ON c.id_categoria = p.id_categoria
+WHERE p.codigo LIKE N'7790001000%' OR p.codigo = N'7790003000001'
+ORDER BY p.id_producto;
+
+SELECT COUNT(*) AS productos_totales,
+       SUM(CASE WHEN estado = 1 THEN 1 ELSE 0 END) AS productos_activos,
+       SUM(CASE WHEN codigo LIKE N'7790002%' THEN 1 ELSE 0 END) AS productos_volumen
+FROM dbo.PRODUCTO;
+
+SELECT id_proveedor, cuit, razon_social, correo, telefono, estado
+FROM dbo.PROVEEDOR
+ORDER BY id_proveedor;
+
+SELECT COUNT(*) AS clientes_totales,
+       SUM(CASE WHEN estado = 1 THEN 1 ELSE 0 END) AS clientes_activos
+FROM dbo.CLIENTE;
+GO

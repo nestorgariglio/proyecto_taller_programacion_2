@@ -78,7 +78,7 @@ namespace CapaPresentacion.Compras
             tblPieCompra = new TableLayoutPanel();
             lblMontoTotal = new MaterialSkin.Controls.MaterialLabel();
             lblMensaje = new MaterialSkin.Controls.MaterialLabel();
-            flpAcciones = new FlowLayoutPanel();
+            flpAcciones = new TableLayoutPanel();
             btnRegistrar = new MaterialSkin.Controls.MaterialButton();
             btnLimpiar = new MaterialSkin.Controls.MaterialButton();
             btnVerHistorial = new MaterialSkin.Controls.MaterialButton();
@@ -106,20 +106,22 @@ namespace CapaPresentacion.Compras
             // pnlContenedor
             //
             pnlContenedor.AutoScroll = true;
-            pnlContenedor.AutoScrollMinSize = Size.Empty;
+            // Alto mínimo (96 DPI) = márgenes 16 + filas fijas 28+232+46 + compra actual 136.
+            // Solo vertical: el ancho 0 impide el scroll horizontal. Por debajo de este alto
+            // aparece la barra vertical y tblPrincipal (Dock = Fill) conserva su alto mínimo.
+            pnlContenedor.AutoScrollMinSize = new Size(0, 458);
             pnlContenedor.BackColor = Color.FromArgb(33, 33, 33);
             pnlContenedor.Controls.Add(tblPrincipal);
             pnlContenedor.Dock = DockStyle.Fill;
             pnlContenedor.Location = new Point(0, 0);
             pnlContenedor.Margin = new Padding(0);
             pnlContenedor.Name = "pnlContenedor";
-            pnlContenedor.Padding = new Padding(12);
+            pnlContenedor.Padding = new Padding(0);
             pnlContenedor.Size = new Size(1083, 508);
             pnlContenedor.TabIndex = 0;
             //
             // tblPrincipal
             //
-            tblPrincipal.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             tblPrincipal.AutoSize = false;
             tblPrincipal.ColumnCount = 2;
             // Bloques gemelos simétricos (winforms-ui-ux §2): exactamente 50/50, sin
@@ -135,23 +137,20 @@ namespace CapaPresentacion.Compras
             tblPrincipal.SetColumnSpan(pnlEncabezado, 2);
             tblPrincipal.SetColumnSpan(tblCompraActual, 2);
             tblPrincipal.SetColumnSpan(flpAcciones, 2);
-            tblPrincipal.Dock = DockStyle.None;
-            tblPrincipal.Location = new Point(12, 12);
-            tblPrincipal.Margin = new Padding(0);
-            tblPrincipal.MinimumSize = new Size(850, 454);
+            tblPrincipal.Dock = DockStyle.Fill;
+            tblPrincipal.Location = new Point(8, 8);
+            tblPrincipal.Margin = new Padding(8);
             tblPrincipal.Name = "tblPrincipal";
             tblPrincipal.Padding = new Padding(0);
-            // Filas: 30 + 240 + 50 = 320 fijos; mínimo de contenido
-            // 30 + 240 + 22 + 62 + 50 + 50 = 454 = alto útil real a 1053×478
-            // (478 − 24 de Padding). Dock = None es necesario para que
-            // pnlContenedor.AutoScroll genere barra: un hijo Fill con mínimo mayor
-            // que el viewport se recorta sin barra.
+            // Filas fijas 28 + 232 + 46 = 306; «Compra actual» toma el resto (mínimo 136).
+            // Dock = Fill sigue siempre al contenedor; el piso de alto lo impone
+            // pnlContenedor.AutoScrollMinSize (solo vertical).
             tblPrincipal.RowCount = 4;
-            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 240F));
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 232F));
             tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
-            tblPrincipal.Size = new Size(1029, 454);
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+            tblPrincipal.Size = new Size(1067, 492);
             tblPrincipal.TabIndex = 0;
             //
             // pnlEncabezado
@@ -169,7 +168,7 @@ namespace CapaPresentacion.Compras
             lblTitulo.AutoSize = false;
             lblTitulo.Depth = 0;
             lblTitulo.Dock = DockStyle.Fill;
-            lblTitulo.Font = new Font("Roboto", 24F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblTitulo.Font = new Font("Roboto", 18F, FontStyle.Regular, GraphicsUnit.Point);
             lblTitulo.Location = new Point(0, 0);
             lblTitulo.MouseState = MaterialSkin.MouseState.HOVER;
             lblTitulo.Name = "lblTitulo";
@@ -224,21 +223,21 @@ namespace CapaPresentacion.Compras
             tblDatosProducto.Location = new Point(10, 2);
             tblDatosProducto.Margin = new Padding(0);
             tblDatosProducto.Name = "tblDatosProducto";
-            // Filas: título 20, nombre y código 22 cada uno, las tres entradas 36 cada
-            // una, subtotal 22 y botón 40 ⇒ 234 px (≤ 240 de la fila 1 menos el
-            // Padding del panel). Las entradas van a 36 px porque con el modo alto de
+            // Filas (96 DPI): título, nombre, código y subtotal 20 cada uno, las tres
+            // entradas 36 cada una (igual a su MinimumSize) y botón 36 ⇒ 224 px, más
+            // el Padding del panel (4) ≤ 232 de la fila 1. Las entradas van a 36 px porque con el modo alto de
             // MaterialTextBox2 desactivado su alto real cabe en la fila sin
             // derramarse sobre la siguiente. Sin fila de relleno: el bloque termina
             // en el botón y no deja hueco muerto antes de «Compra Actual».
             tblDatosProducto.RowCount = 8;
             tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
             tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tblDatosProducto.Size = new Size(201, 236);
             tblDatosProducto.TabIndex = 0;
             //
@@ -247,7 +246,7 @@ namespace CapaPresentacion.Compras
             lblTituloDatosProducto.AutoSize = false;
             lblTituloDatosProducto.Depth = 0;
             lblTituloDatosProducto.Dock = DockStyle.Fill;
-            lblTituloDatosProducto.Font = new Font("Roboto", 18F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblTituloDatosProducto.Font = new Font("Roboto", 13.5F, FontStyle.Regular, GraphicsUnit.Point);
             lblTituloDatosProducto.Location = new Point(0, 0);
             lblTituloDatosProducto.Margin = new Padding(0);
             lblTituloDatosProducto.MouseState = MaterialSkin.MouseState.HOVER;
@@ -262,7 +261,7 @@ namespace CapaPresentacion.Compras
             lblNombreProducto.AutoSize = false;
             lblNombreProducto.Depth = 0;
             lblNombreProducto.Dock = DockStyle.Fill;
-            lblNombreProducto.Font = new Font("Roboto", 15F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblNombreProducto.Font = new Font("Roboto", 11.25F, FontStyle.Regular, GraphicsUnit.Point);
             lblNombreProducto.Location = new Point(0, 20);
             lblNombreProducto.Margin = new Padding(0);
             lblNombreProducto.MouseState = MaterialSkin.MouseState.HOVER;
@@ -277,7 +276,7 @@ namespace CapaPresentacion.Compras
             lblCodigoProducto.AutoSize = false;
             lblCodigoProducto.Depth = 0;
             lblCodigoProducto.Dock = DockStyle.Fill;
-            lblCodigoProducto.Font = new Font("Roboto", 14F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblCodigoProducto.Font = new Font("Roboto", 10.5F, FontStyle.Regular, GraphicsUnit.Point);
             lblCodigoProducto.Location = new Point(0, 44);
             lblCodigoProducto.Margin = new Padding(0);
             lblCodigoProducto.MouseState = MaterialSkin.MouseState.HOVER;
@@ -293,7 +292,7 @@ namespace CapaPresentacion.Compras
             txtCantidad.CharacterCasing = CharacterCasing.Normal;
             txtCantidad.Depth = 0;
             txtCantidad.Dock = DockStyle.Fill;
-            txtCantidad.Font = new Font("Microsoft Sans Serif", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
+            txtCantidad.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
             txtCantidad.Hint = "Cantidad";
             txtCantidad.Location = new Point(0, 68);
             txtCantidad.Margin = new Padding(0);
@@ -323,7 +322,7 @@ namespace CapaPresentacion.Compras
             txtPrecioCompra.CharacterCasing = CharacterCasing.Normal;
             txtPrecioCompra.Depth = 0;
             txtPrecioCompra.Dock = DockStyle.Fill;
-            txtPrecioCompra.Font = new Font("Microsoft Sans Serif", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
+            txtPrecioCompra.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
             txtPrecioCompra.Hint = "Precio compra";
             txtPrecioCompra.Location = new Point(0, 98);
             txtPrecioCompra.Margin = new Padding(0);
@@ -353,7 +352,7 @@ namespace CapaPresentacion.Compras
             txtPrecioVenta.CharacterCasing = CharacterCasing.Normal;
             txtPrecioVenta.Depth = 0;
             txtPrecioVenta.Dock = DockStyle.Fill;
-            txtPrecioVenta.Font = new Font("Microsoft Sans Serif", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
+            txtPrecioVenta.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
             txtPrecioVenta.Hint = "Precio venta";
             txtPrecioVenta.Location = new Point(0, 128);
             txtPrecioVenta.Margin = new Padding(0);
@@ -381,7 +380,7 @@ namespace CapaPresentacion.Compras
             lblSubtotalPreparacion.AutoSize = false;
             lblSubtotalPreparacion.Depth = 0;
             lblSubtotalPreparacion.Dock = DockStyle.Fill;
-            lblSubtotalPreparacion.Font = new Font("Roboto", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblSubtotalPreparacion.Font = new Font("Roboto", 12F, FontStyle.Regular, GraphicsUnit.Point);
             lblSubtotalPreparacion.Location = new Point(0, 158);
             lblSubtotalPreparacion.Margin = new Padding(0);
             lblSubtotalPreparacion.MouseState = MaterialSkin.MouseState.HOVER;
@@ -401,12 +400,12 @@ namespace CapaPresentacion.Compras
             btnAgregarLinea.Icon = null;
             btnAgregarLinea.Location = new Point(0, 186);
             btnAgregarLinea.Margin = new Padding(0);
-            btnAgregarLinea.MinimumSize = new Size(0, 40);
+            btnAgregarLinea.MinimumSize = new Size(0, 36);
             btnAgregarLinea.MouseState = MaterialSkin.MouseState.HOVER;
             btnAgregarLinea.Name = "btnAgregarLinea";
             btnAgregarLinea.NoAccentTextColor = Color.Empty;
             btnAgregarLinea.Padding = new Padding(10, 0, 10, 0);
-            btnAgregarLinea.Size = new Size(190, 40);
+            btnAgregarLinea.Size = new Size(190, 36);
             btnAgregarLinea.TabIndex = 7;
             btnAgregarLinea.Text = "Agregar a la compra";
             btnAgregarLinea.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
@@ -453,7 +452,7 @@ namespace CapaPresentacion.Compras
             lblTituloListadoProductos.Anchor = AnchorStyles.Left;
             lblTituloListadoProductos.AutoSize = true;
             lblTituloListadoProductos.Depth = 0;
-            lblTituloListadoProductos.Font = new Font("Roboto", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblTituloListadoProductos.Font = new Font("Roboto", 12F, FontStyle.Regular, GraphicsUnit.Point);
             lblTituloListadoProductos.Margin = new Padding(0);
             lblTituloListadoProductos.MouseState = MaterialSkin.MouseState.HOVER;
             lblTituloListadoProductos.Name = "lblTituloListadoProductos";
@@ -468,7 +467,7 @@ namespace CapaPresentacion.Compras
             txtBuscarProducto.CharacterCasing = CharacterCasing.Normal;
             txtBuscarProducto.Depth = 0;
             txtBuscarProducto.Dock = DockStyle.Fill;
-            txtBuscarProducto.Font = new Font("Microsoft Sans Serif", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
+            txtBuscarProducto.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
             txtBuscarProducto.Hint = "Buscar producto";
             txtBuscarProducto.Margin = new Padding(0);
             txtBuscarProducto.MaxLength = 32767;
@@ -541,7 +540,7 @@ namespace CapaPresentacion.Compras
             lblMensajeProductos.AutoSize = false;
             lblMensajeProductos.Depth = 0;
             lblMensajeProductos.Dock = DockStyle.Fill;
-            lblMensajeProductos.Font = new Font("Roboto", 13F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblMensajeProductos.Font = new Font("Roboto", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
             lblMensajeProductos.Margin = new Padding(0);
             lblMensajeProductos.MinimumSize = new Size(0, 18);
             lblMensajeProductos.MouseState = MaterialSkin.MouseState.HOVER;
@@ -606,7 +605,7 @@ namespace CapaPresentacion.Compras
             lblTituloDatosProveedor.AutoSize = false;
             lblTituloDatosProveedor.Depth = 0;
             lblTituloDatosProveedor.Dock = DockStyle.Fill;
-            lblTituloDatosProveedor.Font = new Font("Roboto", 18F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblTituloDatosProveedor.Font = new Font("Roboto", 13.5F, FontStyle.Regular, GraphicsUnit.Point);
             lblTituloDatosProveedor.Location = new Point(0, 0);
             lblTituloDatosProveedor.Margin = new Padding(0);
             lblTituloDatosProveedor.MouseState = MaterialSkin.MouseState.HOVER;
@@ -621,7 +620,7 @@ namespace CapaPresentacion.Compras
             lblRazonSocialProveedor.AutoSize = false;
             lblRazonSocialProveedor.Depth = 0;
             lblRazonSocialProveedor.Dock = DockStyle.Fill;
-            lblRazonSocialProveedor.Font = new Font("Roboto", 15F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblRazonSocialProveedor.Font = new Font("Roboto", 11.25F, FontStyle.Regular, GraphicsUnit.Point);
             lblRazonSocialProveedor.Location = new Point(0, 20);
             lblRazonSocialProveedor.Margin = new Padding(0);
             lblRazonSocialProveedor.MouseState = MaterialSkin.MouseState.HOVER;
@@ -636,7 +635,7 @@ namespace CapaPresentacion.Compras
             lblDocumentoProveedor.AutoSize = false;
             lblDocumentoProveedor.Depth = 0;
             lblDocumentoProveedor.Dock = DockStyle.Fill;
-            lblDocumentoProveedor.Font = new Font("Roboto", 14F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblDocumentoProveedor.Font = new Font("Roboto", 10.5F, FontStyle.Regular, GraphicsUnit.Point);
             lblDocumentoProveedor.Location = new Point(0, 50);
             lblDocumentoProveedor.Margin = new Padding(0);
             lblDocumentoProveedor.MouseState = MaterialSkin.MouseState.HOVER;
@@ -685,7 +684,7 @@ namespace CapaPresentacion.Compras
             lblTituloListadoProveedores.Anchor = AnchorStyles.Left;
             lblTituloListadoProveedores.AutoSize = true;
             lblTituloListadoProveedores.Depth = 0;
-            lblTituloListadoProveedores.Font = new Font("Roboto", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblTituloListadoProveedores.Font = new Font("Roboto", 12F, FontStyle.Regular, GraphicsUnit.Point);
             lblTituloListadoProveedores.Margin = new Padding(0);
             lblTituloListadoProveedores.MouseState = MaterialSkin.MouseState.HOVER;
             lblTituloListadoProveedores.Name = "lblTituloListadoProveedores";
@@ -700,7 +699,7 @@ namespace CapaPresentacion.Compras
             txtBuscarProveedor.CharacterCasing = CharacterCasing.Normal;
             txtBuscarProveedor.Depth = 0;
             txtBuscarProveedor.Dock = DockStyle.Fill;
-            txtBuscarProveedor.Font = new Font("Microsoft Sans Serif", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
+            txtBuscarProveedor.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
             txtBuscarProveedor.Hint = "Buscar proveedor";
             txtBuscarProveedor.Margin = new Padding(0);
             txtBuscarProveedor.MaxLength = 32767;
@@ -772,7 +771,7 @@ namespace CapaPresentacion.Compras
             lblMensajeProveedores.AutoSize = false;
             lblMensajeProveedores.Depth = 0;
             lblMensajeProveedores.Dock = DockStyle.Fill;
-            lblMensajeProveedores.Font = new Font("Roboto", 13F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblMensajeProveedores.Font = new Font("Roboto", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
             lblMensajeProveedores.Margin = new Padding(0);
             lblMensajeProveedores.MinimumSize = new Size(0, 18);
             lblMensajeProveedores.MouseState = MaterialSkin.MouseState.HOVER;
@@ -795,7 +794,7 @@ namespace CapaPresentacion.Compras
             tblCompraActual.RowCount = 3;
             tblCompraActual.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
             tblCompraActual.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblCompraActual.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+            tblCompraActual.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
             tblCompraActual.Size = new Size(980, 335);
             tblCompraActual.TabIndex = 2;
             //
@@ -804,7 +803,7 @@ namespace CapaPresentacion.Compras
             lblTituloCompraActual.AutoSize = false;
             lblTituloCompraActual.Depth = 0;
             lblTituloCompraActual.Dock = DockStyle.Fill;
-            lblTituloCompraActual.Font = new Font("Roboto", 18F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblTituloCompraActual.Font = new Font("Roboto", 13.5F, FontStyle.Regular, GraphicsUnit.Point);
             lblTituloCompraActual.Location = new Point(0, 0);
             lblTituloCompraActual.Margin = new Padding(0);
             lblTituloCompraActual.MouseState = MaterialSkin.MouseState.HOVER;
@@ -821,14 +820,14 @@ namespace CapaPresentacion.Compras
             gridLineas.AllowUserToResizeRows = false;
             gridLineas.AutoGenerateColumns = false;
             gridLineas.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            gridLineas.ColumnHeadersHeight = 40;
+            gridLineas.ColumnHeadersHeight = 30;
             gridLineas.Columns.AddRange(new DataGridViewColumn[] { colLineaProducto, colLineaCantidad, colLineaPrecioCompra, colLineaPrecioVenta, colLineaSubtotal, colLineaEditar, colLineaQuitar });
             gridLineas.Dock = DockStyle.Fill;
             gridLineas.Margin = new Padding(0);
-            // Mínimo de 62 px: cabecera (40) más el resto para la primera línea. La
+            // Mínimo de 64 px: cabecera (30) más el resto para la primera línea. La
             // barra vertical aparece sola; la horizontal no se usa para que el
             // contenido nunca ensanche las columnas.
-            gridLineas.MinimumSize = new Size(0, 62);
+            gridLineas.MinimumSize = new Size(0, 64);
             gridLineas.MultiSelect = false;
             gridLineas.Name = "gridLineas";
             gridLineas.ReadOnly = true;
@@ -926,7 +925,7 @@ namespace CapaPresentacion.Compras
             tblPieCompra.Margin = new Padding(0);
             tblPieCompra.Name = "tblPieCompra";
             tblPieCompra.RowCount = 2;
-            tblPieCompra.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            tblPieCompra.RowStyles.Add(new RowStyle(SizeType.Absolute, 26F));
             tblPieCompra.RowStyles.Add(new RowStyle(SizeType.Absolute, 18F));
             tblPieCompra.Size = new Size(980, 50);
             tblPieCompra.TabIndex = 2;
@@ -936,7 +935,7 @@ namespace CapaPresentacion.Compras
             lblMontoTotal.AutoSize = false;
             lblMontoTotal.Depth = 0;
             lblMontoTotal.Dock = DockStyle.Fill;
-            lblMontoTotal.Font = new Font("Roboto", 20F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblMontoTotal.Font = new Font("Roboto", 15F, FontStyle.Regular, GraphicsUnit.Point);
             lblMontoTotal.Location = new Point(0, 0);
             lblMontoTotal.Margin = new Padding(0);
             lblMontoTotal.MouseState = MaterialSkin.MouseState.HOVER;
@@ -951,7 +950,7 @@ namespace CapaPresentacion.Compras
             lblMensaje.AutoSize = false;
             lblMensaje.Depth = 0;
             lblMensaje.Dock = DockStyle.Fill;
-            lblMensaje.Font = new Font("Roboto", 14F, FontStyle.Regular, GraphicsUnit.Pixel);
+            lblMensaje.Font = new Font("Roboto", 10.5F, FontStyle.Regular, GraphicsUnit.Point);
             lblMensaje.Location = new Point(0, 32);
             lblMensaje.Margin = new Padding(0);
             lblMensaje.MouseState = MaterialSkin.MouseState.HOVER;
@@ -962,18 +961,25 @@ namespace CapaPresentacion.Compras
             //
             // flpAcciones
             //
-            flpAcciones.AutoSize = false;
-            flpAcciones.Controls.Add(btnRegistrar);
-            flpAcciones.Controls.Add(btnLimpiar);
-            flpAcciones.Controls.Add(btnVerHistorial);
+            // Barra de acciones: columna de relleno a la izquierda y tres columnas que
+            // se ajustan al contenido, de modo que ningún botón sale del ancho. Los
+            // botones conservan su orden visual (Historial, Cancelar, Registrar).
+            flpAcciones.ColumnCount = 4;
+            flpAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            flpAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            flpAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            flpAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            flpAcciones.Controls.Add(btnVerHistorial, 1, 0);
+            flpAcciones.Controls.Add(btnLimpiar, 2, 0);
+            flpAcciones.Controls.Add(btnRegistrar, 3, 0);
             flpAcciones.Dock = DockStyle.Fill;
-            flpAcciones.FlowDirection = FlowDirection.RightToLeft;
             flpAcciones.Location = new Point(0, 595);
             flpAcciones.Margin = new Padding(0);
             flpAcciones.Name = "flpAcciones";
-            flpAcciones.Size = new Size(980, 55);
+            flpAcciones.RowCount = 1;
+            flpAcciones.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            flpAcciones.Size = new Size(980, 46);
             flpAcciones.TabIndex = 3;
-            flpAcciones.WrapContents = false;
             //
             // btnRegistrar
             //
@@ -983,13 +989,14 @@ namespace CapaPresentacion.Compras
             btnRegistrar.Depth = 0;
             btnRegistrar.HighEmphasis = true;
             btnRegistrar.Icon = null;
-            btnRegistrar.Margin = new Padding(6, 2, 6, 2);
-            btnRegistrar.MinimumSize = new Size(0, 38);
+            btnRegistrar.Anchor = AnchorStyles.None;
+            btnRegistrar.Margin = new Padding(6, 4, 6, 4);
+            btnRegistrar.MinimumSize = new Size(0, 36);
             btnRegistrar.MouseState = MaterialSkin.MouseState.HOVER;
             btnRegistrar.Name = "btnRegistrar";
             btnRegistrar.NoAccentTextColor = Color.Empty;
             btnRegistrar.Padding = new Padding(10, 0, 10, 0);
-            btnRegistrar.Size = new Size(170, 38);
+            btnRegistrar.Size = new Size(170, 36);
             btnRegistrar.TabIndex = 0;
             btnRegistrar.Text = "REGISTRAR COMPRA";
             btnRegistrar.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
@@ -1004,13 +1011,14 @@ namespace CapaPresentacion.Compras
             btnLimpiar.Depth = 0;
             btnLimpiar.HighEmphasis = false;
             btnLimpiar.Icon = null;
-            btnLimpiar.Margin = new Padding(6, 2, 6, 2);
-            btnLimpiar.MinimumSize = new Size(0, 38);
+            btnLimpiar.Anchor = AnchorStyles.None;
+            btnLimpiar.Margin = new Padding(6, 4, 6, 4);
+            btnLimpiar.MinimumSize = new Size(0, 36);
             btnLimpiar.MouseState = MaterialSkin.MouseState.HOVER;
             btnLimpiar.Name = "btnLimpiar";
             btnLimpiar.NoAccentTextColor = Color.FromArgb(224, 224, 224);
             btnLimpiar.Padding = new Padding(10, 0, 10, 0);
-            btnLimpiar.Size = new Size(170, 38);
+            btnLimpiar.Size = new Size(170, 36);
             btnLimpiar.TabIndex = 1;
             btnLimpiar.Text = "CANCELAR COMPRA";
             btnLimpiar.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Text;
@@ -1025,13 +1033,14 @@ namespace CapaPresentacion.Compras
             btnVerHistorial.Depth = 0;
             btnVerHistorial.HighEmphasis = true;
             btnVerHistorial.Icon = null;
-            btnVerHistorial.Margin = new Padding(6, 2, 6, 2);
-            btnVerHistorial.MinimumSize = new Size(0, 38);
+            btnVerHistorial.Anchor = AnchorStyles.None;
+            btnVerHistorial.Margin = new Padding(6, 4, 6, 4);
+            btnVerHistorial.MinimumSize = new Size(0, 36);
             btnVerHistorial.MouseState = MaterialSkin.MouseState.HOVER;
             btnVerHistorial.Name = "btnVerHistorial";
             btnVerHistorial.NoAccentTextColor = Color.White;
             btnVerHistorial.Padding = new Padding(10, 0, 10, 0);
-            btnVerHistorial.Size = new Size(130, 38);
+            btnVerHistorial.Size = new Size(130, 36);
             btnVerHistorial.TabIndex = 2;
             btnVerHistorial.Text = "Ver Historial";
             btnVerHistorial.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Outlined;
@@ -1040,8 +1049,8 @@ namespace CapaPresentacion.Compras
             //
             // ComprasForm
             //
-            AutoScaleDimensions = new SizeF(7F, 15F);
-            AutoScaleMode = AutoScaleMode.Font;
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
             BackColor = Color.FromArgb(33, 33, 33);
             Controls.Add(pnlContenedor);
             Name = "ComprasForm";
@@ -1123,7 +1132,7 @@ namespace CapaPresentacion.Compras
         private TableLayoutPanel tblPieCompra;
         private MaterialSkin.Controls.MaterialLabel lblMontoTotal;
         private MaterialSkin.Controls.MaterialLabel lblMensaje;
-        private FlowLayoutPanel flpAcciones;
+        private TableLayoutPanel flpAcciones;
         private MaterialSkin.Controls.MaterialButton btnRegistrar;
         private MaterialSkin.Controls.MaterialButton btnLimpiar;
         private MaterialSkin.Controls.MaterialButton btnVerHistorial;
