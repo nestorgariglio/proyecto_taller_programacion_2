@@ -78,17 +78,22 @@ namespace CapaNegocio
         private async Task<string?> ValidarUnicidadDescripcionAsync(
             string descripcion, int? idCategoriaAExcluir)
         {
-            // D-6: el catálogo es pequeño; se comparan en memoria con
-            // OrdinalIgnoreCase (idéntico en SQL Server e InMemory, sin
-            // depender de la colación del proveedor).
-            var existentes = await _db.Categorias
-                .AsNoTracking()
-                .Select(c => new { c.IdCategoria, c.Descripcion, c.Estado })
-                .ToListAsync();
+            // O-2 (RF-16, RNF-6): la comparación se resuelve en la base con una
+            // única consulta que devuelve como máximo una fila y solo dos
+            // columnas; no se materializa la tabla ni se filtra la colección en
+            // el cliente. El parámetro se normaliza una sola vez en memoria para
+            // que UPPER(columna) = @p funcione igual en SQL Server y en el
+            // proveedor InMemory de las pruebas (ToUpperInvariant es determinista
+            // y no depende de la cultura del hilo).
+            string descripcionNormalizada = descripcion.ToUpperInvariant();
 
-            var duplicada = existentes.FirstOrDefault(c =>
-                (!idCategoriaAExcluir.HasValue || c.IdCategoria != idCategoriaAExcluir.Value) &&
-                string.Equals(c.Descripcion, descripcion, StringComparison.OrdinalIgnoreCase));
+            var duplicada = await _db.Categorias
+                .AsNoTracking()
+                .Where(c => (!idCategoriaAExcluir.HasValue || c.IdCategoria != idCategoriaAExcluir.Value)
+                    && c.Descripcion != null
+                    && c.Descripcion.ToUpper() == descripcionNormalizada)
+                .Select(c => new { c.Descripcion, c.Estado })
+                .FirstOrDefaultAsync();
 
             if (duplicada is null)
             {
@@ -254,9 +259,12 @@ namespace CapaNegocio
         /// <summary>
         /// Cuenta los productos <b>activos</b> (<c>Estado = true</c>) vinculados
         /// a una categoría (RF-6, RF-7). Solo los productos activos disparan la
-        /// advertencia de la baja: los inactivos no se contabilizan. El diálogo
-        /// de confirmación lo arma la UI con esta cantidad (D-3); este método
-        /// solo consulta, sin modificar nada.
+        /// advertencia de la baja: los inactivos no se contabilizan. Se conserva
+        /// como <b>colaborador interno</b> de <see cref="ObtenerConfirmacionBajaAsync"/>,
+        /// que compone el mensaje de confirmación en la lógica de negocio (O-1,
+        /// que sustituye a D-3); la vista ya no lo consume. Los tests de RF-6
+        /// siguen usándolo para verificar el conteo. Este método solo consulta,
+        /// sin modificar nada.
         /// </summary>
         /// <param name="idCategoria">Identificador de la categoría a consultar.</param>
         /// <returns>Cantidad de productos activos vinculados a la categoría.</returns>
@@ -266,6 +274,81 @@ namespace CapaNegocio
                 .AsNoTracking()
                 .CountAsync(producto =>
                     producto.IdCategoria == idCategoria && producto.Estado);
+        }
+
+        /// <summary>
+        /// Obtiene la confirmación de baja de una categoría con el mensaje en español
+        /// ya compuesto en la lógica de negocio (RF-13, RF-14, RF-15): informa solo
+        /// la cantidad de productos activos vinculados —sin listarlos—, distingue si
+        /// hay productos activos o no e indica si la baja es posible. La interfaz se
+        /// limita a presentar ese mensaje y a ejecutar la baja confirmada.
+        /// Pedir la confirmación nunca escribe: no llama a <c>SaveChangesAsync</c> ni
+        /// a <see cref="DarBajaCategoriaAsync"/> (si el usuario cancela, todo queda
+        /// como estaba).
+        /// </summary>
+        /// <param name="idCategoria">Identificador de la categoría que se desea dar de baja.</param>
+        /// <returns>
+        /// Una confirmación con el resultado, la descripción de la categoría, la
+        /// cantidad de productos activos, el mensaje a mostrar y si la baja puede
+        /// ejecutarse.
+        /// </returns>
+        public async Task<ConfirmacionBajaCategoria> ObtenerConfirmacionBajaAsync(int idCategoria)
+        {
+            if (idCategoria <= 0)
+            {
+                return new ConfirmacionBajaCategoria
+                {
+                    Resultado = ResultadoBajaCategoria.DatosInvalidos,
+                    Mensaje = "Debe indicar una categoría válida.",
+                    PuedeDarseDeBaja = false
+                };
+            }
+
+            // RF-14: una sola consulta de lectura a la categoría (descripción y estado).
+            var categoria = await _db.Categorias
+                .AsNoTracking()
+                .Where(c => c.IdCategoria == idCategoria)
+                .Select(c => new { c.Descripcion, c.Estado })
+                .FirstOrDefaultAsync();
+
+            if (categoria is null)
+            {
+                return new ConfirmacionBajaCategoria
+                {
+                    Resultado = ResultadoBajaCategoria.CategoriaNoEncontrada,
+                    Mensaje = "La categoría indicada no existe.",
+                    PuedeDarseDeBaja = false
+                };
+            }
+
+            if (!categoria.Estado)
+            {
+                // Caso límite: la operación no produce cambios (sin escritura).
+                return new ConfirmacionBajaCategoria
+                {
+                    Resultado = ResultadoBajaCategoria.CategoriaYaInactiva,
+                    Descripcion = categoria.Descripcion,
+                    Mensaje = $"La categoría {categoria.Descripcion} ya está inactiva.",
+                    PuedeDarseDeBaja = false
+                };
+            }
+
+            // RF-6/RF-7: se reutiliza el conteo verificado de productos activos; los
+            // inactivos no disparan la advertencia.
+            int cantidadProductosActivos = await ContarProductosActivosAsync(idCategoria);
+
+            string mensaje = cantidadProductosActivos > 0
+                ? $"La categoría {categoria.Descripcion} tiene {cantidadProductosActivos} producto(s) activo(s) vinculados. ¿Desea desactivarla igualmente?"
+                : $"¿Confirma que desea dar de baja la categoría {categoria.Descripcion}?";
+
+            return new ConfirmacionBajaCategoria
+            {
+                Resultado = ResultadoBajaCategoria.Exito,
+                Descripcion = categoria.Descripcion,
+                CantidadProductosActivos = cantidadProductosActivos,
+                Mensaje = mensaje,
+                PuedeDarseDeBaja = true
+            };
         }
 
         /// <summary>

@@ -40,6 +40,18 @@ namespace CapaEntidad
         [Column("fecha_registro")]
         public DateTime FechaRegistro { get; set; } = DateTime.Now;
 
+        [Column("id_usuario")]
+        public int IdUsuario { get; set; }
+
+        [Column("id_usuario_modifica")]
+        public int? IdUsuarioModifica { get; set; }
+
+        [Column("fecha_modificacion")]
+        public DateTime? FechaModificacion { get; set; }
+
+        [Column("motivo_ajuste_stock")]
+        public string? MotivoAjusteStock { get; set; }
+
         [ForeignKey("IdCategoria")]
         public virtual Categoria? Categoria { get; set; }
     }

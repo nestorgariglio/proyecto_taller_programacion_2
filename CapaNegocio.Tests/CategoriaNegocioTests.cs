@@ -525,6 +525,155 @@ public class CategoriaNegocioTests
         Assert.Empty(await db.Categorias.AsNoTracking().ToListAsync());
     }
 
+    // ---------- RF-13/RF-14: confirmación de baja compuesta en Negocio ----------
+
+    [Fact]
+    public async Task ObtenerConfirmacionBaja_ConProductosActivos_ComponeMensajeConCantidad()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
+        var negocio = new CategoriaNegocio(db);
+
+        ConfirmacionBajaCategoria confirmacion =
+            await negocio.ObtenerConfirmacionBajaAsync(bebidas.IdCategoria);
+
+        // RF-13: el mensaje ya compuesto informa solo la cantidad de productos ACTIVOS.
+        Assert.Equal(ResultadoBajaCategoria.Exito, confirmacion.Resultado);
+        Assert.Equal("Bebidas", confirmacion.Descripcion);
+        Assert.Equal(2, confirmacion.CantidadProductosActivos);
+        Assert.True(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal(
+            "La categoría Bebidas tiene 2 producto(s) activo(s) vinculados. ¿Desea desactivarla igualmente?",
+            confirmacion.Mensaje);
+
+        // RF-13: pedir la confirmación nunca escribe; cancelar deja todo como estaba.
+        Categoria? persistida = await db.Categorias
+            .AsNoTracking()
+            .SingleAsync(c => c.IdCategoria == bebidas.IdCategoria);
+        Assert.True(persistida.Estado);
+        Assert.Equal(1, await db.Categorias.AsNoTracking().CountAsync());
+        Assert.Equal(3, await db.Productos.AsNoTracking().CountAsync());
+    }
+
+    [Fact]
+    public async Task ObtenerConfirmacionBaja_SinProductosActivos_ComponeConfirmacionSimple()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        var negocio = new CategoriaNegocio(db);
+
+        ConfirmacionBajaCategoria confirmacion =
+            await negocio.ObtenerConfirmacionBajaAsync(bebidas.IdCategoria);
+
+        // RF-8 vigente: sin productos activos la confirmación es simple.
+        Assert.Equal(ResultadoBajaCategoria.Exito, confirmacion.Resultado);
+        Assert.Equal("Bebidas", confirmacion.Descripcion);
+        Assert.Equal(0, confirmacion.CantidadProductosActivos);
+        Assert.True(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal(
+            "¿Confirma que desea dar de baja la categoría Bebidas?",
+            confirmacion.Mensaje);
+
+        Categoria? persistida = await db.Categorias
+            .AsNoTracking()
+            .SingleAsync(c => c.IdCategoria == bebidas.IdCategoria);
+        Assert.True(persistida.Estado);
+        Assert.Equal(1, await db.Categorias.AsNoTracking().CountAsync());
+    }
+
+    [Fact]
+    public async Task ObtenerConfirmacionBaja_SoloProductosInactivos_ComponeConfirmacionSimple()
+    {
+        // Caso límite: los productos inactivos no disparan la advertencia.
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
+        var negocio = new CategoriaNegocio(db);
+
+        ConfirmacionBajaCategoria confirmacion =
+            await negocio.ObtenerConfirmacionBajaAsync(bebidas.IdCategoria);
+
+        Assert.Equal(ResultadoBajaCategoria.Exito, confirmacion.Resultado);
+        Assert.Equal(0, confirmacion.CantidadProductosActivos);
+        Assert.True(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal(
+            "¿Confirma que desea dar de baja la categoría Bebidas?",
+            confirmacion.Mensaje);
+
+        Categoria? persistida = await db.Categorias
+            .AsNoTracking()
+            .SingleAsync(c => c.IdCategoria == bebidas.IdCategoria);
+        Assert.True(persistida.Estado);
+        Assert.Equal(2, await db.Productos.AsNoTracking().CountAsync());
+    }
+
+    [Fact]
+    public async Task ObtenerConfirmacionBaja_IdInexistente_RetornaCategoriaNoEncontrada()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        var negocio = new CategoriaNegocio(db);
+
+        ConfirmacionBajaCategoria confirmacion =
+            await negocio.ObtenerConfirmacionBajaAsync(999);
+
+        // RF-14: se informa el motivo y no se modifica ningún registro.
+        Assert.Equal(ResultadoBajaCategoria.CategoriaNoEncontrada, confirmacion.Resultado);
+        Assert.Null(confirmacion.Descripcion);
+        Assert.Equal(0, confirmacion.CantidadProductosActivos);
+        Assert.False(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal("La categoría indicada no existe.", confirmacion.Mensaje);
+        Assert.Empty(await db.Categorias.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task ObtenerConfirmacionBaja_CategoriaYaInactiva_RetornaCategoriaYaInactiva()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria kiosco = await SembrarCategoriaAsync(db, "Kiosco", estado: false);
+        await SembrarProductoAsync(db, kiosco.IdCategoria, estado: true);
+        var negocio = new CategoriaNegocio(db);
+
+        ConfirmacionBajaCategoria confirmacion =
+            await negocio.ObtenerConfirmacionBajaAsync(kiosco.IdCategoria);
+
+        // RF-14: una categoría ya inactiva no puede darse de baja; nada se escribe.
+        Assert.Equal(ResultadoBajaCategoria.CategoriaYaInactiva, confirmacion.Resultado);
+        Assert.Equal("Kiosco", confirmacion.Descripcion);
+        Assert.Equal(0, confirmacion.CantidadProductosActivos);
+        Assert.False(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal("La categoría Kiosco ya está inactiva.", confirmacion.Mensaje);
+
+        Categoria? persistida = await db.Categorias
+            .AsNoTracking()
+            .SingleAsync(c => c.IdCategoria == kiosco.IdCategoria);
+        Assert.False(persistida.Estado);
+        Assert.Equal(1, await db.Categorias.AsNoTracking().CountAsync());
+        Assert.Equal(1, await db.Productos.AsNoTracking().CountAsync());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public async Task ObtenerConfirmacionBaja_IdInvalido_RetornaDatosInvalidos(int idCategoria)
+    {
+        await using var db = await CrearContextoVacioAsync();
+        var negocio = new CategoriaNegocio(db);
+
+        ConfirmacionBajaCategoria confirmacion =
+            await negocio.ObtenerConfirmacionBajaAsync(idCategoria);
+
+        Assert.Equal(ResultadoBajaCategoria.DatosInvalidos, confirmacion.Resultado);
+        Assert.Null(confirmacion.Descripcion);
+        Assert.Equal(0, confirmacion.CantidadProductosActivos);
+        Assert.False(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal("Debe indicar una categoría válida.", confirmacion.Mensaje);
+        Assert.Empty(await db.Categorias.AsNoTracking().ToListAsync());
+    }
+
     private static async Task<Categoria> SembrarCategoriaAsync(
         AppDbContext db, string descripcion, bool estado)
     {

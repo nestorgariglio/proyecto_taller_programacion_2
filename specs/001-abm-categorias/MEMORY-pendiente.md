@@ -1,39 +1,36 @@
-# Cambio pendiente en `MEMORY.md` — Spec 001 (reencuadre de acceso)
+# `MEMORY.md` — Constancia de volcado (Spec 001, reencuadre de acceso)
 
-> El agente planificador (fase "cambio de requisito") solo puede escribir dentro de `specs/`,
-> por lo que **no pudo editar `MEMORY.md`** (permiso denegado). Aplicar este texto cuando se
-> pueda. **El reencuadre ya fue APROBADO por el usuario el 2026-10-19** (spec 001 en estado
-> `aprobada`), por lo que el texto de abajo ya es aplicable.
+> Verificado el **2026-10-20** leyendo `MEMORY.md` y este archivo.
+> **La mayor parte del contenido de este archivo YA FUE CONSOLIDADA en `MEMORY.md`** y **no queda nada de lo ya volcado por aplicar**.
 
-## 1. Sección "Aprendizajes y Errores a Evitar"
+## 1. Estado del volcado — lo que YA está en `MEMORY.md` (no repetir)
 
-Reemplazar el bloque:
+Todo lo referente al **reencuadre de acceso (D-4)** y al **crash `products.png`** quedó consolidado:
 
-```
-- **Regla del usuario**: antes de ejecutar cualquier `DELETE` físico (incluso para limpiar filas creadas por error propio), **CONSULTAR AL USUARIO primero**. Nunca borrar por cuenta propia.
-- Los comandos `dotnet ef` requieren antes `dotnet tool restore` (manifiesto `.config/dotnet-tools.json`).
-```
+- **Aprendizajes (§1 del archivo original)** → aplicados en `MEMORY.md` §"Aprendizajes y Errores a Evitar":
+  - Regla del usuario: **consultar antes** de cualquier `DELETE` físico (línea 21).
+  - Regla del usuario: cualquier **modificación significativa de UI** se **consulta antes** (línea 22).
+  - `dotnet ef` requiere antes `dotnet tool restore` (línea 23).
+  - Crí**`ImageList` de un `TabControl`: dos `TabPage` con la misma `ImageKey`** → `ArgumentException … Key: products.png`; corregido eliminando `tab_categorias` (línea 24).
+- **Estado Actual / Próximos Pasos (§2 del archivo original)** → consolidado en `MEMORY.md`:
+  - Reencuadre de categorías (de ítem del menú a característica del módulo Productos, en **ventana modal** desde `ProductosForm`) — línea 8.
+  - Crash `products.png` corregido — líneas 8 y 24.
+  - Spec `001-abm-categorias` **aprobada e implementada**; **T1–T14 hechas y validadas** (`dotnet build` limpio, `dotnet test` 64/64) — líneas 7, 8, 30.
+  - **Único pendiente: la validación visual del usuario** — líneas 8 y 30.
+- **Fase Plan/Tareas (§3 del archivo original)** → consolidado:
+  - `plan.md` actualizado (sin "pendiente de aprobación", con gating por rol y refresco del combo) y `tasks.md` cerrado — líneas 7 y 8.
+  - Corte del reencuadre: T11 → T13 → T12 → T14 ✅ (2026-10-19) — línea 30.
 
-por:
+## 2. Lo que FALTA volcar a `MEMORY.md` (agente sin permiso de escritura fuera de `specs/`)
 
-```
-- **Regla del usuario**: antes de ejecutar cualquier `DELETE` físico (incluso para limpiar filas creadas por error propio), **CONSULTAR AL USUARIO primero**. Nunca borrar por cuenta propia.
-- **Regla del usuario**: cualquier modificación significativa de UI (menú, estructura de pantallas, agregar/quitar ítems) se **CONSULTA ANTES**. La interfaz estática ya está definida.
-- Los comandos `dotnet ef` requieren antes `dotnet tool restore` (manifiesto `.config/dotnet-tools.json`).
-- **`ImageList` de un `TabControl`: dos `TabPage` con la misma `ImageKey`** lanzan `ArgumentException: An item with the same key has already been added. Key: products.png` al mostrar el menú. Ocurrió en `inicio` (la pestaña `tab_categorias` duplicaba la clave de `tab_productos`); se corrigió **eliminando la pestaña** (reencuadre: categorías como característica de Productos). Regla: cada `TabPage` con ícono lleva clave de imagen única.
-```
+El **roadmap global** no está registrado en `MEMORY.md`. Volcar (sugerido como ítem nuevo en §"Estado Actual"):
 
-## 2. "Estado Actual" / "Próximos Pasos"
+> - **Roadmap global creado (2026-10-19)**: `specs/000-roadmap.md` fija el orden de las specs (001 categorías → 002 Productos → 003 Clientes → 004 Proveedores → 005 Ventas → 006 Compras → 007 Reportes), los nombres de carpeta (`005-ventas`, `006-compras`), el **menú principal congelado** (ninguna spec futura 002–007 lo modifica) y la vista **`Info` como centro de ayuda ESTÁTICO** sin backend ni spec propia (revisión editorial de cierre tras Reportes). Una funcionalidad a la vez, con aprobación del usuario en cada fase. No quedan dudas abiertas del roadmap.
 
-- Anotar el **reencuadre**: la gestión de categorías deja de ser un ítem del menú principal y pasa a ser una característica del módulo Productos; el ABM se abre desde el botón "Gestionar categorías" de `ProductosForm` en una ventana modal (reutiliza `GestionCategoriasControl`/`CategoriaForm`). **Aprobado por el usuario el 2026-10-19.**
-- Anotar el **crash corregido**: `ArgumentException: An item with the same key has already been added. Key: products.png` (eliminado al quitar la pestaña `tab_categorias`).
-- Estado de la spec: **`aprobada`** (el cambio de requisito del reencuadre fue aprobado por el usuario el 2026-10-19).
-- **T11 (eliminar la pestaña `tab_categorias`) verificada como hecha en código el 2026-10-19**; **pendientes T12** (botón "Gestionar categorías" en `ProductosForm` con gating por rol, que exige llevar el rol hasta la vista), **T13** (`GestionCategoriasModalForm`) y **T14** (verificación: `dotnet build` limpio, `dotnet test` en verde y validación visual del reencuadre).
-- **Roadmap global creado**: `specs/000-roadmap.md` (orden acordado: 001 categorías → 002 Productos → 003 Clientes → 004 Proveedores → 005 Ventas → 006 Compras → 007 Reportes; una funcionalidad a la vez, con aprobación del usuario en cada fase).
+**Estado de permiso**: el agente planificador intentó editar `MEMORY.md` y recibió **permiso denegado** (solo escribe dentro de `specs/`). Por eso este punto queda anotado aquí para que lo aplique quien tenga permiso.
 
-## 3. Fase Plan/Tareas del 2026-10-19 (cierre de documentación)
+## 3. Conclusión
 
-- La spec `001-abm-categorias` se mantiene en **`aprobada`** (confirmado por el usuario) y su **`plan.md` quedó actualizado**: se eliminó toda mención de "pendiente de aprobación del usuario" (encabezado y §4) y se explicitó el mecanismo real del gating por rol (método de `ProductosForm` invocado desde `inicio.AplicarPermisosPorRol()`) y el refresco del combo al cerrar el modal.
-- `tasks.md` revisado: **T11 hecha en código**; **T12 y T13 pendientes** (`ProductosForm` sin el botón "Gestionar categorías"; `GestionCategoriasModalForm` no existe) y **T14** es la verificación integral (`dotnet build` limpio + `dotnet test` en verde + validación visual, incluido el arranque sin el crash `products.png`).
-- `specs/000-roadmap.md` ampliado: nombres de carpeta confirmados (`005-ventas`, `006-compras`), **menú principal congelado** (ninguna spec futura lo modifica), y **nueva sección §11** sobre la vista **`Info`** documentada como **centro de ayuda ESTÁTICO** sin backend ni spec propia, con una **revisión de contenido/redacción como ítem de cierre** después de Reportes.
-- **No quedan dudas abiertas del roadmap**; solo siguen las dudas funcionales propias de cada spec futura (002–007), que se resuelven antes de redactar cada una.
+- **Del contenido original de este archivo: TODO consolidado** en `MEMORY.md` (sin pérdidas).
+- **Lo único pendiente de volcar** es el **punto del roadmap global** de la sección §2 de este archivo.
+- Sin dudas abiertas del roadmap (D-R1 orden/nombres, D-R2 menú congelado, D-R3 vista Info estática); solo siguen las dudas funcionales propias de cada spec futura (002–007).

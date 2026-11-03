@@ -133,7 +133,7 @@ namespace CapaPresentacion
             btnCancelar.Margin = new Padding(4, 6, 4, 6);
             btnCancelar.MouseState = MaterialSkin.MouseState.HOVER;
             btnCancelar.Name = "btnCancelar";
-            btnCancelar.NoAccentTextColor = Color.Empty;
+            btnCancelar.NoAccentTextColor = Color.FromArgb(224, 224, 224);
             btnCancelar.Size = new Size(103, 36);
             btnCancelar.TabIndex = 0;
             btnCancelar.Text = "Cancelar";

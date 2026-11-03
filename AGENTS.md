@@ -1,49 +1,79 @@
-# AGENTS.md - Sistema Comercial G70
-Sistema ERP y Punto de Venta (POS) en C# .NET con arquitectura en 4 capas.
+# SISTEMA COMERCIAL G70 — REGLAS GLOBALES
 
-## Stack y Estructura
-- **Stack**: .NET 8 / C# WinForms, MaterialSkin 2, LiveCharts, Entity Framework Core, SQL Server, BCrypt.Net-Next.
-- **Estructura**:
-  - `CapaEntidad`: Modelos del dominio (`Usuario`, `Producto`, `Categoria`, `Venta`, etc.).
-  - `CapaDatos`: `AppDbContext` (Fuente de verdad del esquema de BD), Fluent API y migraciones EF Core.
-  - `CapaNegocio`: Lógica de negocio, validaciones, BCrypt y DTOs.
-  - `CapaPresentacion`: Formularios (`Form`), Modales y Controles (`UserControl`).
+Contexto común de todos los agentes. Las responsabilidades particulares están en sus perfiles.
 
-## Comandos
-- **Compilar**: `dotnet build`
-- **Ejecutar Pruebas**: `dotnet test`
-- **Aplicar Migraciones**: `dotnet ef database update --project CapaDatos --startup-project CapaDatos --context AppDbContext`
-- **Preparar BD de desarrollo** (esquema + datos de prueba): `powershell -ExecutionPolicy Bypass -File .\scripts\preparar-bd.ps1`
-  - Solo datos: agregar `-SoloDatos`. Detalle y resolución de problemas: `scripts/README-preparar-bd.md`.
+## 1. Flujos de trabajo
 
-## Convenciones
-- **Idioma**: Respuestas de la IA, interfaz gráfica, comentarios y documentación siempre en **español**.
-- **Aislamiento**: Respetar el aislamiento de 4 capas. La UI nunca toca `AppDbContext` ni ejecuta SQL directo.
-- **DTOs**: Usar DTOs para comunicar `CapaNegocio` y `CapaPresentacion`. Las claves nunca viajan en DTOs de lectura.
-- **Asincronía**: Mapeo explícito y métodos asíncronos (`async/await`) en operaciones I/O.
+El Coordinator selecciona un único flujo según la solicitud:
 
-## Reglas de Dominio y Datos
-- **Bajas Lógicas**: `Estado = true` (Activo), `Estado = false` (Inactivo).
-- **Unicidad**: DNI/Correo en usuarios y Código de Barras en productos se validan en `CapaNegocio` y en `AppDbContext`.
+- **A — Corrección puntual:** Coordinator → Implementer → verificación específica de Reviewer. Sin spec ni plan cuando el alcance, el comportamiento esperado y el criterio de aceptación están claros y autorizados.
+- **B — Diagnóstico:** Coordinator → Reviewer → informe consolidado.
+- **C — Funcionalidad nueva o cambio amplio:** Coordinator → Planner → aprobación del usuario → Implementer → Reviewer.
 
-## Forma de Trabajar
-- **Haz solo lo que se pide**: No añadas funcionalidades ni refactorices código no solicitado.
-- **Cambios pequeños y enfocados**: Modifica únicamente lo necesario sin reescribir lo que ya funciona.
-- **Cero alucinación**: Si falta una definición o hay ambigüedad en la lógica de negocio, **PARA Y PREGUNTA**. No supongas.
-- **Al terminar**: Resume qué has cambiado, qué pruebas ejecutaste y cualquier decisión que deba revisar.
+No convocar agentes ni generar documentos si no aportan valor al objetivo.
 
-## Memoria
-- Al empezar, lee `MEMORY.md` para conocer el estado del proyecto y las decisiones tomadas.
-- Al terminar cada tarea: actualiza `MEMORY.md` (Estado actual, Decisiones, Errores a evitar y Próximos pasos).
-- Mantenlo breve (máximo ~50 líneas).
-- **Seguridad**: No guardes jamás datos sensibles (claves, tokens, API keys o datos personales) en la memoria.
+## 2. Verificación del objetivo
 
-## Límites
-- ✅ **Siempre**: Consultar `docs/constitution.md` antes de proponer cambios y mantener las respuestas e interfaz en español.
-- ✅ **Siempre**: actualizar `MEMORY.md` al terminar cada tarea.
-- ⚠ **Pregunta antes**: Crear migraciones, instalar paquetes NuGet o modificar contratos de datos.
-- 🚫 **Nunca**: Borrar filas físicamente (`DELETE`), exponer hashes en DTOs o escribir lógica de negocio en eventos visuales de WinForms.
+La comprobación debe corresponder exactamente a lo que pidió el usuario. Está prohibido sustituir una verificación directa por otra indirecta o más sencilla.
 
-## Verificación
-- Antes de dar una tarea por terminada, verificar la compilación limpia con `dotnet build`.
-- En cambios de lógica de negocio, ejecutar y validar las pruebas automáticas con `dotnet test`.
+- **UI:** ejecutar la aplicación, reproducir el escenario y comprobar visualmente el resultado en las condiciones problemáticas. Inspeccionar código o propiedades no demuestra una corrección visual.
+- **Lógica:** ejecutar el comportamiento afectado y comprobar entradas, resultados, mensajes y efectos secundarios pertinentes.
+- **Persistencia:** comprobar el estado real de la BD cuando el criterio requiera demostrar que los datos se guardaron, modificaron o revirtieron.
+- **Atomicidad:** provocar el fallo previsto y comprobar el estado real de la BD después del rollback.
+- **Tests:** ejecutar únicamente los que aporten evidencia sobre los criterios modificados y las regresiones relevantes.
+
+Una compilación exitosa demuestra que el código compila. Un test demuestra únicamente el comportamiento que realmente ejercita. Sin evidencia directa suficiente, informar `SIN VERIFICAR`.
+
+## 3. Alcance y coordinación
+
+- Ejecutar exclusivamente el alcance solicitado y autorizado.
+- No agregar refactorizaciones, mejoras ni tareas secundarias.
+- No reabrir decisiones aprobadas ni funcionalidades estacionadas.
+- Consultar antecedentes y decisiones antes de preguntar.
+- Agrupar preguntas, decisiones y autorizaciones en una sola entrega.
+- No repetir análisis ni verificaciones cuya evidencia siga vigente.
+- Trabajar secuencialmente cuando existan dependencias.
+- No continuar una fase que requiera aprobación sin recibirla.
+- Máximo dos rondas de correcciones por entrega; después, informar el bloqueo.
+
+## 4. Arquitectura, seguridad y permisos
+
+- Respetar `docs/constitution.md`.
+- No exponer credenciales, hashes, tokens ni cadenas de conexión.
+- Migraciones, cambios de esquema o contratos, paquetes, dependencias y proyectos fuera del alcance requieren autorización explícita.
+- No borrar físicamente registros operativos cuando corresponda una baja lógica.
+- No activar aprobaciones automáticas globales.
+
+**GIT: PROHIBIDO ABSOLUTAMENTE.** Ningún agente ejecuta comandos Git, directos o indirectos, ni siquiera de lectura. El usuario administra ramas, commits, restauraciones y cualquier operación de versionado. No ejecutar scripts o comandos envoltorio sin inspeccionar que no invoquen Git.
+
+## 5. Modificación de archivos
+- Antes de editar, presentar en texto plano los cambios propuestos, agrupados en **AGREGADO**, **MODIFICADO** y **ELIMINADO**. Indicar archivo, ubicación y código exacto; en MODIFICADO mostrar original y reemplazo. No depender de colores ni diffs visuales.
+- Esperar autorización explícita del usuario antes de aplicar cada propuesta.
+- Aplicar parches puntuales, preservar código ajeno al alcance y evitar sobrescrituras completas salvo necesidad justificada.
+
+## 6. Contexto y documentación
+
+- `docs/constitution.md`: autoridad arquitectónica y de dominio.
+- `MEMORY.md`: estado vigente y decisiones persistentes.
+- `specs/`: requisitos, planes y tareas específicos.
+- `docs/TESTING_POLICY.md`: consultar al definir o ejecutar pruebas, o diagnosticar bloqueos.
+
+No duplicar estas fuentes dentro de los perfiles ni volver a leer documentos cuyo contenido pertinente ya haya sido transmitido por Coordinator.
+
+## 7. Control de salidas y logs
+
+- No volcar logs extensos, stack traces ni diffs gigantes en las respuestas al Coordinator.
+- Antes de ejecutar comandos que previsiblemente produzcan más de 20 líneas (por ejemplo, `dotnet build`, `dotnet test` o scripts), redirigir stdout y stderr a un archivo en `%TEMP%\G70\`.
+- No ejecutar primero sin redirección para guardar el log después: la redirección debe estar activa desde el inicio del comando.
+- Devolver como máximo 20 líneas relevantes: resumen, error principal, cantidad de errores/advertencias, código de salida y ruta del log completo.
+- El Coordinator solicita fragmentos adicionales del archivo solo cuando sean necesarios para investigar.
+- No copiar secretos, credenciales ni cadenas de conexión al log resumido ni al chat.
+- Mantener los logs temporales fuera del repositorio. No crear `temp/` en el proyecto para este fin.
+
+## 8. Finalización y memoria
+
+Distinguir siempre `IMPLEMENTADO`, `COMPILADO`, `TESTEADO` y `VERIFICADO`.
+
+Estados: `TERMINADA` (criterios comprobados con evidencia), `PENDIENTE`, `EN PROGRESO`, `BLOQUEADA`, `SIN VERIFICAR` o `FALLIDA`.
+
+Actualizar `MEMORY.md` al cierre cuando cambie el estado o exista una decisión persistente. Guardar el estado vigente, no el historial de ejecución.

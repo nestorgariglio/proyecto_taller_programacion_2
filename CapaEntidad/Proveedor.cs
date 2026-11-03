@@ -14,10 +14,10 @@ namespace CapaEntidad
         public int IdProveedor { get; set; }
 
         [Column("cuit")]
-        public string? Cuit { get; set; }
+        public string Cuit { get; set; }
 
         [Column("razon_social")]
-        public string? RazonSocial { get; set; }
+        public string RazonSocial { get; set; }
 
         [Column("correo")]
         public string? Correo { get; set; }

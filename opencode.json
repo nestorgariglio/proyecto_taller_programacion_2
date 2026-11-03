@@ -1,4 +1,5 @@
 {
+  "model": "google/gemini-2.0-flash",
   "mcp": {
     "context7": {
       "type": "remote",
@@ -7,5 +8,10 @@
         "Authorization": "Bearer ${CONTEXT7_API_KEY}"
       }
     }
+  },
+  "permission": {
+    "bash": "allow",
+    "edit": "allow",
+    "read": "allow"
   }
 }
