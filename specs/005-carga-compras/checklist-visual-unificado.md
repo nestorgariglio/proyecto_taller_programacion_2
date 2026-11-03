@@ -328,6 +328,8 @@ Los plazos miden la respuesta de la aplicación desde cada clic o tecla; el tiem
 
 ### H. Selección bidireccional producto ↔ proveedor
 
+> **Vigencia D-23 (2026-11-02)**: los resultados esperados de **V-19, V-31, V-32 y V-33** que mencionan autocompletar el proveedor, filtrar a los históricos o que la búsqueda de productos pasa al catálogo global quedan **sustituidos**: elegir un producto prioriza sus proveedores históricos (sin autocompletar ninguno), «Mostrar todos» amplía a todos los activos sin tope, el texto se aplica sobre el listado vigente, el elegido que no figura en el listado se conserva y se avisa, y un proveedor sin historial deja el listado de productos vacío solo mientras la casilla esté apagada. Se reescriben los pasos al ejecutar la verificación visual de D-23.
+
 **V-31 — Producto → proveedores (uno, varios, ninguno).** Origen: T12; T16; RF-12, RF-13.
 - Precondiciones: compras del checklist (C1 y C2); pantalla limpia (si hay líneas o proveedor: «CANCELAR COMPRA» → «Sí»); cuadros de búsqueda vacíos.
 - Pasos (el proveedor aquí **no** se elige primero a propósito: en (1) lo autocompleta la pantalla, por lo que se cumple B-1): (1) buscar y elegir P2 sin proveedor elegido; luego escribir cantidad 1 y pulsar «Agregar a la compra» (queda una línea de P2); (2) **sin cancelar**, buscar y elegir P4; (3) pulsar «CANCELAR COMPRA», responder «Sí», y buscar y elegir P1.

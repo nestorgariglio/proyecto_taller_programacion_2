@@ -237,6 +237,323 @@ public class CompraNegocio
             };
         }
     }
+    // ---------- Búsqueda priorizada por historial (filtrado bidireccional producto ↔ proveedor) ----------
+
+    /// <summary>
+    /// Proveedores para la carga de compras. El historial de compras
+    /// (<c>DetallesCompra → Compras → Proveedores</c>) solo <b>prioriza</b>: con un
+    /// producto de contexto devuelve primero los proveedores activos que ya lo
+    /// vendieron (compra más reciente primero) y, con <paramref name="mostrarTodos"/>,
+    /// a continuación los demás activos. Nunca restringe qué proveedor puede elegirse.
+    /// </summary>
+    /// <param name="textoBusqueda">Filtro parcial por CUIT o razón social; vacío = sin filtro.</param>
+    /// <param name="idProducto">Producto de contexto; nulo o no positivo = sin contexto.</param>
+    /// <param name="mostrarTodos">Amplía el resultado a todos los proveedores activos.</param>
+    /// <param name="rol">Rol de la sesión; se valida primero solo cuando se usa el historial.</param>
+    /// <remarks>
+    /// Sin contexto, sin ampliación y con texto vacío no se consulta (RF-10). No
+    /// hay tope ni paginación: ni el bloque histórico ni el no histórico (ampliación
+    /// o búsqueda global) se limitan. Sin permiso se informa
+    /// <c>ErrorPersistencia</c> con el mensaje de permiso y sin datos (el enum de
+    /// resultado no tiene valor de permiso denegado).
+    /// </remarks>
+    public async Task<RespuestaBusquedaProveedoresCompra> BuscarProveedoresParaCompraAsync(
+        string? textoBusqueda, int? idProducto, bool mostrarTodos, string? rol)
+    {
+        string? texto = textoBusqueda?.Trim();
+        bool hayTexto = !string.IsNullOrEmpty(texto);
+        bool conContexto = idProducto.HasValue && idProducto.Value > 0;
+
+        if (conContexto && !PoliticaAcceso.PuedeOperarCompras(rol))
+        {
+            return new RespuestaBusquedaProveedoresCompra
+            {
+                Resultado = ResultadoBusquedaCompras.ErrorPersistencia,
+                Mensaje = MensajePermisoConsultarCompras
+            };
+        }
+
+        if (!conContexto && !mostrarTodos && !hayTexto)
+        {
+            return new RespuestaBusquedaProveedoresCompra
+            {
+                Resultado = ResultadoBusquedaCompras.SinResultados,
+                Mensaje = string.Empty
+            };
+        }
+
+        try
+        {
+            string patron = hayTexto ? texto!.ToUpperInvariant() : string.Empty;
+            List<ProveedorSeleccionadoDto> resultado = conContexto
+                ? await ObtenerProveedoresHistoricosAsync(idProducto!.Value, hayTexto, patron)
+                : new List<ProveedorSeleccionadoDto>();
+
+            if (!conContexto || mostrarTodos)
+            {
+                int[] idsHistoricos = resultado.Select(p => p.IdProveedor).ToArray();
+                resultado.AddRange(
+                    await ObtenerProveedoresNoHistoricosAsync(idsHistoricos, hayTexto, patron));
+            }
+
+            if (resultado.Count == 0)
+            {
+                return new RespuestaBusquedaProveedoresCompra
+                {
+                    Resultado = ResultadoBusquedaCompras.SinResultados,
+                    Mensaje = conContexto && !mostrarTodos && !hayTexto
+                        ? MensajeSinProveedoresHistoricos
+                        : MensajeSinProveedoresCoincidentes
+                };
+            }
+
+            return new RespuestaBusquedaProveedoresCompra
+            {
+                Resultado = ResultadoBusquedaCompras.ConResultados,
+                Proveedores = resultado,
+                Mensaje = resultado.Count == 1
+                    ? MensajeUnProveedorEncontrado
+                    : string.Format(CultureInfo.InvariantCulture, MensajeProveedoresEncontrados, resultado.Count)
+            };
+        }
+        catch (Exception ex) when (EsFalloDeOrigenDeDatos(ex))
+        {
+            return new RespuestaBusquedaProveedoresCompra
+            {
+                Resultado = ResultadoBusquedaCompras.ErrorPersistencia,
+                Mensaje = MensajeErrorBuscarProveedores,
+                Proveedores = Array.Empty<ProveedorSeleccionadoDto>()
+            };
+        }
+    }
+
+    /// <summary>
+    /// Proveedores activos que ya vendieron el producto, con la compra más
+    /// reciente primero y sin repetirse.
+    /// </summary>
+    private async Task<List<ProveedorSeleccionadoDto>> ObtenerProveedoresHistoricosAsync(
+        int idProducto, bool hayTexto, string patron)
+    {
+        var historicos = await (
+                from detalle in _context.DetallesCompra.AsNoTracking()
+                join compra in _context.Compras.AsNoTracking()
+                    on detalle.IdCompra equals compra.IdCompra
+                join proveedor in _context.Proveedores.AsNoTracking()
+                    on compra.IdProveedor equals proveedor.IdProveedor
+                where detalle.IdProducto == idProducto
+                    && proveedor.Estado
+                    && (!hayTexto
+                        || (proveedor.Cuit != null && proveedor.Cuit.ToUpper().Contains(patron))
+                        || (proveedor.RazonSocial != null && proveedor.RazonSocial.ToUpper().Contains(patron)))
+                group compra.FechaRegistro by new
+                {
+                    proveedor.IdProveedor,
+                    proveedor.RazonSocial,
+                    proveedor.Cuit
+                } into grupo
+                select new
+                {
+                    grupo.Key.IdProveedor,
+                    grupo.Key.RazonSocial,
+                    grupo.Key.Cuit,
+                    UltimaCompra = grupo.Max()
+                })
+            .OrderByDescending(p => p.UltimaCompra)
+            .ThenBy(p => p.RazonSocial)
+            .ThenBy(p => p.IdProveedor)
+            .ToListAsync();
+
+        return historicos
+            .Select(f => new ProveedorSeleccionadoDto
+            {
+                IdProveedor = f.IdProveedor,
+                RazonSocial = f.RazonSocial ?? string.Empty,
+                Documento = f.Cuit ?? string.Empty
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// Proveedores activos que no figuran en <paramref name="idsExcluidos"/>, en
+    /// orden por razón social e identificador.
+    /// </summary>
+    private async Task<List<ProveedorSeleccionadoDto>> ObtenerProveedoresNoHistoricosAsync(
+        int[] idsExcluidos, bool hayTexto, string patron)
+    {
+        return await _context.Proveedores
+            .AsNoTracking()
+            .Where(p => p.Estado)
+            .Where(p => !idsExcluidos.Contains(p.IdProveedor))
+            .Where(p => !hayTexto
+                || (p.Cuit != null && p.Cuit.ToUpper().Contains(patron))
+                || (p.RazonSocial != null && p.RazonSocial.ToUpper().Contains(patron)))
+            .OrderBy(p => p.RazonSocial)
+            .ThenBy(p => p.IdProveedor)
+            .Select(p => new ProveedorSeleccionadoDto
+            {
+                IdProveedor = p.IdProveedor,
+                RazonSocial = p.RazonSocial ?? string.Empty,
+                Documento = p.Cuit ?? string.Empty
+            })
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Productos activos que ya se le compraron al proveedor, con la adquisición
+    /// más reciente primero y sin repetirse.
+    /// </summary>
+    private async Task<List<ProductoBuscadoDto>> ObtenerProductosHistoricosAsync(
+        int idProveedor, bool hayTexto, string patron)
+    {
+        var historicos = await (
+                from detalle in _context.DetallesCompra.AsNoTracking()
+                join compra in _context.Compras.AsNoTracking()
+                    on detalle.IdCompra equals compra.IdCompra
+                join producto in _context.Productos.AsNoTracking()
+                    on detalle.IdProducto equals producto.IdProducto
+                where compra.IdProveedor == idProveedor
+                    && producto.Estado
+                    && (!hayTexto
+                        || (producto.Codigo != null && producto.Codigo.ToUpper().Contains(patron))
+                        || (producto.Nombre != null && producto.Nombre.ToUpper().Contains(patron)))
+                group compra.FechaRegistro by new
+                {
+                    producto.IdProducto,
+                    producto.Codigo,
+                    producto.Nombre
+                } into grupo
+                select new
+                {
+                    grupo.Key.IdProducto,
+                    grupo.Key.Codigo,
+                    grupo.Key.Nombre,
+                    UltimaCompra = grupo.Max()
+                })
+            .OrderByDescending(p => p.UltimaCompra)
+            .ThenBy(p => p.Nombre)
+            .ThenBy(p => p.IdProducto)
+            .ToListAsync();
+
+        return historicos
+            .Select(f => new ProductoBuscadoDto
+            {
+                IdProducto = f.IdProducto,
+                Codigo = f.Codigo ?? string.Empty,
+                Nombre = f.Nombre ?? string.Empty
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// Productos activos que no figuran en <paramref name="idsExcluidos"/>, en
+    /// orden por nombre e identificador.
+    /// </summary>
+    private async Task<List<ProductoBuscadoDto>> ObtenerProductosNoHistoricosAsync(
+        int[] idsExcluidos, bool hayTexto, string patron)
+    {
+        return await _context.Productos
+            .AsNoTracking()
+            .Where(p => p.Estado)
+            .Where(p => !idsExcluidos.Contains(p.IdProducto))
+            .Where(p => !hayTexto
+                || (p.Codigo != null && p.Codigo.ToUpper().Contains(patron))
+                || (p.Nombre != null && p.Nombre.ToUpper().Contains(patron)))
+            .OrderBy(p => p.Nombre)
+            .ThenBy(p => p.IdProducto)
+            .Select(p => new ProductoBuscadoDto
+            {
+                IdProducto = p.IdProducto,
+                Codigo = p.Codigo ?? string.Empty,
+                Nombre = p.Nombre ?? string.Empty
+            })
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Productos para la carga de compras. El historial de compras
+    /// (<c>DetallesCompra → Compras → Productos</c>) solo <b>prioriza</b>: con un
+    /// proveedor de contexto devuelve primero los productos activos que ya se le
+    /// compraron (adquisición más reciente primero) y, con
+    /// <paramref name="mostrarTodos"/>, a continuación los demás activos. Nunca
+    /// restringe qué producto puede elegirse.
+    /// </summary>
+    /// <param name="textoBusqueda">Filtro parcial por código o nombre; vacío = sin filtro.</param>
+    /// <param name="idProveedor">Proveedor de contexto; nulo o no positivo = sin contexto.</param>
+    /// <param name="mostrarTodos">Amplía el resultado a todos los productos activos.</param>
+    /// <param name="rol">Rol de la sesión; se valida primero solo cuando se usa el historial.</param>
+    /// <remarks>
+    /// Mismas reglas de consulta vacía, ausencia de tope y permiso que
+    /// <see cref="BuscarProveedoresParaCompraAsync"/>.
+    /// </remarks>
+    public async Task<RespuestaBusquedaProductosCompra> BuscarProductosParaCompraAsync(
+        string? textoBusqueda, int? idProveedor, bool mostrarTodos, string? rol)
+    {
+        string? texto = textoBusqueda?.Trim();
+        bool hayTexto = !string.IsNullOrEmpty(texto);
+        bool conContexto = idProveedor.HasValue && idProveedor.Value > 0;
+
+        if (conContexto && !PoliticaAcceso.PuedeOperarCompras(rol))
+        {
+            return new RespuestaBusquedaProductosCompra
+            {
+                Resultado = ResultadoBusquedaCompras.ErrorPersistencia,
+                Mensaje = MensajePermisoConsultarCompras
+            };
+        }
+
+        if (!conContexto && !mostrarTodos && !hayTexto)
+        {
+            return new RespuestaBusquedaProductosCompra
+            {
+                Resultado = ResultadoBusquedaCompras.SinResultados,
+                Mensaje = string.Empty
+            };
+        }
+
+        try
+        {
+            string patron = hayTexto ? texto!.ToUpperInvariant() : string.Empty;
+            List<ProductoBuscadoDto> resultado = conContexto
+                ? await ObtenerProductosHistoricosAsync(idProveedor!.Value, hayTexto, patron)
+                : new List<ProductoBuscadoDto>();
+
+            if (!conContexto || mostrarTodos)
+            {
+                int[] idsHistoricos = resultado.Select(p => p.IdProducto).ToArray();
+                resultado.AddRange(
+                    await ObtenerProductosNoHistoricosAsync(idsHistoricos, hayTexto, patron));
+            }
+
+            if (resultado.Count == 0)
+            {
+                return new RespuestaBusquedaProductosCompra
+                {
+                    Resultado = ResultadoBusquedaCompras.SinResultados,
+                    Mensaje = conContexto && !mostrarTodos && !hayTexto
+                        ? MensajeSinProductosHistoricos
+                        : MensajeSinProductosCoincidentes
+                };
+            }
+
+            return new RespuestaBusquedaProductosCompra
+            {
+                Resultado = ResultadoBusquedaCompras.ConResultados,
+                Productos = resultado,
+                Mensaje = resultado.Count == 1
+                    ? MensajeUnProductoEncontrado
+                    : string.Format(CultureInfo.InvariantCulture, MensajeProductosEncontrados, resultado.Count)
+            };
+        }
+        catch (Exception ex) when (EsFalloDeOrigenDeDatos(ex))
+        {
+            return new RespuestaBusquedaProductosCompra
+            {
+                Resultado = ResultadoBusquedaCompras.ErrorPersistencia,
+                Mensaje = MensajeErrorBuscarProductos,
+                Productos = Array.Empty<ProductoBuscadoDto>()
+            };
+        }
+    }
 
     /// <summary>
     /// Precios del catálogo para prellenar el área de captura (RF-38 … RF-41).

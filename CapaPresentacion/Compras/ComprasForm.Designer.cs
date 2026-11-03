@@ -28,43 +28,49 @@ namespace CapaPresentacion.Compras
         /// </summary>
         private void InitializeComponent()
         {
-            tblPrincipal = new TableLayoutPanel();
             pnlContenedor = new Panel();
-            pnlEncabezado = new Panel();
+            tblPrincipal = new TableLayoutPanel();
             lblTitulo = new MaterialSkin.Controls.MaterialLabel();
-            tblBloqueProducto = new TableLayoutPanel();
-            pnlDatosProducto = new Panel();
-            tblDatosProducto = new TableLayoutPanel();
-            lblTituloDatosProducto = new MaterialSkin.Controls.MaterialLabel();
-            lblNombreProducto = new MaterialSkin.Controls.MaterialLabel();
-            lblCodigoProducto = new MaterialSkin.Controls.MaterialLabel();
-            txtCantidad = new MaterialSkin.Controls.MaterialTextBox2();
-            txtPrecioCompra = new MaterialSkin.Controls.MaterialTextBox2();
-            txtPrecioVenta = new MaterialSkin.Controls.MaterialTextBox2();
-            lblSubtotalPreparacion = new MaterialSkin.Controls.MaterialLabel();
-            btnAgregarLinea = new MaterialSkin.Controls.MaterialButton();
-            pnlListadoProductos = new Panel();
-            tblListadoProductos = new TableLayoutPanel();
-            lblTituloListadoProductos = new MaterialSkin.Controls.MaterialLabel();
-            txtBuscarProducto = new MaterialSkin.Controls.MaterialTextBox2();
-            gridProductos = new DataGridView();
-            colProductoCodigo = new DataGridViewTextBoxColumn();
-            colProductoNombre = new DataGridViewTextBoxColumn();
-            lblMensajeProductos = new MaterialSkin.Controls.MaterialLabel();
-            tblBloqueProveedor = new TableLayoutPanel();
-            pnlDatosProveedor = new Panel();
-            tblDatosProveedor = new TableLayoutPanel();
-            lblTituloDatosProveedor = new MaterialSkin.Controls.MaterialLabel();
-            lblRazonSocialProveedor = new MaterialSkin.Controls.MaterialLabel();
-            lblDocumentoProveedor = new MaterialSkin.Controls.MaterialLabel();
-            pnlListadoProveedores = new Panel();
+            tblCatalogo = new TableLayoutPanel();
+            cardProveedor = new MaterialSkin.Controls.MaterialCard();
             tblListadoProveedores = new TableLayoutPanel();
+            tblTituloProveedores = new TableLayoutPanel();
             lblTituloListadoProveedores = new MaterialSkin.Controls.MaterialLabel();
+            chkMostrarTodosProveedores = new MaterialSkin.Controls.MaterialCheckbox();
             txtBuscarProveedor = new MaterialSkin.Controls.MaterialTextBox2();
             gridProveedores = new DataGridView();
             colProveedorRazonSocial = new DataGridViewTextBoxColumn();
             colProveedorDocumento = new DataGridViewTextBoxColumn();
             lblMensajeProveedores = new MaterialSkin.Controls.MaterialLabel();
+            cardProducto = new MaterialSkin.Controls.MaterialCard();
+            tblListadoProductos = new TableLayoutPanel();
+            tblTituloProductos = new TableLayoutPanel();
+            lblTituloListadoProductos = new MaterialSkin.Controls.MaterialLabel();
+            chkMostrarTodosProductos = new MaterialSkin.Controls.MaterialCheckbox();
+            txtBuscarProducto = new MaterialSkin.Controls.MaterialTextBox2();
+            gridProductos = new DataGridView();
+            colProductoCodigo = new DataGridViewTextBoxColumn();
+            colProductoNombre = new DataGridViewTextBoxColumn();
+            lblMensajeProductos = new MaterialSkin.Controls.MaterialLabel();
+            tblDocumento = new TableLayoutPanel();
+            cardDatosProveedor = new MaterialSkin.Controls.MaterialCard();
+            tblDatosProveedor = new TableLayoutPanel();
+            lblTituloDatosProveedor = new MaterialSkin.Controls.MaterialLabel();
+            lblRazonSocialProveedor = new MaterialSkin.Controls.MaterialLabel();
+            lblDocumentoProveedor = new MaterialSkin.Controls.MaterialLabel();
+            cardDatosProducto = new MaterialSkin.Controls.MaterialCard();
+            tblDatosProducto = new TableLayoutPanel();
+            lblTituloDatosProducto = new MaterialSkin.Controls.MaterialLabel();
+            lblNombreProducto = new MaterialSkin.Controls.MaterialLabel();
+            lblCodigoProducto = new MaterialSkin.Controls.MaterialLabel();
+            lblSubtotalPreparacion = new MaterialSkin.Controls.MaterialLabel();
+            lblRotuloCantidad = new MaterialSkin.Controls.MaterialLabel();
+            lblRotuloPrecioCompra = new MaterialSkin.Controls.MaterialLabel();
+            lblRotuloPrecioVenta = new MaterialSkin.Controls.MaterialLabel();
+            txtCantidad =new MaterialSkin.Controls.MaterialTextBox2();
+            txtPrecioCompra = new MaterialSkin.Controls.MaterialTextBox2();
+            txtPrecioVenta = new MaterialSkin.Controls.MaterialTextBox2();
+            btnAgregarLinea = new MaterialSkin.Controls.MaterialButton();
             tblCompraActual = new TableLayoutPanel();
             lblTituloCompraActual = new MaterialSkin.Controls.MaterialLabel();
             gridLineas = new DataGridView();
@@ -76,27 +82,28 @@ namespace CapaPresentacion.Compras
             colLineaEditar = new DataGridViewButtonColumn();
             colLineaQuitar = new DataGridViewButtonColumn();
             tblPieCompra = new TableLayoutPanel();
-            lblMontoTotal = new MaterialSkin.Controls.MaterialLabel();
             lblMensaje = new MaterialSkin.Controls.MaterialLabel();
+            lblMontoTotal = new MaterialSkin.Controls.MaterialLabel();
             flpAcciones = new TableLayoutPanel();
-            btnRegistrar = new MaterialSkin.Controls.MaterialButton();
-            btnLimpiar = new MaterialSkin.Controls.MaterialButton();
             btnVerHistorial = new MaterialSkin.Controls.MaterialButton();
-            tblPrincipal.SuspendLayout();
+            btnLimpiar = new MaterialSkin.Controls.MaterialButton();
+            btnRegistrar = new MaterialSkin.Controls.MaterialButton();
             pnlContenedor.SuspendLayout();
-            pnlEncabezado.SuspendLayout();
-            tblBloqueProducto.SuspendLayout();
-            pnlDatosProducto.SuspendLayout();
-            tblDatosProducto.SuspendLayout();
-            pnlListadoProductos.SuspendLayout();
-            tblListadoProductos.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)gridProductos).BeginInit();
-            tblBloqueProveedor.SuspendLayout();
-            pnlDatosProveedor.SuspendLayout();
-            tblDatosProveedor.SuspendLayout();
-            pnlListadoProveedores.SuspendLayout();
+            tblPrincipal.SuspendLayout();
+            tblCatalogo.SuspendLayout();
+            cardProveedor.SuspendLayout();
             tblListadoProveedores.SuspendLayout();
+            tblTituloProveedores.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridProveedores).BeginInit();
+            cardProducto.SuspendLayout();
+            tblListadoProductos.SuspendLayout();
+            tblTituloProductos.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)gridProductos).BeginInit();
+            tblDocumento.SuspendLayout();
+            cardDatosProveedor.SuspendLayout();
+            tblDatosProveedor.SuspendLayout();
+            cardDatosProducto.SuspendLayout();
+            tblDatosProducto.SuspendLayout();
             tblCompraActual.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridLineas).BeginInit();
             tblPieCompra.SuspendLayout();
@@ -105,592 +112,157 @@ namespace CapaPresentacion.Compras
             //
             // pnlContenedor
             //
+            // Único contenedor con desplazamiento: solo vertical (el ancho 0 impide la
+            // barra horizontal). El alto mínimo real depende del DPI y de la
+            // disposición vigente, de modo que lo fija ComprasForm.cs tras
+            // InitializeComponent; el valor de aquí es la base a 96 DPI.
             pnlContenedor.AutoScroll = true;
-            // Alto mínimo (96 DPI) = márgenes 16 + filas fijas 28+232+46 + compra actual 136.
-            // Solo vertical: el ancho 0 impide el scroll horizontal. Por debajo de este alto
-            // aparece la barra vertical y tblPrincipal (Dock = Fill) conserva su alto mínimo.
-            pnlContenedor.AutoScrollMinSize = new Size(0, 458);
+            pnlContenedor.AutoScrollMinSize = new Size(0, 456);
             pnlContenedor.BackColor = Color.FromArgb(33, 33, 33);
             pnlContenedor.Controls.Add(tblPrincipal);
             pnlContenedor.Dock = DockStyle.Fill;
             pnlContenedor.Location = new Point(0, 0);
             pnlContenedor.Margin = new Padding(0);
             pnlContenedor.Name = "pnlContenedor";
-            pnlContenedor.Padding = new Padding(0);
-            pnlContenedor.Size = new Size(1083, 508);
+            pnlContenedor.Padding = new Padding(12);
+            pnlContenedor.Size = new Size(1083, 700);
             pnlContenedor.TabIndex = 0;
             //
             // tblPrincipal
             //
+            // Catálogo a la izquierda (32 %) y documento a la derecha (68 %). La fila 2
+            // (alto 0) solo se usa cuando ComprasForm.cs apila las columnas en una.
             tblPrincipal.AutoSize = false;
             tblPrincipal.ColumnCount = 2;
-            // Bloques gemelos simétricos (winforms-ui-ux §2): exactamente 50/50, sin
-            // contenedor intermedio y sin el reparto desigual 52/48 de T18.
-            tblPrincipal.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tblPrincipal.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tblPrincipal.Controls.Add(pnlEncabezado, 0, 0);
-            tblPrincipal.Controls.Add(tblBloqueProducto, 0, 1);
-            tblPrincipal.Controls.Add(tblBloqueProveedor, 1, 1);
-            tblPrincipal.Controls.Add(tblCompraActual, 0, 2);
-            tblPrincipal.Controls.Add(flpAcciones, 0, 3);
-            // Encabezado, compra actual y pie de acciones ocupan el ancho completo.
-            tblPrincipal.SetColumnSpan(pnlEncabezado, 2);
-            tblPrincipal.SetColumnSpan(tblCompraActual, 2);
-            tblPrincipal.SetColumnSpan(flpAcciones, 2);
+            tblPrincipal.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+            tblPrincipal.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F));
+            tblPrincipal.Controls.Add(lblTitulo, 0, 0);
+            tblPrincipal.Controls.Add(tblCatalogo, 0, 1);
+            tblPrincipal.Controls.Add(tblDocumento, 1, 1);
+            tblPrincipal.SetColumnSpan(lblTitulo, 2);
             tblPrincipal.Dock = DockStyle.Fill;
-            tblPrincipal.Location = new Point(8, 8);
-            tblPrincipal.Margin = new Padding(8);
+            tblPrincipal.Location = new Point(12, 12);
+            tblPrincipal.Margin = new Padding(0);
             tblPrincipal.Name = "tblPrincipal";
             tblPrincipal.Padding = new Padding(0);
-            // Filas fijas 28 + 232 + 46 = 306; «Compra actual» toma el resto (mínimo 136).
-            // Dock = Fill sigue siempre al contenedor; el piso de alto lo impone
-            // pnlContenedor.AutoScrollMinSize (solo vertical).
-            tblPrincipal.RowCount = 4;
-            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
-            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 232F));
+            tblPrincipal.RowCount = 3;
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
-            tblPrincipal.Size = new Size(1067, 492);
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 0F));
+            tblPrincipal.Size = new Size(1059, 676);
             tblPrincipal.TabIndex = 0;
-            //
-            // pnlEncabezado
-            //
-            pnlEncabezado.Controls.Add(lblTitulo);
-            pnlEncabezado.Dock = DockStyle.Fill;
-            pnlEncabezado.Location = new Point(0, 0);
-            pnlEncabezado.Margin = new Padding(0);
-            pnlEncabezado.Name = "pnlEncabezado";
-            pnlEncabezado.Size = new Size(980, 35);
-            pnlEncabezado.TabIndex = 0;
             //
             // lblTitulo
             //
             lblTitulo.AutoSize = false;
             lblTitulo.Depth = 0;
             lblTitulo.Dock = DockStyle.Fill;
-            lblTitulo.Font = new Font("Roboto", 18F, FontStyle.Regular, GraphicsUnit.Point);
+            lblTitulo.FontType = MaterialSkin.MaterialSkinManager.fontType.H6;
             lblTitulo.Location = new Point(0, 0);
+            lblTitulo.Margin = new Padding(0);
             lblTitulo.MouseState = MaterialSkin.MouseState.HOVER;
             lblTitulo.Name = "lblTitulo";
+            lblTitulo.Size = new Size(1059, 40);
             lblTitulo.TabIndex = 0;
             lblTitulo.Text = "Registro de Compras a Proveedores";
             lblTitulo.TextAlign = ContentAlignment.MiddleLeft;
             //
-            // tblBloqueProducto
+            // tblCatalogo
             //
-            // Bloque producto con datos a la izquierda (220 px fijos, ≤ 240) y
-            // listado a la derecha con el resto del ancho: la grilla crece con la
-            // ventana y la columna de datos nunca supera el ancho previsto.
-            tblBloqueProducto.ColumnCount = 2;
-            tblBloqueProducto.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220F));
-            tblBloqueProducto.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tblBloqueProducto.Controls.Add(pnlDatosProducto, 0, 0);
-            tblBloqueProducto.Controls.Add(pnlListadoProductos, 1, 0);
-            tblBloqueProducto.Dock = DockStyle.Fill;
-            tblBloqueProducto.Location = new Point(0, 35);
-            tblBloqueProducto.Margin = new Padding(0, 0, 8, 0);
-            tblBloqueProducto.Name = "tblBloqueProducto";
-            tblBloqueProducto.RowCount = 1;
-            tblBloqueProducto.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblBloqueProducto.Size = new Size(482, 230);
-            tblBloqueProducto.TabIndex = 0;
+            // Columna «Catálogo»: tarjeta de proveedor (arriba) y de producto (abajo).
+            tblCatalogo.ColumnCount = 1;
+            tblCatalogo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblCatalogo.Controls.Add(cardProveedor, 0, 0);
+            tblCatalogo.Controls.Add(cardProducto, 0, 1);
+            tblCatalogo.Dock = DockStyle.Fill;
+            tblCatalogo.Location = new Point(0, 40);
+            tblCatalogo.Margin = new Padding(0, 0, 6, 0);
+            tblCatalogo.Name = "tblCatalogo";
+            tblCatalogo.RowCount = 2;
+            tblCatalogo.RowStyles.Add(new RowStyle(SizeType.Percent, 46F));
+            tblCatalogo.RowStyles.Add(new RowStyle(SizeType.Percent, 54F));
+            tblCatalogo.Size = new Size(333, 636);
+            tblCatalogo.TabIndex = 1;
             //
-            // pnlDatosProducto
+            // cardProveedor
             //
-            pnlDatosProducto.BackColor = Color.FromArgb(45, 45, 45);
-            pnlDatosProducto.Controls.Add(tblDatosProducto);
-            pnlDatosProducto.Dock = DockStyle.Fill;
-            pnlDatosProducto.Location = new Point(0, 0);
-            pnlDatosProducto.Margin = new Padding(0);
-            pnlDatosProducto.Name = "pnlDatosProducto";
-            pnlDatosProducto.Padding = new Padding(10, 2, 10, 2);
-            pnlDatosProducto.Size = new Size(221, 230);
-            pnlDatosProducto.TabIndex = 0;
-            //
-            // tblDatosProducto
-            //
-            tblDatosProducto.ColumnCount = 1;
-            tblDatosProducto.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tblDatosProducto.Controls.Add(lblTituloDatosProducto, 0, 0);
-            tblDatosProducto.Controls.Add(lblNombreProducto, 0, 1);
-            tblDatosProducto.Controls.Add(lblCodigoProducto, 0, 2);
-            tblDatosProducto.Controls.Add(txtCantidad, 0, 3);
-            tblDatosProducto.Controls.Add(txtPrecioCompra, 0, 4);
-            tblDatosProducto.Controls.Add(txtPrecioVenta, 0, 5);
-            tblDatosProducto.Controls.Add(lblSubtotalPreparacion, 0, 6);
-            tblDatosProducto.Controls.Add(btnAgregarLinea, 0, 7);
-            tblDatosProducto.Dock = DockStyle.Fill;
-            tblDatosProducto.Location = new Point(10, 2);
-            tblDatosProducto.Margin = new Padding(0);
-            tblDatosProducto.Name = "tblDatosProducto";
-            // Filas (96 DPI): título, nombre, código y subtotal 20 cada uno, las tres
-            // entradas 36 cada una (igual a su MinimumSize) y botón 36 ⇒ 224 px, más
-            // el Padding del panel (4) ≤ 232 de la fila 1. Las entradas van a 36 px porque con el modo alto de
-            // MaterialTextBox2 desactivado su alto real cabe en la fila sin
-            // derramarse sobre la siguiente. Sin fila de relleno: el bloque termina
-            // en el botón y no deja hueco muerto antes de «Compra Actual».
-            tblDatosProducto.RowCount = 8;
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
-            tblDatosProducto.Size = new Size(201, 236);
-            tblDatosProducto.TabIndex = 0;
-            //
-            // lblTituloDatosProducto
-            //
-            lblTituloDatosProducto.AutoSize = false;
-            lblTituloDatosProducto.Depth = 0;
-            lblTituloDatosProducto.Dock = DockStyle.Fill;
-            lblTituloDatosProducto.Font = new Font("Roboto", 13.5F, FontStyle.Regular, GraphicsUnit.Point);
-            lblTituloDatosProducto.Location = new Point(0, 0);
-            lblTituloDatosProducto.Margin = new Padding(0);
-            lblTituloDatosProducto.MouseState = MaterialSkin.MouseState.HOVER;
-            lblTituloDatosProducto.Name = "lblTituloDatosProducto";
-            lblTituloDatosProducto.Size = new Size(211, 20);
-            lblTituloDatosProducto.TabIndex = 0;
-            lblTituloDatosProducto.Text = "Datos del producto";
-            lblTituloDatosProducto.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // lblNombreProducto
-            //
-            lblNombreProducto.AutoSize = false;
-            lblNombreProducto.Depth = 0;
-            lblNombreProducto.Dock = DockStyle.Fill;
-            lblNombreProducto.Font = new Font("Roboto", 11.25F, FontStyle.Regular, GraphicsUnit.Point);
-            lblNombreProducto.Location = new Point(0, 20);
-            lblNombreProducto.Margin = new Padding(0);
-            lblNombreProducto.MouseState = MaterialSkin.MouseState.HOVER;
-            lblNombreProducto.Name = "lblNombreProducto";
-            lblNombreProducto.Size = new Size(201, 22);
-            lblNombreProducto.TabIndex = 0;
-            lblNombreProducto.Text = "(Sin producto seleccionado)";
-            lblNombreProducto.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // lblCodigoProducto
-            //
-            lblCodigoProducto.AutoSize = false;
-            lblCodigoProducto.Depth = 0;
-            lblCodigoProducto.Dock = DockStyle.Fill;
-            lblCodigoProducto.Font = new Font("Roboto", 10.5F, FontStyle.Regular, GraphicsUnit.Point);
-            lblCodigoProducto.Location = new Point(0, 44);
-            lblCodigoProducto.Margin = new Padding(0);
-            lblCodigoProducto.MouseState = MaterialSkin.MouseState.HOVER;
-            lblCodigoProducto.Name = "lblCodigoProducto";
-            lblCodigoProducto.Size = new Size(201, 22);
-            lblCodigoProducto.TabIndex = 1;
-            lblCodigoProducto.Text = "Código: —";
-            lblCodigoProducto.TextAlign = ContentAlignment.MiddleLeft;
-            // Cada entrada ocupa su propia fila de 36 px: el ancho útil de la columna
-            // de datos (211 px) no admite tres campos en línea.
-            txtCantidad.AnimateReadOnly = false;
-            txtCantidad.BackgroundImageLayout = ImageLayout.None;
-            txtCantidad.CharacterCasing = CharacterCasing.Normal;
-            txtCantidad.Depth = 0;
-            txtCantidad.Dock = DockStyle.Fill;
-            txtCantidad.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
-            txtCantidad.Hint = "Cantidad";
-            txtCantidad.Location = new Point(0, 68);
-            txtCantidad.Margin = new Padding(0);
-            txtCantidad.MaxLength = 32767;
-            txtCantidad.MinimumSize = new Size(100, 36);
-            txtCantidad.MouseState = MaterialSkin.MouseState.OUT;
-            txtCantidad.Name = "txtCantidad";
-            txtCantidad.Padding = new Padding(2, 0, 2, 0);
-            txtCantidad.PasswordChar = '\0';
-            txtCantidad.PrefixSuffixText = null;
-            txtCantidad.ReadOnly = false;
-            txtCantidad.RightToLeft = RightToLeft.No;
-            txtCantidad.SelectedText = "";
-            txtCantidad.SelectionLength = 0;
-            txtCantidad.SelectionStart = 0;
-            txtCantidad.ShortcutsEnabled = true;
-            txtCantidad.TabIndex = 0;
-            txtCantidad.TextAlign = HorizontalAlignment.Left;
-            txtCantidad.TrailingIcon = null;
-            txtCantidad.UseSystemPasswordChar = false;
-            txtCantidad.UseTallSize = false;
-            //
-            // txtPrecioCompra
-            //
-            txtPrecioCompra.AnimateReadOnly = false;
-            txtPrecioCompra.BackgroundImageLayout = ImageLayout.None;
-            txtPrecioCompra.CharacterCasing = CharacterCasing.Normal;
-            txtPrecioCompra.Depth = 0;
-            txtPrecioCompra.Dock = DockStyle.Fill;
-            txtPrecioCompra.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
-            txtPrecioCompra.Hint = "Precio compra";
-            txtPrecioCompra.Location = new Point(0, 98);
-            txtPrecioCompra.Margin = new Padding(0);
-            txtPrecioCompra.MaxLength = 32767;
-            txtPrecioCompra.MinimumSize = new Size(100, 36);
-            txtPrecioCompra.MouseState = MaterialSkin.MouseState.OUT;
-            txtPrecioCompra.Name = "txtPrecioCompra";
-            txtPrecioCompra.Padding = new Padding(2, 0, 2, 0);
-            txtPrecioCompra.PasswordChar = '\0';
-            txtPrecioCompra.PrefixSuffixText = null;
-            txtPrecioCompra.ReadOnly = false;
-            txtPrecioCompra.RightToLeft = RightToLeft.No;
-            txtPrecioCompra.SelectedText = "";
-            txtPrecioCompra.SelectionLength = 0;
-            txtPrecioCompra.SelectionStart = 0;
-            txtPrecioCompra.ShortcutsEnabled = true;
-            txtPrecioCompra.TabIndex = 1;
-            txtPrecioCompra.TextAlign = HorizontalAlignment.Left;
-            txtPrecioCompra.TrailingIcon = null;
-            txtPrecioCompra.UseSystemPasswordChar = false;
-            txtPrecioCompra.UseTallSize = false;
-            //
-            // txtPrecioVenta
-            //
-            txtPrecioVenta.AnimateReadOnly = false;
-            txtPrecioVenta.BackgroundImageLayout = ImageLayout.None;
-            txtPrecioVenta.CharacterCasing = CharacterCasing.Normal;
-            txtPrecioVenta.Depth = 0;
-            txtPrecioVenta.Dock = DockStyle.Fill;
-            txtPrecioVenta.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
-            txtPrecioVenta.Hint = "Precio venta";
-            txtPrecioVenta.Location = new Point(0, 128);
-            txtPrecioVenta.Margin = new Padding(0);
-            txtPrecioVenta.MaxLength = 32767;
-            txtPrecioVenta.MinimumSize = new Size(100, 36);
-            txtPrecioVenta.MouseState = MaterialSkin.MouseState.OUT;
-            txtPrecioVenta.Name = "txtPrecioVenta";
-            txtPrecioVenta.Padding = new Padding(2, 0, 2, 0);
-            txtPrecioVenta.PasswordChar = '\0';
-            txtPrecioVenta.PrefixSuffixText = null;
-            txtPrecioVenta.ReadOnly = false;
-            txtPrecioVenta.RightToLeft = RightToLeft.No;
-            txtPrecioVenta.SelectedText = "";
-            txtPrecioVenta.SelectionLength = 0;
-            txtPrecioVenta.SelectionStart = 0;
-            txtPrecioVenta.ShortcutsEnabled = true;
-            txtPrecioVenta.TabIndex = 2;
-            txtPrecioVenta.TextAlign = HorizontalAlignment.Left;
-            txtPrecioVenta.TrailingIcon = null;
-            txtPrecioVenta.UseSystemPasswordChar = false;
-            txtPrecioVenta.UseTallSize = false;
-            //
-            // lblSubtotalPreparacion
-            //
-            lblSubtotalPreparacion.AutoSize = false;
-            lblSubtotalPreparacion.Depth = 0;
-            lblSubtotalPreparacion.Dock = DockStyle.Fill;
-            lblSubtotalPreparacion.Font = new Font("Roboto", 12F, FontStyle.Regular, GraphicsUnit.Point);
-            lblSubtotalPreparacion.Location = new Point(0, 158);
-            lblSubtotalPreparacion.Margin = new Padding(0);
-            lblSubtotalPreparacion.MouseState = MaterialSkin.MouseState.HOVER;
-            lblSubtotalPreparacion.Name = "lblSubtotalPreparacion";
-            lblSubtotalPreparacion.Size = new Size(201, 22);
-            lblSubtotalPreparacion.TabIndex = 6;
-            lblSubtotalPreparacion.Text = "Subtotal: —";
-            lblSubtotalPreparacion.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // btnAgregarLinea
-            //
-            btnAgregarLinea.AutoSize = true;
-            btnAgregarLinea.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            btnAgregarLinea.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
-            btnAgregarLinea.Depth = 0;
-            btnAgregarLinea.HighEmphasis = true;
-            btnAgregarLinea.Icon = null;
-            btnAgregarLinea.Location = new Point(0, 186);
-            btnAgregarLinea.Margin = new Padding(0);
-            btnAgregarLinea.MinimumSize = new Size(0, 36);
-            btnAgregarLinea.MouseState = MaterialSkin.MouseState.HOVER;
-            btnAgregarLinea.Name = "btnAgregarLinea";
-            btnAgregarLinea.NoAccentTextColor = Color.Empty;
-            btnAgregarLinea.Padding = new Padding(10, 0, 10, 0);
-            btnAgregarLinea.Size = new Size(190, 36);
-            btnAgregarLinea.TabIndex = 7;
-            btnAgregarLinea.Text = "Agregar a la compra";
-            btnAgregarLinea.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
-            btnAgregarLinea.UseAccentColor = true;
-            btnAgregarLinea.UseVisualStyleBackColor = true;
-            //
-            // pnlListadoProductos
-            //
-            pnlListadoProductos.BackColor = Color.FromArgb(45, 45, 45);
-            pnlListadoProductos.Controls.Add(tblListadoProductos);
-            pnlListadoProductos.Dock = DockStyle.Fill;
-            pnlListadoProductos.Location = new Point(231, 0);
-            pnlListadoProductos.Margin = new Padding(0);
-            pnlListadoProductos.Name = "pnlListadoProductos";
-            pnlListadoProductos.Padding = new Padding(10, 2, 10, 2);
-            pnlListadoProductos.Size = new Size(281, 230);
-            pnlListadoProductos.TabIndex = 1;
-            //
-            // tblListadoProductos
-            //
-            // Cuatro filas en una sola columna: rótulo, buscador propio (36 px) y
-            // grilla, de modo que el buscador nunca comparte fila con la grilla ni
-            // la tapa. Todo se posiciona con Dock = Fill: sin Location absoluto.
-            tblListadoProductos.ColumnCount = 1;
-            tblListadoProductos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tblListadoProductos.Controls.Add(lblTituloListadoProductos, 0, 0);
-            tblListadoProductos.Controls.Add(txtBuscarProducto, 0, 1);
-            tblListadoProductos.Controls.Add(gridProductos, 0, 2);
-            tblListadoProductos.Controls.Add(lblMensajeProductos, 0, 3);
-            tblListadoProductos.Dock = DockStyle.Fill;
-            tblListadoProductos.Location = new Point(10, 2);
-            tblListadoProductos.Margin = new Padding(0);
-            tblListadoProductos.Name = "tblListadoProductos";
-            tblListadoProductos.RowCount = 4;
-            tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
-            tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            tblListadoProductos.Size = new Size(261, 226);
-            tblListadoProductos.TabIndex = 0;
-            //
-            // lblTituloListadoProductos
-            //
-            lblTituloListadoProductos.Anchor = AnchorStyles.Left;
-            lblTituloListadoProductos.AutoSize = true;
-            lblTituloListadoProductos.Depth = 0;
-            lblTituloListadoProductos.Font = new Font("Roboto", 12F, FontStyle.Regular, GraphicsUnit.Point);
-            lblTituloListadoProductos.Margin = new Padding(0);
-            lblTituloListadoProductos.MouseState = MaterialSkin.MouseState.HOVER;
-            lblTituloListadoProductos.Name = "lblTituloListadoProductos";
-            lblTituloListadoProductos.TabIndex = 0;
-            lblTituloListadoProductos.Text = "Listado productos";
-            lblTituloListadoProductos.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // txtBuscarProducto
-            //
-            txtBuscarProducto.AnimateReadOnly = false;
-            txtBuscarProducto.BackgroundImageLayout = ImageLayout.None;
-            txtBuscarProducto.CharacterCasing = CharacterCasing.Normal;
-            txtBuscarProducto.Depth = 0;
-            txtBuscarProducto.Dock = DockStyle.Fill;
-            txtBuscarProducto.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
-            txtBuscarProducto.Hint = "Buscar producto";
-            txtBuscarProducto.Margin = new Padding(0);
-            txtBuscarProducto.MaxLength = 32767;
-            // El buscador ocupa su propia fila de 36 px con Dock = Fill; el mínimo
-            // nunca puede superar el alto de la fila (si lo supera, se derrama
-            // sobre el encabezado de la grilla). El modo alto desactivado evita el
-            // alto de 48 px que MaterialTextBox2 impone por omisión.
-            txtBuscarProducto.MinimumSize = new Size(100, 36);
-            txtBuscarProducto.MouseState = MaterialSkin.MouseState.OUT;
-            txtBuscarProducto.Name = "txtBuscarProducto";
-            txtBuscarProducto.Padding = new Padding(2, 0, 2, 0);
-            txtBuscarProducto.PasswordChar = '\0';
-            txtBuscarProducto.PrefixSuffixText = null;
-            txtBuscarProducto.ReadOnly = false;
-            txtBuscarProducto.RightToLeft = RightToLeft.No;
-            txtBuscarProducto.SelectedText = "";
-            txtBuscarProducto.SelectionLength = 0;
-            txtBuscarProducto.SelectionStart = 0;
-            txtBuscarProducto.ShortcutsEnabled = true;
-            txtBuscarProducto.TabIndex = 1;
-            txtBuscarProducto.TextAlign = HorizontalAlignment.Left;
-            txtBuscarProducto.TrailingIcon = null;
-            txtBuscarProducto.UseSystemPasswordChar = false;
-            txtBuscarProducto.UseTallSize = false;
-            //
-            // gridProductos
-            //
-            gridProductos.AllowUserToAddRows = false;
-            gridProductos.AllowUserToDeleteRows = false;
-            gridProductos.AllowUserToResizeRows = false;
-            gridProductos.AutoGenerateColumns = false;
-            gridProductos.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            gridProductos.ColumnHeadersHeight = 26;
-            gridProductos.Columns.AddRange(new DataGridViewColumn[] { colProductoCodigo, colProductoNombre });
-            gridProductos.Dock = DockStyle.Fill;
-            gridProductos.Margin = new Padding(0, 4, 0, 0);
-            // La grilla ocupa la fila "Percent 100" del listado y su propio alto se
-            // resuelve por Dock; el mínimo garantiza cabecera y primeras filas. Con
-            // ScrollBars = Vertical el alto del contenido no ensancha las columnas.
-            gridProductos.MinimumSize = new Size(0, 100);
-            gridProductos.MultiSelect = false;
-            gridProductos.Name = "gridProductos";
-            gridProductos.ReadOnly = true;
-            gridProductos.RowHeadersVisible = false;
-            gridProductos.RowTemplate.Height = 21;
-            gridProductos.ScrollBars = ScrollBars.Vertical;
-            gridProductos.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            gridProductos.TabIndex = 2;
-            //
-            // colProductoCodigo
-            //
-            colProductoCodigo.DataPropertyName = "Codigo";
-            colProductoCodigo.FillWeight = 30F;
-            colProductoCodigo.HeaderText = "Código";
-            colProductoCodigo.Name = "colProductoCodigo";
-            colProductoCodigo.ReadOnly = true;
-            colProductoCodigo.SortMode = DataGridViewColumnSortMode.NotSortable;
-            //
-            // colProductoNombre
-            //
-            colProductoNombre.DataPropertyName = "Nombre";
-            colProductoNombre.FillWeight = 70F;
-            colProductoNombre.HeaderText = "Nombre";
-            colProductoNombre.Name = "colProductoNombre";
-            colProductoNombre.ReadOnly = true;
-            colProductoNombre.SortMode = DataGridViewColumnSortMode.NotSortable;
-            //
-            // lblMensajeProductos
-            //
-            lblMensajeProductos.AutoSize = false;
-            lblMensajeProductos.Depth = 0;
-            lblMensajeProductos.Dock = DockStyle.Fill;
-            lblMensajeProductos.Font = new Font("Roboto", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
-            lblMensajeProductos.Margin = new Padding(0);
-            lblMensajeProductos.MinimumSize = new Size(0, 18);
-            lblMensajeProductos.MouseState = MaterialSkin.MouseState.HOVER;
-            lblMensajeProductos.Name = "lblMensajeProductos";
-            lblMensajeProductos.Size = new Size(261, 18);
-            lblMensajeProductos.TabIndex = 3;
-            lblMensajeProductos.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // tblBloqueProveedor
-            //
-            // Bloque proveedor simétrico al de producto: datos a la izquierda
-            // (220 px fijos) y listado a la derecha con el resto del ancho.
-            tblBloqueProveedor.ColumnCount = 2;
-            tblBloqueProveedor.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220F));
-            tblBloqueProveedor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tblBloqueProveedor.Controls.Add(pnlDatosProveedor, 0, 0);
-            tblBloqueProveedor.Controls.Add(pnlListadoProveedores, 1, 0);
-            tblBloqueProveedor.Dock = DockStyle.Fill;
-            tblBloqueProveedor.Location = new Point(498, 35);
-            tblBloqueProveedor.Margin = new Padding(8, 0, 0, 0);
-            tblBloqueProveedor.Name = "tblBloqueProveedor";
-            tblBloqueProveedor.RowCount = 1;
-            tblBloqueProveedor.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblBloqueProveedor.Size = new Size(482, 230);
-            tblBloqueProveedor.TabIndex = 1;
-            //
-            // pnlDatosProveedor
-            //
-            pnlDatosProveedor.BackColor = Color.FromArgb(45, 45, 45);
-            pnlDatosProveedor.Controls.Add(tblDatosProveedor);
-            pnlDatosProveedor.Dock = DockStyle.Fill;
-            pnlDatosProveedor.Location = new Point(0, 0);
-            pnlDatosProveedor.Margin = new Padding(0);
-            pnlDatosProveedor.Name = "pnlDatosProveedor";
-            pnlDatosProveedor.Padding = new Padding(10, 2, 10, 2);
-            pnlDatosProveedor.Size = new Size(207, 230);
-            pnlDatosProveedor.TabIndex = 0;
-            //
-            // tblDatosProveedor
-            //
-            tblDatosProveedor.ColumnCount = 1;
-            tblDatosProveedor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tblDatosProveedor.Controls.Add(lblTituloDatosProveedor, 0, 0);
-            tblDatosProveedor.Controls.Add(lblRazonSocialProveedor, 0, 1);
-            tblDatosProveedor.Controls.Add(lblDocumentoProveedor, 0, 2);
-            tblDatosProveedor.Dock = DockStyle.Fill;
-            tblDatosProveedor.Location = new Point(10, 2);
-            tblDatosProveedor.Margin = new Padding(0);
-            tblDatosProveedor.Name = "tblDatosProveedor";
-            // Título 20 y los dos datos del proveedor elegido 30 cada uno ⇒ 80 px
-            // fijos (≤ 240). Sin fila de relleno: el bloque termina en el dato del
-            // documento y no deja hueco muerto.
-            tblDatosProveedor.RowCount = 3;
-            tblDatosProveedor.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tblDatosProveedor.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            tblDatosProveedor.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            tblDatosProveedor.Size = new Size(187, 226);
-            tblDatosProveedor.TabIndex = 0;
-            //
-            // lblTituloDatosProveedor
-            //
-            lblTituloDatosProveedor.AutoSize = false;
-            lblTituloDatosProveedor.Depth = 0;
-            lblTituloDatosProveedor.Dock = DockStyle.Fill;
-            lblTituloDatosProveedor.Font = new Font("Roboto", 13.5F, FontStyle.Regular, GraphicsUnit.Point);
-            lblTituloDatosProveedor.Location = new Point(0, 0);
-            lblTituloDatosProveedor.Margin = new Padding(0);
-            lblTituloDatosProveedor.MouseState = MaterialSkin.MouseState.HOVER;
-            lblTituloDatosProveedor.Name = "lblTituloDatosProveedor";
-            lblTituloDatosProveedor.Size = new Size(187, 20);
-            lblTituloDatosProveedor.TabIndex = 0;
-            lblTituloDatosProveedor.Text = "Datos del proveedor";
-            lblTituloDatosProveedor.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // lblRazonSocialProveedor
-            //
-            lblRazonSocialProveedor.AutoSize = false;
-            lblRazonSocialProveedor.Depth = 0;
-            lblRazonSocialProveedor.Dock = DockStyle.Fill;
-            lblRazonSocialProveedor.Font = new Font("Roboto", 11.25F, FontStyle.Regular, GraphicsUnit.Point);
-            lblRazonSocialProveedor.Location = new Point(0, 20);
-            lblRazonSocialProveedor.Margin = new Padding(0);
-            lblRazonSocialProveedor.MouseState = MaterialSkin.MouseState.HOVER;
-            lblRazonSocialProveedor.Name = "lblRazonSocialProveedor";
-            lblRazonSocialProveedor.Size = new Size(187, 30);
-            lblRazonSocialProveedor.TabIndex = 1;
-            lblRazonSocialProveedor.Text = "Sin proveedor seleccionado";
-            lblRazonSocialProveedor.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // lblDocumentoProveedor
-            //
-            lblDocumentoProveedor.AutoSize = false;
-            lblDocumentoProveedor.Depth = 0;
-            lblDocumentoProveedor.Dock = DockStyle.Fill;
-            lblDocumentoProveedor.Font = new Font("Roboto", 10.5F, FontStyle.Regular, GraphicsUnit.Point);
-            lblDocumentoProveedor.Location = new Point(0, 50);
-            lblDocumentoProveedor.Margin = new Padding(0);
-            lblDocumentoProveedor.MouseState = MaterialSkin.MouseState.HOVER;
-            lblDocumentoProveedor.Name = "lblDocumentoProveedor";
-            lblDocumentoProveedor.Size = new Size(187, 30);
-            lblDocumentoProveedor.TabIndex = 2;
-            lblDocumentoProveedor.Text = "Documento: —";
-            lblDocumentoProveedor.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // pnlListadoProveedores
-            //
-            pnlListadoProveedores.BackColor = Color.FromArgb(45, 45, 45);
-            pnlListadoProveedores.Controls.Add(tblListadoProveedores);
-            pnlListadoProveedores.Dock = DockStyle.Fill;
-            pnlListadoProveedores.Location = new Point(216, 0);
-            pnlListadoProveedores.Margin = new Padding(0);
-            pnlListadoProveedores.Name = "pnlListadoProveedores";
-            pnlListadoProveedores.Padding = new Padding(10, 2, 10, 2);
-            pnlListadoProveedores.Size = new Size(263, 230);
-            pnlListadoProveedores.TabIndex = 1;
+            cardProveedor.Controls.Add(tblListadoProveedores);
+            cardProveedor.Depth = 0;
+            cardProveedor.Dock = DockStyle.Fill;
+            cardProveedor.Location = new Point(0, 0);
+            cardProveedor.Margin = new Padding(0, 0, 0, 4);
+            cardProveedor.MouseState = MaterialSkin.MouseState.HOVER;
+            cardProveedor.Name = "cardProveedor";
+            cardProveedor.Padding = new Padding(12, 8, 12, 8);
+            cardProveedor.Size = new Size(333, 263);
+            cardProveedor.TabIndex = 0;
             //
             // tblListadoProveedores
             //
-            // Cuatro filas en una sola columna: rótulo, buscador propio (36 px) y
-            // grilla, simétrico al listado de productos. Sin Location absoluto.
+            // Título de tarjeta, buscador, grilla (absorbe el alto) y mensaje.
             tblListadoProveedores.ColumnCount = 1;
             tblListadoProveedores.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tblListadoProveedores.Controls.Add(lblTituloListadoProveedores, 0, 0);
+            tblListadoProveedores.Controls.Add(tblTituloProveedores, 0, 0);
             tblListadoProveedores.Controls.Add(txtBuscarProveedor, 0, 1);
             tblListadoProveedores.Controls.Add(gridProveedores, 0, 2);
             tblListadoProveedores.Controls.Add(lblMensajeProveedores, 0, 3);
             tblListadoProveedores.Dock = DockStyle.Fill;
-            tblListadoProveedores.Location = new Point(10, 2);
+            tblListadoProveedores.Location = new Point(12, 8);
             tblListadoProveedores.Margin = new Padding(0);
             tblListadoProveedores.Name = "tblListadoProveedores";
             tblListadoProveedores.RowCount = 4;
-            tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
+            tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            tblListadoProveedores.Size = new Size(243, 226);
+            tblListadoProveedores.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tblListadoProveedores.Size = new Size(309, 247);
             tblListadoProveedores.TabIndex = 0;
+            //
+            // tblTituloProveedores
+            //
+            // Fila del título: el título absorbe el ancho y el checkbox se ajusta a la derecha.
+            tblTituloProveedores.ColumnCount = 2;
+            tblTituloProveedores.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblTituloProveedores.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tblTituloProveedores.Controls.Add(lblTituloListadoProveedores, 0, 0);
+            tblTituloProveedores.Controls.Add(chkMostrarTodosProveedores, 1, 0);
+            tblTituloProveedores.Dock = DockStyle.Fill;
+            tblTituloProveedores.Margin = new Padding(0);
+            tblTituloProveedores.Name = "tblTituloProveedores";
+            tblTituloProveedores.RowCount = 1;
+            tblTituloProveedores.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblTituloProveedores.Size = new Size(309, 24);
+            tblTituloProveedores.TabIndex = 0;
+            //
             //
             // lblTituloListadoProveedores
             //
-            lblTituloListadoProveedores.Anchor = AnchorStyles.Left;
-            lblTituloListadoProveedores.AutoSize = true;
+            lblTituloListadoProveedores.AutoSize = false;
             lblTituloListadoProveedores.Depth = 0;
-            lblTituloListadoProveedores.Font = new Font("Roboto", 12F, FontStyle.Regular, GraphicsUnit.Point);
+            lblTituloListadoProveedores.Dock = DockStyle.Fill;
+            lblTituloListadoProveedores.FontType = MaterialSkin.MaterialSkinManager.fontType.Subtitle1;
             lblTituloListadoProveedores.Margin = new Padding(0);
             lblTituloListadoProveedores.MouseState = MaterialSkin.MouseState.HOVER;
             lblTituloListadoProveedores.Name = "lblTituloListadoProveedores";
+            lblTituloListadoProveedores.Size = new Size(309, 24);
             lblTituloListadoProveedores.TabIndex = 0;
-            lblTituloListadoProveedores.Text = "Listado proveedores";
+            lblTituloListadoProveedores.Text = "1 · Proveedor";
             lblTituloListadoProveedores.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // chkMostrarTodosProveedores
+            //
+            chkMostrarTodosProveedores.AutoSize = false;
+            chkMostrarTodosProveedores.Depth = 0;
+            chkMostrarTodosProveedores.Dock = DockStyle.Fill;
+            chkMostrarTodosProveedores.Margin = new Padding(0);
+            chkMostrarTodosProveedores.MouseLocation = new Point(-1, -1);
+            chkMostrarTodosProveedores.MouseState = MaterialSkin.MouseState.HOVER;
+            chkMostrarTodosProveedores.Name = "chkMostrarTodosProveedores";
+            chkMostrarTodosProveedores.Ripple = true;
+            chkMostrarTodosProveedores.Size = new Size(124, 24);
+            chkMostrarTodosProveedores.TabIndex = 1;
+            chkMostrarTodosProveedores.Text = "Mostrar todos";
+            chkMostrarTodosProveedores.UseVisualStyleBackColor = true;
             //
             // txtBuscarProveedor
             //
@@ -701,11 +273,8 @@ namespace CapaPresentacion.Compras
             txtBuscarProveedor.Dock = DockStyle.Fill;
             txtBuscarProveedor.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
             txtBuscarProveedor.Hint = "Buscar proveedor";
-            txtBuscarProveedor.Margin = new Padding(0);
+            txtBuscarProveedor.Margin = new Padding(0, 2, 0, 0);
             txtBuscarProveedor.MaxLength = 32767;
-            // El buscador ocupa su propia fila de 36 px con Dock = Fill; el mínimo
-            // nunca puede superar el alto de la fila. El modo alto desactivado evita
-            // el alto de 48 px que MaterialTextBox2 impone por omisión.
             txtBuscarProveedor.MinimumSize = new Size(100, 36);
             txtBuscarProveedor.MouseState = MaterialSkin.MouseState.OUT;
             txtBuscarProveedor.Name = "txtBuscarProveedor";
@@ -718,6 +287,7 @@ namespace CapaPresentacion.Compras
             txtBuscarProveedor.SelectionLength = 0;
             txtBuscarProveedor.SelectionStart = 0;
             txtBuscarProveedor.ShortcutsEnabled = true;
+            txtBuscarProveedor.Size = new Size(309, 36);
             txtBuscarProveedor.TabIndex = 1;
             txtBuscarProveedor.TextAlign = HorizontalAlignment.Left;
             txtBuscarProveedor.TrailingIcon = null;
@@ -731,27 +301,25 @@ namespace CapaPresentacion.Compras
             gridProveedores.AllowUserToResizeRows = false;
             gridProveedores.AutoGenerateColumns = false;
             gridProveedores.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            gridProveedores.ColumnHeadersHeight = 26;
+            gridProveedores.ColumnHeadersHeight = 30;
             gridProveedores.Columns.AddRange(new DataGridViewColumn[] { colProveedorRazonSocial, colProveedorDocumento });
             gridProveedores.Dock = DockStyle.Fill;
             gridProveedores.Margin = new Padding(0, 4, 0, 0);
-            // La grilla ocupa la fila "Percent 100" del listado; el alto se resuelve
-            // por Dock y el mínimo garantiza cabecera y primeras filas. Con
-            // ScrollBars = Vertical el contenido no ensancha las columnas.
-            gridProveedores.MinimumSize = new Size(0, 100);
+            gridProveedores.MinimumSize = new Size(0, 72);
             gridProveedores.MultiSelect = false;
             gridProveedores.Name = "gridProveedores";
             gridProveedores.ReadOnly = true;
             gridProveedores.RowHeadersVisible = false;
-            gridProveedores.RowTemplate.Height = 21;
+            gridProveedores.RowTemplate.Height = 26;
             gridProveedores.ScrollBars = ScrollBars.Vertical;
             gridProveedores.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            gridProveedores.Size = new Size(309, 161);
             gridProveedores.TabIndex = 2;
             //
             // colProveedorRazonSocial
             //
             colProveedorRazonSocial.DataPropertyName = "RazonSocial";
-            colProveedorRazonSocial.FillWeight = 70F;
+            colProveedorRazonSocial.FillWeight = 50F;
             colProveedorRazonSocial.HeaderText = "Razón social";
             colProveedorRazonSocial.Name = "colProveedorRazonSocial";
             colProveedorRazonSocial.ReadOnly = true;
@@ -760,7 +328,7 @@ namespace CapaPresentacion.Compras
             // colProveedorDocumento
             //
             colProveedorDocumento.DataPropertyName = "Documento";
-            colProveedorDocumento.FillWeight = 30F;
+            colProveedorDocumento.FillWeight = 50F;
             colProveedorDocumento.HeaderText = "Documento";
             colProveedorDocumento.Name = "colProveedorDocumento";
             colProveedorDocumento.ReadOnly = true;
@@ -771,31 +339,566 @@ namespace CapaPresentacion.Compras
             lblMensajeProveedores.AutoSize = false;
             lblMensajeProveedores.Depth = 0;
             lblMensajeProveedores.Dock = DockStyle.Fill;
-            lblMensajeProveedores.Font = new Font("Roboto", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+            lblMensajeProveedores.FontType = MaterialSkin.MaterialSkinManager.fontType.Caption;
             lblMensajeProveedores.Margin = new Padding(0);
-            lblMensajeProveedores.MinimumSize = new Size(0, 18);
             lblMensajeProveedores.MouseState = MaterialSkin.MouseState.HOVER;
             lblMensajeProveedores.Name = "lblMensajeProveedores";
-            lblMensajeProveedores.Size = new Size(243, 18);
+            lblMensajeProveedores.Size = new Size(309, 20);
             lblMensajeProveedores.TabIndex = 3;
             lblMensajeProveedores.TextAlign = ContentAlignment.MiddleLeft;
             //
+            // cardProducto
+            //
+            cardProducto.Controls.Add(tblListadoProductos);
+            cardProducto.Depth = 0;
+            cardProducto.Dock = DockStyle.Fill;
+            cardProducto.Location = new Point(0, 267);
+            cardProducto.Margin = new Padding(0, 4, 0, 0);
+            cardProducto.MouseState = MaterialSkin.MouseState.HOVER;
+            cardProducto.Name = "cardProducto";
+            cardProducto.Padding = new Padding(12, 8, 12, 8);
+            cardProducto.Size = new Size(333, 369);
+            cardProducto.TabIndex = 1;
+            //
+            // tblListadoProductos
+            //
+            tblListadoProductos.ColumnCount = 1;
+            tblListadoProductos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblListadoProductos.Controls.Add(tblTituloProductos, 0, 0);
+            tblListadoProductos.Controls.Add(txtBuscarProducto, 0, 1);
+            tblListadoProductos.Controls.Add(gridProductos, 0, 2);
+            tblListadoProductos.Controls.Add(lblMensajeProductos, 0, 3);
+            tblListadoProductos.Dock = DockStyle.Fill;
+            tblListadoProductos.Location = new Point(12, 8);
+            tblListadoProductos.Margin = new Padding(0);
+            tblListadoProductos.Name = "tblListadoProductos";
+            tblListadoProductos.RowCount = 4;
+            tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
+            tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
+            tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblListadoProductos.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tblListadoProductos.Size = new Size(309, 353);
+            tblListadoProductos.TabIndex = 0;
+            //
+            // tblTituloProductos
+            //
+            // Fila del título: el título absorbe el ancho y el checkbox se ajusta a la derecha.
+            tblTituloProductos.ColumnCount = 2;
+            tblTituloProductos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblTituloProductos.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tblTituloProductos.Controls.Add(lblTituloListadoProductos, 0, 0);
+            tblTituloProductos.Controls.Add(chkMostrarTodosProductos, 1, 0);
+            tblTituloProductos.Dock = DockStyle.Fill;
+            tblTituloProductos.Margin = new Padding(0);
+            tblTituloProductos.Name = "tblTituloProductos";
+            tblTituloProductos.RowCount = 1;
+            tblTituloProductos.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblTituloProductos.Size = new Size(309, 24);
+            tblTituloProductos.TabIndex = 0;
+            //
+            //
+            // lblTituloListadoProductos
+            //
+            lblTituloListadoProductos.AutoSize = false;
+            lblTituloListadoProductos.Depth = 0;
+            lblTituloListadoProductos.Dock = DockStyle.Fill;
+            lblTituloListadoProductos.FontType = MaterialSkin.MaterialSkinManager.fontType.Subtitle1;
+            lblTituloListadoProductos.Margin = new Padding(0);
+            lblTituloListadoProductos.MouseState = MaterialSkin.MouseState.HOVER;
+            lblTituloListadoProductos.Name = "lblTituloListadoProductos";
+            lblTituloListadoProductos.Size = new Size(309, 24);
+            lblTituloListadoProductos.TabIndex = 0;
+            lblTituloListadoProductos.Text = "2 · Producto";
+            lblTituloListadoProductos.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // chkMostrarTodosProductos
+            //
+            chkMostrarTodosProductos.AutoSize = false;
+            chkMostrarTodosProductos.Depth = 0;
+            chkMostrarTodosProductos.Dock = DockStyle.Fill;
+            chkMostrarTodosProductos.Margin = new Padding(0);
+            chkMostrarTodosProductos.MouseLocation = new Point(-1, -1);
+            chkMostrarTodosProductos.MouseState = MaterialSkin.MouseState.HOVER;
+            chkMostrarTodosProductos.Name = "chkMostrarTodosProductos";
+            chkMostrarTodosProductos.Ripple = true;
+            chkMostrarTodosProductos.Size = new Size(124, 24);
+            chkMostrarTodosProductos.TabIndex = 1;
+            chkMostrarTodosProductos.Text = "Mostrar todos";
+            chkMostrarTodosProductos.UseVisualStyleBackColor = true;
+            //
+            // txtBuscarProducto
+            //
+            txtBuscarProducto.AnimateReadOnly = false;
+            txtBuscarProducto.BackgroundImageLayout = ImageLayout.None;
+            txtBuscarProducto.CharacterCasing = CharacterCasing.Normal;
+            txtBuscarProducto.Depth = 0;
+            txtBuscarProducto.Dock = DockStyle.Fill;
+            txtBuscarProducto.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
+            txtBuscarProducto.Hint = "Buscar producto";
+            txtBuscarProducto.Margin = new Padding(0, 2, 0, 0);
+            txtBuscarProducto.MaxLength = 32767;
+            txtBuscarProducto.MinimumSize = new Size(100, 36);
+            txtBuscarProducto.MouseState = MaterialSkin.MouseState.OUT;
+            txtBuscarProducto.Name = "txtBuscarProducto";
+            txtBuscarProducto.Padding = new Padding(2, 0, 2, 0);
+            txtBuscarProducto.PasswordChar = '\0';
+            txtBuscarProducto.PrefixSuffixText = null;
+            txtBuscarProducto.ReadOnly = false;
+            txtBuscarProducto.RightToLeft = RightToLeft.No;
+            txtBuscarProducto.SelectedText = "";
+            txtBuscarProducto.SelectionLength = 0;
+            txtBuscarProducto.SelectionStart = 0;
+            txtBuscarProducto.ShortcutsEnabled = true;
+            txtBuscarProducto.Size = new Size(309, 36);
+            txtBuscarProducto.TabIndex = 1;
+            txtBuscarProducto.TextAlign = HorizontalAlignment.Left;
+            txtBuscarProducto.TrailingIcon = null;
+            txtBuscarProducto.UseSystemPasswordChar = false;
+            txtBuscarProducto.UseTallSize = false;
+            //
+            // gridProductos
+            //
+            gridProductos.AllowUserToAddRows = false;
+            gridProductos.AllowUserToDeleteRows = false;
+            gridProductos.AllowUserToResizeRows = false;
+            gridProductos.AutoGenerateColumns = false;
+            gridProductos.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            gridProductos.ColumnHeadersHeight = 30;
+            gridProductos.Columns.AddRange(new DataGridViewColumn[] { colProductoCodigo, colProductoNombre });
+            gridProductos.Dock = DockStyle.Fill;
+            gridProductos.Margin = new Padding(0, 4, 0, 0);
+            gridProductos.MinimumSize = new Size(0, 72);
+            gridProductos.MultiSelect = false;
+            gridProductos.Name = "gridProductos";
+            gridProductos.ReadOnly = true;
+            gridProductos.RowHeadersVisible = false;
+            gridProductos.RowTemplate.Height = 26;
+            gridProductos.ScrollBars = ScrollBars.Vertical;
+            gridProductos.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            gridProductos.Size = new Size(309, 267);
+            gridProductos.TabIndex = 2;
+            //
+            // colProductoCodigo
+            //
+            colProductoCodigo.DataPropertyName = "Codigo";
+            colProductoCodigo.FillWeight = 32F;
+            colProductoCodigo.HeaderText = "Código";
+            colProductoCodigo.Name = "colProductoCodigo";
+            colProductoCodigo.ReadOnly = true;
+            colProductoCodigo.SortMode = DataGridViewColumnSortMode.NotSortable;
+            //
+            // colProductoNombre
+            //
+            colProductoNombre.DataPropertyName = "Nombre";
+            colProductoNombre.FillWeight = 68F;
+            colProductoNombre.HeaderText = "Nombre";
+            colProductoNombre.Name = "colProductoNombre";
+            colProductoNombre.ReadOnly = true;
+            colProductoNombre.SortMode = DataGridViewColumnSortMode.NotSortable;
+            //
+            // lblMensajeProductos
+            //
+            lblMensajeProductos.AutoSize = false;
+            lblMensajeProductos.Depth = 0;
+            lblMensajeProductos.Dock = DockStyle.Fill;
+            lblMensajeProductos.FontType = MaterialSkin.MaterialSkinManager.fontType.Caption;
+            lblMensajeProductos.Margin = new Padding(0);
+            lblMensajeProductos.MouseState = MaterialSkin.MouseState.HOVER;
+            lblMensajeProductos.Name = "lblMensajeProductos";
+            lblMensajeProductos.Size = new Size(309, 20);
+            lblMensajeProductos.TabIndex = 3;
+            lblMensajeProductos.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // tblDocumento
+            //
+            // Columna «Compra actual»: proveedor, producto a cargar, líneas (absorbe
+            // el alto) y pie del documento. Los alto de fila incluyen el espacio de 6.
+            tblDocumento.ColumnCount = 1;
+            tblDocumento.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblDocumento.Controls.Add(cardDatosProveedor, 0, 0);
+            tblDocumento.Controls.Add(cardDatosProducto, 0, 1);
+            tblDocumento.Controls.Add(tblCompraActual, 0, 2);
+            tblDocumento.Controls.Add(tblPieCompra, 0, 3);
+            tblDocumento.Dock = DockStyle.Fill;
+            tblDocumento.Location = new Point(339, 40);
+            tblDocumento.Margin = new Padding(6, 0, 0, 0);
+            tblDocumento.Name = "tblDocumento";
+            tblDocumento.RowCount = 4;
+            tblDocumento.RowStyles.Add(new RowStyle(SizeType.Absolute, 66F));
+            tblDocumento.RowStyles.Add(new RowStyle(SizeType.Absolute, 126F));
+            tblDocumento.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblDocumento.RowStyles.Add(new RowStyle(SizeType.Absolute, 82F));
+            tblDocumento.Size = new Size(720, 636);
+            tblDocumento.TabIndex = 2;
+            //
+            // cardDatosProveedor
+            //
+            cardDatosProveedor.Controls.Add(tblDatosProveedor);
+            cardDatosProveedor.Depth = 0;
+            cardDatosProveedor.Dock = DockStyle.Fill;
+            cardDatosProveedor.Location = new Point(0, 0);
+            cardDatosProveedor.Margin = new Padding(0, 0, 0, 6);
+            cardDatosProveedor.MouseState = MaterialSkin.MouseState.HOVER;
+            cardDatosProveedor.Name = "cardDatosProveedor";
+            cardDatosProveedor.Padding = new Padding(12, 6, 12, 6);
+            cardDatosProveedor.Size = new Size(720, 60);
+            cardDatosProveedor.TabIndex = 0;
+            //
+            // tblDatosProveedor
+            //
+            // Rótulo pequeño arriba; razón social (crece) y documento (ancho propio,
+            // alineado a la derecha) en la misma línea.
+            tblDatosProveedor.ColumnCount = 2;
+            tblDatosProveedor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblDatosProveedor.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tblDatosProveedor.Controls.Add(lblTituloDatosProveedor, 0, 0);
+            tblDatosProveedor.Controls.Add(lblRazonSocialProveedor, 0, 1);
+            tblDatosProveedor.Controls.Add(lblDocumentoProveedor, 1, 1);
+            tblDatosProveedor.SetColumnSpan(lblTituloDatosProveedor, 2);
+            tblDatosProveedor.Dock = DockStyle.Fill;
+            tblDatosProveedor.Location = new Point(12, 6);
+            tblDatosProveedor.Margin = new Padding(0);
+            tblDatosProveedor.Name = "tblDatosProveedor";
+            tblDatosProveedor.RowCount = 2;
+            tblDatosProveedor.RowStyles.Add(new RowStyle(SizeType.Absolute, 18F));
+            tblDatosProveedor.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+            tblDatosProveedor.Size = new Size(696, 48);
+            tblDatosProveedor.TabIndex = 0;
+            //
+            // lblTituloDatosProveedor
+            //
+            lblTituloDatosProveedor.AutoSize = false;
+            lblTituloDatosProveedor.Depth = 0;
+            lblTituloDatosProveedor.Dock = DockStyle.Fill;
+            lblTituloDatosProveedor.FontType = MaterialSkin.MaterialSkinManager.fontType.Caption;
+            lblTituloDatosProveedor.Location = new Point(0, 0);
+            lblTituloDatosProveedor.Margin = new Padding(0);
+            lblTituloDatosProveedor.MouseState = MaterialSkin.MouseState.HOVER;
+            lblTituloDatosProveedor.Name = "lblTituloDatosProveedor";
+            lblTituloDatosProveedor.Size = new Size(696, 18);
+            lblTituloDatosProveedor.TabIndex = 0;
+            lblTituloDatosProveedor.Text = "Datos del proveedor";
+            lblTituloDatosProveedor.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // lblRazonSocialProveedor
+            //
+            lblRazonSocialProveedor.AutoSize = false;
+            lblRazonSocialProveedor.Depth = 0;
+            lblRazonSocialProveedor.Dock = DockStyle.Fill;
+            lblRazonSocialProveedor.FontType = MaterialSkin.MaterialSkinManager.fontType.H6;
+            lblRazonSocialProveedor.Location = new Point(0, 18);
+            lblRazonSocialProveedor.Margin = new Padding(0);
+            lblRazonSocialProveedor.MouseState = MaterialSkin.MouseState.HOVER;
+            lblRazonSocialProveedor.Name = "lblRazonSocialProveedor";
+            lblRazonSocialProveedor.Size = new Size(500, 30);
+            lblRazonSocialProveedor.TabIndex = 1;
+            lblRazonSocialProveedor.Text = "Sin proveedor seleccionado";
+            lblRazonSocialProveedor.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // lblDocumentoProveedor
+            //
+            lblDocumentoProveedor.Anchor = AnchorStyles.Right;
+            lblDocumentoProveedor.AutoSize = true;
+            lblDocumentoProveedor.Depth = 0;
+            lblDocumentoProveedor.FontType = MaterialSkin.MaterialSkinManager.fontType.Body2;
+            lblDocumentoProveedor.Location = new Point(600, 24);
+            lblDocumentoProveedor.Margin = new Padding(12, 0, 0, 0);
+            lblDocumentoProveedor.MouseState = MaterialSkin.MouseState.HOVER;
+            lblDocumentoProveedor.Name = "lblDocumentoProveedor";
+            lblDocumentoProveedor.Size = new Size(96, 19);
+            lblDocumentoProveedor.TabIndex = 2;
+            lblDocumentoProveedor.Text = "Documento: —";
+            lblDocumentoProveedor.TextAlign = ContentAlignment.MiddleRight;
+            //
+            // cardDatosProducto
+            //
+            cardDatosProducto.Controls.Add(tblDatosProducto);
+            cardDatosProducto.Depth = 0;
+            cardDatosProducto.Dock = DockStyle.Fill;
+            cardDatosProducto.Location = new Point(0, 66);
+            cardDatosProducto.Margin = new Padding(0, 0, 0, 6);
+            cardDatosProducto.MouseState = MaterialSkin.MouseState.HOVER;
+            cardDatosProducto.Name = "cardDatosProducto";
+            cardDatosProducto.Padding = new Padding(12, 4, 12, 4);
+            cardDatosProducto.Size = new Size(720, 120);
+            cardDatosProducto.TabIndex = 1;
+            //
+            // tblDatosProducto
+            //
+            // Fila 0 rótulo; fila 1 nombre del producto; fila 2 código (izquierda) y
+            // subtotal (derecha); fila 3 en una sola línea: cantidad, precio de
+            // compra, precio de venta y «Agregar» (ancho propio).
+            tblDatosProducto.ColumnCount = 4;
+            tblDatosProducto.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tblDatosProducto.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 27F));
+            tblDatosProducto.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 27F));
+            tblDatosProducto.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tblDatosProducto.Controls.Add(lblTituloDatosProducto, 0, 0);
+            tblDatosProducto.Controls.Add(lblNombreProducto, 0, 1);
+            tblDatosProducto.Controls.Add(lblCodigoProducto, 0, 2);
+            tblDatosProducto.Controls.Add(lblSubtotalPreparacion, 2, 2);
+            tblDatosProducto.Controls.Add(lblRotuloCantidad, 0, 3);
+            tblDatosProducto.Controls.Add(lblRotuloPrecioCompra, 1, 3);
+            tblDatosProducto.Controls.Add(lblRotuloPrecioVenta, 2, 3);
+            tblDatosProducto.Controls.Add(txtCantidad, 0, 4);
+            tblDatosProducto.Controls.Add(txtPrecioCompra, 1, 4);
+            tblDatosProducto.Controls.Add(txtPrecioVenta, 2, 4);
+            tblDatosProducto.Controls.Add(btnAgregarLinea, 3, 4);
+            tblDatosProducto.SetColumnSpan(lblTituloDatosProducto, 4);
+            tblDatosProducto.SetColumnSpan(lblNombreProducto, 4);
+            tblDatosProducto.SetColumnSpan(lblCodigoProducto, 2);
+            tblDatosProducto.SetColumnSpan(lblSubtotalPreparacion, 2);
+            tblDatosProducto.Dock = DockStyle.Fill;
+            tblDatosProducto.Location = new Point(12, 6);
+            tblDatosProducto.Margin = new Padding(0);
+            tblDatosProducto.Name = "tblDatosProducto";
+            tblDatosProducto.RowCount = 5;
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 16F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 16F));
+            tblDatosProducto.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
+            tblDatosProducto.Size = new Size(696, 112);
+            tblDatosProducto.TabIndex = 0;
+            //
+            // lblTituloDatosProducto
+            //
+            lblTituloDatosProducto.AutoSize = false;
+            lblTituloDatosProducto.Depth = 0;
+            lblTituloDatosProducto.Dock = DockStyle.Fill;
+            lblTituloDatosProducto.FontType = MaterialSkin.MaterialSkinManager.fontType.Caption;
+            lblTituloDatosProducto.Location = new Point(0, 0);
+            lblTituloDatosProducto.Margin = new Padding(0);
+            lblTituloDatosProducto.MouseState = MaterialSkin.MouseState.HOVER;
+            lblTituloDatosProducto.Name = "lblTituloDatosProducto";
+            lblTituloDatosProducto.Size = new Size(696, 18);
+            lblTituloDatosProducto.TabIndex = 0;
+            lblTituloDatosProducto.Text = "Producto a cargar";
+            lblTituloDatosProducto.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // lblNombreProducto
+            //
+            lblNombreProducto.AutoSize = false;
+            lblNombreProducto.Depth = 0;
+            lblNombreProducto.Dock = DockStyle.Fill;
+            lblNombreProducto.FontType = MaterialSkin.MaterialSkinManager.fontType.Subtitle1;
+            lblNombreProducto.Location = new Point(0, 18);
+            lblNombreProducto.Margin = new Padding(0);
+            lblNombreProducto.MouseState = MaterialSkin.MouseState.HOVER;
+            lblNombreProducto.Name = "lblNombreProducto";
+            lblNombreProducto.Size = new Size(696, 24);
+            lblNombreProducto.TabIndex = 1;
+            lblNombreProducto.Text = "(Sin producto seleccionado)";
+            lblNombreProducto.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // lblCodigoProducto
+            //
+            lblCodigoProducto.AutoSize = false;
+            lblCodigoProducto.Depth = 0;
+            lblCodigoProducto.Dock = DockStyle.Fill;
+            lblCodigoProducto.FontType = MaterialSkin.MaterialSkinManager.fontType.Body2;
+            lblCodigoProducto.Location = new Point(0, 42);
+            lblCodigoProducto.Margin = new Padding(0);
+            lblCodigoProducto.MouseState = MaterialSkin.MouseState.HOVER;
+            lblCodigoProducto.Name = "lblCodigoProducto";
+            lblCodigoProducto.Size = new Size(327, 22);
+            lblCodigoProducto.TabIndex = 2;
+            lblCodigoProducto.Text = "Código: —";
+            lblCodigoProducto.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // lblSubtotalPreparacion
+            //
+            lblSubtotalPreparacion.AutoSize = false;
+            lblSubtotalPreparacion.Depth = 0;
+            lblSubtotalPreparacion.Dock = DockStyle.Fill;
+            lblSubtotalPreparacion.FontType = MaterialSkin.MaterialSkinManager.fontType.Subtitle1;
+            lblSubtotalPreparacion.Location = new Point(327, 42);
+            lblSubtotalPreparacion.Margin = new Padding(0);
+            lblSubtotalPreparacion.MouseState = MaterialSkin.MouseState.HOVER;
+            lblSubtotalPreparacion.Name = "lblSubtotalPreparacion";
+            lblSubtotalPreparacion.Size = new Size(369, 22);
+            lblSubtotalPreparacion.TabIndex = 3;
+            lblSubtotalPreparacion.Text = "Subtotal: —";
+            lblSubtotalPreparacion.TextAlign = ContentAlignment.MiddleRight;
+            //
+            // lblRotuloCantidad
+            //
+            // Rótulos fijos sobre los campos: con valor, el hint de MaterialTextBox2 se
+            // oculta, así que el nombre del campo vive en una etiqueta propia.
+            lblRotuloCantidad.AutoSize = false;
+            lblRotuloCantidad.Depth = 0;
+            lblRotuloCantidad.Dock = DockStyle.Fill;
+            lblRotuloCantidad.FontType = MaterialSkin.MaterialSkinManager.fontType.Caption;
+            lblRotuloCantidad.Location = new Point(0, 62);
+            lblRotuloCantidad.Margin = new Padding(2, 0, 8, 0);
+            lblRotuloCantidad.MouseState = MaterialSkin.MouseState.HOVER;
+            lblRotuloCantidad.Name = "lblRotuloCantidad";
+            lblRotuloCantidad.Size = new Size(100, 16);
+            lblRotuloCantidad.TabIndex = 8;
+            lblRotuloCantidad.Text = "Cantidad";
+            lblRotuloCantidad.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // lblRotuloPrecioCompra
+            //
+            lblRotuloPrecioCompra.AutoSize = false;
+            lblRotuloPrecioCompra.Depth = 0;
+            lblRotuloPrecioCompra.Dock = DockStyle.Fill;
+            lblRotuloPrecioCompra.FontType = MaterialSkin.MaterialSkinManager.fontType.Caption;
+            lblRotuloPrecioCompra.Location = new Point(108, 62);
+            lblRotuloPrecioCompra.Margin = new Padding(2, 0, 8, 0);
+            lblRotuloPrecioCompra.MouseState = MaterialSkin.MouseState.HOVER;
+            lblRotuloPrecioCompra.Name = "lblRotuloPrecioCompra";
+            lblRotuloPrecioCompra.Size = new Size(130, 16);
+            lblRotuloPrecioCompra.TabIndex = 9;
+            lblRotuloPrecioCompra.Text = "Precio compra";
+            lblRotuloPrecioCompra.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // lblRotuloPrecioVenta
+            //
+            lblRotuloPrecioVenta.AutoSize = false;
+            lblRotuloPrecioVenta.Depth = 0;
+            lblRotuloPrecioVenta.Dock = DockStyle.Fill;
+            lblRotuloPrecioVenta.FontType = MaterialSkin.MaterialSkinManager.fontType.Caption;
+            lblRotuloPrecioVenta.Location = new Point(246, 62);
+            lblRotuloPrecioVenta.Margin = new Padding(2, 0, 8, 0);
+            lblRotuloPrecioVenta.MouseState = MaterialSkin.MouseState.HOVER;
+            lblRotuloPrecioVenta.Name = "lblRotuloPrecioVenta";
+            lblRotuloPrecioVenta.Size = new Size(130, 16);
+            lblRotuloPrecioVenta.TabIndex = 10;
+            lblRotuloPrecioVenta.Text = "Precio venta";
+            lblRotuloPrecioVenta.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // txtCantidad
+            //
+            txtCantidad.AnimateReadOnly = false;
+            txtCantidad.BackgroundImageLayout = ImageLayout.None;
+            txtCantidad.CharacterCasing = CharacterCasing.Normal;
+            txtCantidad.Depth = 0;
+            txtCantidad.Dock = DockStyle.Fill;
+            txtCantidad.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
+            txtCantidad.Hint = "";
+            txtCantidad.Location = new Point(0, 64);
+            txtCantidad.Margin = new Padding(0, 0, 8, 0);
+            txtCantidad.MaxLength = 32767;
+            txtCantidad.MinimumSize = new Size(64, 36);
+            txtCantidad.MouseState = MaterialSkin.MouseState.OUT;
+            txtCantidad.Name = "txtCantidad";
+            txtCantidad.Padding = new Padding(2, 0, 2, 0);
+            txtCantidad.PasswordChar = '\0';
+            txtCantidad.PrefixSuffixText = null;
+            txtCantidad.ReadOnly = false;
+            txtCantidad.RightToLeft = RightToLeft.No;
+            txtCantidad.SelectedText = "";
+            txtCantidad.SelectionLength = 0;
+            txtCantidad.SelectionStart = 0;
+            txtCantidad.ShortcutsEnabled = true;
+            txtCantidad.Size = new Size(100, 40);
+            txtCantidad.TabIndex = 4;
+            txtCantidad.TextAlign = HorizontalAlignment.Left;
+            txtCantidad.TrailingIcon = null;
+            txtCantidad.UseSystemPasswordChar = false;
+            txtCantidad.UseTallSize = false;
+            //
+            // txtPrecioCompra
+            //
+            txtPrecioCompra.AnimateReadOnly = false;
+            txtPrecioCompra.BackgroundImageLayout = ImageLayout.None;
+            txtPrecioCompra.CharacterCasing = CharacterCasing.Normal;
+            txtPrecioCompra.Depth = 0;
+            txtPrecioCompra.Dock = DockStyle.Fill;
+            txtPrecioCompra.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
+            txtPrecioCompra.Hint = "";
+            txtPrecioCompra.Location = new Point(108, 64);
+            txtPrecioCompra.Margin = new Padding(0, 0, 8, 0);
+            txtPrecioCompra.MaxLength = 32767;
+            txtPrecioCompra.MinimumSize = new Size(64, 36);
+            txtPrecioCompra.MouseState = MaterialSkin.MouseState.OUT;
+            txtPrecioCompra.Name = "txtPrecioCompra";
+            txtPrecioCompra.Padding = new Padding(2, 0, 2, 0);
+            txtPrecioCompra.PasswordChar = '\0';
+            txtPrecioCompra.PrefixSuffixText = null;
+            txtPrecioCompra.ReadOnly = false;
+            txtPrecioCompra.RightToLeft = RightToLeft.No;
+            txtPrecioCompra.SelectedText = "";
+            txtPrecioCompra.SelectionLength = 0;
+            txtPrecioCompra.SelectionStart = 0;
+            txtPrecioCompra.ShortcutsEnabled = true;
+            txtPrecioCompra.Size = new Size(130, 40);
+            txtPrecioCompra.TabIndex = 5;
+            txtPrecioCompra.TextAlign = HorizontalAlignment.Left;
+            txtPrecioCompra.TrailingIcon = null;
+            txtPrecioCompra.UseSystemPasswordChar = false;
+            txtPrecioCompra.UseTallSize = false;
+            //
+            // txtPrecioVenta
+            //
+            txtPrecioVenta.AnimateReadOnly = false;
+            txtPrecioVenta.BackgroundImageLayout = ImageLayout.None;
+            txtPrecioVenta.CharacterCasing = CharacterCasing.Normal;
+            txtPrecioVenta.Depth = 0;
+            txtPrecioVenta.Dock = DockStyle.Fill;
+            txtPrecioVenta.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point);
+            txtPrecioVenta.Hint = "";
+            txtPrecioVenta.Location = new Point(246, 64);
+            txtPrecioVenta.Margin = new Padding(0, 0, 8, 0);
+            txtPrecioVenta.MaxLength = 32767;
+            txtPrecioVenta.MinimumSize = new Size(64, 36);
+            txtPrecioVenta.MouseState = MaterialSkin.MouseState.OUT;
+            txtPrecioVenta.Name = "txtPrecioVenta";
+            txtPrecioVenta.Padding = new Padding(2, 0, 2, 0);
+            txtPrecioVenta.PasswordChar = '\0';
+            txtPrecioVenta.PrefixSuffixText = null;
+            txtPrecioVenta.ReadOnly = false;
+            txtPrecioVenta.RightToLeft = RightToLeft.No;
+            txtPrecioVenta.SelectedText = "";
+            txtPrecioVenta.SelectionLength = 0;
+            txtPrecioVenta.SelectionStart = 0;
+            txtPrecioVenta.ShortcutsEnabled = true;
+            txtPrecioVenta.Size = new Size(130, 40);
+            txtPrecioVenta.TabIndex = 6;
+            txtPrecioVenta.TextAlign = HorizontalAlignment.Left;
+            txtPrecioVenta.TrailingIcon = null;
+            txtPrecioVenta.UseSystemPasswordChar = false;
+            txtPrecioVenta.UseTallSize = false;
+            //
+            // btnAgregarLinea
+            //
+            btnAgregarLinea.AutoSize = true;
+            btnAgregarLinea.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnAgregarLinea.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            btnAgregarLinea.Depth = 0;
+            btnAgregarLinea.Dock = DockStyle.Fill;
+            btnAgregarLinea.HighEmphasis = true;
+            btnAgregarLinea.Icon = null;
+            btnAgregarLinea.Location = new Point(504, 64);
+            btnAgregarLinea.Margin = new Padding(0);
+            btnAgregarLinea.MinimumSize = new Size(0, 36);
+            btnAgregarLinea.MouseState = MaterialSkin.MouseState.HOVER;
+            btnAgregarLinea.Name = "btnAgregarLinea";
+            btnAgregarLinea.NoAccentTextColor = Color.Empty;
+            btnAgregarLinea.Padding = new Padding(10, 0, 10, 0);
+            btnAgregarLinea.Size = new Size(192, 40);
+            btnAgregarLinea.TabIndex = 7;
+            btnAgregarLinea.Text = "Agregar a la compra";
+            btnAgregarLinea.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            btnAgregarLinea.UseAccentColor = true;
+            btnAgregarLinea.UseVisualStyleBackColor = true;
+            //
             // tblCompraActual
             //
+            // Título de sección y grilla de líneas, que absorbe todo el alto sobrante.
             tblCompraActual.ColumnCount = 1;
             tblCompraActual.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tblCompraActual.Controls.Add(lblTituloCompraActual, 0, 0);
             tblCompraActual.Controls.Add(gridLineas, 0, 1);
-            tblCompraActual.Controls.Add(tblPieCompra, 0, 2);
             tblCompraActual.Dock = DockStyle.Fill;
-            tblCompraActual.Location = new Point(0, 265);
-            tblCompraActual.Margin = new Padding(0);
+            tblCompraActual.Location = new Point(0, 192);
+            tblCompraActual.Margin = new Padding(0, 0, 0, 6);
             tblCompraActual.Name = "tblCompraActual";
-            tblCompraActual.RowCount = 3;
-            tblCompraActual.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
+            tblCompraActual.RowCount = 2;
+            tblCompraActual.RowStyles.Add(new RowStyle(SizeType.Absolute, 26F));
             tblCompraActual.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblCompraActual.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
-            tblCompraActual.Size = new Size(980, 335);
+            tblCompraActual.Size = new Size(720, 356);
             tblCompraActual.TabIndex = 2;
             //
             // lblTituloCompraActual
@@ -803,14 +906,14 @@ namespace CapaPresentacion.Compras
             lblTituloCompraActual.AutoSize = false;
             lblTituloCompraActual.Depth = 0;
             lblTituloCompraActual.Dock = DockStyle.Fill;
-            lblTituloCompraActual.Font = new Font("Roboto", 13.5F, FontStyle.Regular, GraphicsUnit.Point);
+            lblTituloCompraActual.FontType = MaterialSkin.MaterialSkinManager.fontType.Subtitle1;
             lblTituloCompraActual.Location = new Point(0, 0);
             lblTituloCompraActual.Margin = new Padding(0);
             lblTituloCompraActual.MouseState = MaterialSkin.MouseState.HOVER;
             lblTituloCompraActual.Name = "lblTituloCompraActual";
-            lblTituloCompraActual.Size = new Size(980, 22);
+            lblTituloCompraActual.Size = new Size(720, 26);
             lblTituloCompraActual.TabIndex = 0;
-            lblTituloCompraActual.Text = "Compra Actual";
+            lblTituloCompraActual.Text = "Compra actual";
             lblTituloCompraActual.TextAlign = ContentAlignment.MiddleLeft;
             //
             // gridLineas
@@ -820,27 +923,26 @@ namespace CapaPresentacion.Compras
             gridLineas.AllowUserToResizeRows = false;
             gridLineas.AutoGenerateColumns = false;
             gridLineas.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            gridLineas.ColumnHeadersHeight = 30;
+            gridLineas.ColumnHeadersHeight = 32;
             gridLineas.Columns.AddRange(new DataGridViewColumn[] { colLineaProducto, colLineaCantidad, colLineaPrecioCompra, colLineaPrecioVenta, colLineaSubtotal, colLineaEditar, colLineaQuitar });
             gridLineas.Dock = DockStyle.Fill;
+            gridLineas.Location = new Point(0, 26);
             gridLineas.Margin = new Padding(0);
-            // Mínimo de 64 px: cabecera (30) más el resto para la primera línea. La
-            // barra vertical aparece sola; la horizontal no se usa para que el
-            // contenido nunca ensanche las columnas.
-            gridLineas.MinimumSize = new Size(0, 64);
+            gridLineas.MinimumSize = new Size(0, 84);
             gridLineas.MultiSelect = false;
             gridLineas.Name = "gridLineas";
             gridLineas.ReadOnly = true;
             gridLineas.RowHeadersVisible = false;
-            gridLineas.RowTemplate.Height = 34;
+            gridLineas.RowTemplate.Height = 32;
             gridLineas.ScrollBars = ScrollBars.Vertical;
             gridLineas.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            gridLineas.Size = new Size(720, 330);
             gridLineas.TabIndex = 1;
             //
             // colLineaProducto
             //
             colLineaProducto.DataPropertyName = "NombreProducto";
-            colLineaProducto.FillWeight = 34F;
+            colLineaProducto.FillWeight = 52F;
             colLineaProducto.HeaderText = "Producto";
             colLineaProducto.Name = "colLineaProducto";
             colLineaProducto.ReadOnly = true;
@@ -850,7 +952,7 @@ namespace CapaPresentacion.Compras
             //
             colLineaCantidad.DataPropertyName = "Cantidad";
             colLineaCantidad.DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight };
-            colLineaCantidad.FillWeight = 10F;
+            colLineaCantidad.FillWeight = 8F;
             colLineaCantidad.HeaderText = "Cantidad";
             colLineaCantidad.Name = "colLineaCantidad";
             colLineaCantidad.ReadOnly = true;
@@ -870,7 +972,7 @@ namespace CapaPresentacion.Compras
             //
             colLineaPrecioVenta.DataPropertyName = "PrecioVenta";
             colLineaPrecioVenta.DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight };
-            colLineaPrecioVenta.FillWeight = 14F;
+            colLineaPrecioVenta.FillWeight = 13F;
             colLineaPrecioVenta.HeaderText = "Precio venta";
             colLineaPrecioVenta.Name = "colLineaPrecioVenta";
             colLineaPrecioVenta.ReadOnly = true;
@@ -880,7 +982,7 @@ namespace CapaPresentacion.Compras
             //
             colLineaSubtotal.DataPropertyName = "Subtotal";
             colLineaSubtotal.DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight };
-            colLineaSubtotal.FillWeight = 14F;
+            colLineaSubtotal.FillWeight = 13F;
             colLineaSubtotal.HeaderText = "Subtotal";
             colLineaSubtotal.Name = "colLineaSubtotal";
             colLineaSubtotal.ReadOnly = true;
@@ -891,161 +993,166 @@ namespace CapaPresentacion.Compras
             colLineaEditar.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             colLineaEditar.FlatStyle = FlatStyle.Flat;
             colLineaEditar.HeaderText = "";
-            colLineaEditar.MinimumWidth = 60;
+            colLineaEditar.MinimumWidth = 56;
             colLineaEditar.Name = "colLineaEditar";
             colLineaEditar.ReadOnly = true;
             colLineaEditar.Resizable = DataGridViewTriState.False;
             colLineaEditar.SortMode = DataGridViewColumnSortMode.NotSortable;
             colLineaEditar.Text = "Editar";
             colLineaEditar.UseColumnTextForButtonValue = true;
-            colLineaEditar.Width = 60;
+            colLineaEditar.Width = 56;
             //
             // colLineaQuitar
             //
             colLineaQuitar.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             colLineaQuitar.FlatStyle = FlatStyle.Flat;
             colLineaQuitar.HeaderText = "";
-            colLineaQuitar.MinimumWidth = 60;
+            colLineaQuitar.MinimumWidth = 56;
             colLineaQuitar.Name = "colLineaQuitar";
             colLineaQuitar.ReadOnly = true;
             colLineaQuitar.Resizable = DataGridViewTriState.False;
             colLineaQuitar.SortMode = DataGridViewColumnSortMode.NotSortable;
             colLineaQuitar.Text = "Quitar";
             colLineaQuitar.UseColumnTextForButtonValue = true;
-            colLineaQuitar.Width = 60;
+            colLineaQuitar.Width = 56;
             //
             // tblPieCompra
             //
-            tblPieCompra.ColumnCount = 1;
+            // Pie del documento: fila 0 con el estado en línea (izquierda) y el total
+            // destacado (derecha); fila 1 con las acciones.
+            tblPieCompra.ColumnCount = 2;
             tblPieCompra.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tblPieCompra.Controls.Add(lblMontoTotal, 0, 0);
-            tblPieCompra.Controls.Add(lblMensaje, 0, 1);
+            tblPieCompra.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tblPieCompra.Controls.Add(lblMensaje, 0, 0);
+            tblPieCompra.Controls.Add(lblMontoTotal, 1, 0);
+            tblPieCompra.Controls.Add(flpAcciones, 0, 1);
+            tblPieCompra.SetColumnSpan(flpAcciones, 2);
             tblPieCompra.Dock = DockStyle.Fill;
-            tblPieCompra.Location = new Point(0, 285);
+            tblPieCompra.Location = new Point(0, 554);
             tblPieCompra.Margin = new Padding(0);
             tblPieCompra.Name = "tblPieCompra";
             tblPieCompra.RowCount = 2;
-            tblPieCompra.RowStyles.Add(new RowStyle(SizeType.Absolute, 26F));
-            tblPieCompra.RowStyles.Add(new RowStyle(SizeType.Absolute, 18F));
-            tblPieCompra.Size = new Size(980, 50);
-            tblPieCompra.TabIndex = 2;
-            //
-            // lblMontoTotal
-            //
-            lblMontoTotal.AutoSize = false;
-            lblMontoTotal.Depth = 0;
-            lblMontoTotal.Dock = DockStyle.Fill;
-            lblMontoTotal.Font = new Font("Roboto", 15F, FontStyle.Regular, GraphicsUnit.Point);
-            lblMontoTotal.Location = new Point(0, 0);
-            lblMontoTotal.Margin = new Padding(0);
-            lblMontoTotal.MouseState = MaterialSkin.MouseState.HOVER;
-            lblMontoTotal.Name = "lblMontoTotal";
-            lblMontoTotal.Size = new Size(980, 32);
-            lblMontoTotal.TabIndex = 0;
-            lblMontoTotal.Text = "Total: 0,00";
-            lblMontoTotal.TextAlign = ContentAlignment.MiddleLeft;
+            tblPieCompra.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            tblPieCompra.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+            tblPieCompra.Size = new Size(720, 82);
+            tblPieCompra.TabIndex = 3;
             //
             // lblMensaje
             //
             lblMensaje.AutoSize = false;
             lblMensaje.Depth = 0;
             lblMensaje.Dock = DockStyle.Fill;
-            lblMensaje.Font = new Font("Roboto", 10.5F, FontStyle.Regular, GraphicsUnit.Point);
-            lblMensaje.Location = new Point(0, 32);
-            lblMensaje.Margin = new Padding(0);
+            lblMensaje.FontType = MaterialSkin.MaterialSkinManager.fontType.Body2;
+            lblMensaje.Location = new Point(0, 0);
+            lblMensaje.Margin = new Padding(0, 0, 12, 0);
             lblMensaje.MouseState = MaterialSkin.MouseState.HOVER;
             lblMensaje.Name = "lblMensaje";
-            lblMensaje.Size = new Size(980, 18);
-            lblMensaje.TabIndex = 1;
+            lblMensaje.Size = new Size(520, 36);
+            lblMensaje.TabIndex = 0;
             lblMensaje.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // lblMontoTotal
+            //
+            lblMontoTotal.Anchor = AnchorStyles.Right;
+            lblMontoTotal.AutoSize = true;
+            lblMontoTotal.Depth = 0;
+            lblMontoTotal.FontType = MaterialSkin.MaterialSkinManager.fontType.H5;
+            lblMontoTotal.Location = new Point(560, 2);
+            lblMontoTotal.Margin = new Padding(0);
+            lblMontoTotal.MouseState = MaterialSkin.MouseState.HOVER;
+            lblMontoTotal.Name = "lblMontoTotal";
+            lblMontoTotal.Size = new Size(160, 32);
+            lblMontoTotal.TabIndex = 1;
+            lblMontoTotal.Text = "Total: 0,00";
+            lblMontoTotal.TextAlign = ContentAlignment.MiddleRight;
             //
             // flpAcciones
             //
-            // Barra de acciones: columna de relleno a la izquierda y tres columnas que
-            // se ajustan al contenido, de modo que ningún botón sale del ancho. Los
-            // botones conservan su orden visual (Historial, Cancelar, Registrar).
+            // Historial (terciario) a la izquierda; Cancelar y Registrar a la derecha,
+            // con Registrar como acción de mayor énfasis. Columnas que se ajustan al
+            // contenido: ningún botón se recorta.
             flpAcciones.ColumnCount = 4;
+            flpAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             flpAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             flpAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             flpAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            flpAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            flpAcciones.Controls.Add(btnVerHistorial, 1, 0);
+            flpAcciones.Controls.Add(btnVerHistorial, 0, 0);
             flpAcciones.Controls.Add(btnLimpiar, 2, 0);
             flpAcciones.Controls.Add(btnRegistrar, 3, 0);
             flpAcciones.Dock = DockStyle.Fill;
-            flpAcciones.Location = new Point(0, 595);
+            flpAcciones.Location = new Point(0, 36);
             flpAcciones.Margin = new Padding(0);
             flpAcciones.Name = "flpAcciones";
             flpAcciones.RowCount = 1;
             flpAcciones.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            flpAcciones.Size = new Size(980, 46);
-            flpAcciones.TabIndex = 3;
+            flpAcciones.Size = new Size(720, 46);
+            flpAcciones.TabIndex = 2;
             //
-            // btnRegistrar
+            // btnVerHistorial
             //
-            btnRegistrar.AutoSize = true;
-            btnRegistrar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            btnRegistrar.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
-            btnRegistrar.Depth = 0;
-            btnRegistrar.HighEmphasis = true;
-            btnRegistrar.Icon = null;
-            btnRegistrar.Anchor = AnchorStyles.None;
-            btnRegistrar.Margin = new Padding(6, 4, 6, 4);
-            btnRegistrar.MinimumSize = new Size(0, 36);
-            btnRegistrar.MouseState = MaterialSkin.MouseState.HOVER;
-            btnRegistrar.Name = "btnRegistrar";
-            btnRegistrar.NoAccentTextColor = Color.Empty;
-            btnRegistrar.Padding = new Padding(10, 0, 10, 0);
-            btnRegistrar.Size = new Size(170, 36);
-            btnRegistrar.TabIndex = 0;
-            btnRegistrar.Text = "REGISTRAR COMPRA";
-            btnRegistrar.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
-            btnRegistrar.UseAccentColor = true;
-            btnRegistrar.UseVisualStyleBackColor = true;
+            btnVerHistorial.Dock = DockStyle.Fill;
+            btnVerHistorial.AutoSize = true;
+            btnVerHistorial.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnVerHistorial.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            btnVerHistorial.Depth = 0;
+            btnVerHistorial.HighEmphasis = false;
+            btnVerHistorial.Icon = null;
+            btnVerHistorial.Margin = new Padding(0, 3, 6, 3);
+            btnVerHistorial.MinimumSize = new Size(0, 36);
+            btnVerHistorial.MouseState = MaterialSkin.MouseState.HOVER;
+            btnVerHistorial.Name = "btnVerHistorial";
+            btnVerHistorial.NoAccentTextColor = Color.Empty;
+            btnVerHistorial.Padding = new Padding(10, 0, 10, 0);
+            btnVerHistorial.Size = new Size(130, 36);
+            btnVerHistorial.TabIndex = 0;
+            btnVerHistorial.Text = "Ver Historial";
+            btnVerHistorial.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Text;
+            btnVerHistorial.UseAccentColor = false;
+            btnVerHistorial.UseVisualStyleBackColor = true;
             //
             // btnLimpiar
             //
+            btnLimpiar.Dock = DockStyle.Fill;
             btnLimpiar.AutoSize = true;
             btnLimpiar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             btnLimpiar.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
             btnLimpiar.Depth = 0;
             btnLimpiar.HighEmphasis = false;
             btnLimpiar.Icon = null;
-            btnLimpiar.Anchor = AnchorStyles.None;
-            btnLimpiar.Margin = new Padding(6, 4, 6, 4);
+            btnLimpiar.Margin = new Padding(6, 3, 8, 3);
             btnLimpiar.MinimumSize = new Size(0, 36);
             btnLimpiar.MouseState = MaterialSkin.MouseState.HOVER;
             btnLimpiar.Name = "btnLimpiar";
-            btnLimpiar.NoAccentTextColor = Color.FromArgb(224, 224, 224);
+            btnLimpiar.NoAccentTextColor = Color.White;
             btnLimpiar.Padding = new Padding(10, 0, 10, 0);
             btnLimpiar.Size = new Size(170, 36);
             btnLimpiar.TabIndex = 1;
             btnLimpiar.Text = "CANCELAR COMPRA";
-            btnLimpiar.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Text;
+            btnLimpiar.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Outlined;
             btnLimpiar.UseAccentColor = false;
             btnLimpiar.UseVisualStyleBackColor = true;
             //
-            // btnVerHistorial
+            // btnRegistrar
             //
-            btnVerHistorial.AutoSize = true;
-            btnVerHistorial.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            btnVerHistorial.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
-            btnVerHistorial.Depth = 0;
-            btnVerHistorial.HighEmphasis = true;
-            btnVerHistorial.Icon = null;
-            btnVerHistorial.Anchor = AnchorStyles.None;
-            btnVerHistorial.Margin = new Padding(6, 4, 6, 4);
-            btnVerHistorial.MinimumSize = new Size(0, 36);
-            btnVerHistorial.MouseState = MaterialSkin.MouseState.HOVER;
-            btnVerHistorial.Name = "btnVerHistorial";
-            btnVerHistorial.NoAccentTextColor = Color.White;
-            btnVerHistorial.Padding = new Padding(10, 0, 10, 0);
-            btnVerHistorial.Size = new Size(130, 36);
-            btnVerHistorial.TabIndex = 2;
-            btnVerHistorial.Text = "Ver Historial";
-            btnVerHistorial.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Outlined;
-            btnVerHistorial.UseAccentColor = false;
-            btnVerHistorial.UseVisualStyleBackColor = true;
+            btnRegistrar.Dock = DockStyle.Fill;
+            btnRegistrar.AutoSize = true;
+            btnRegistrar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnRegistrar.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            btnRegistrar.Depth = 0;
+            btnRegistrar.HighEmphasis = true;
+            btnRegistrar.Icon = null;
+            btnRegistrar.Margin = new Padding(0, 3, 0, 3);
+            btnRegistrar.MinimumSize = new Size(0, 40);
+            btnRegistrar.MouseState = MaterialSkin.MouseState.HOVER;
+            btnRegistrar.Name = "btnRegistrar";
+            btnRegistrar.NoAccentTextColor = Color.Empty;
+            btnRegistrar.Padding = new Padding(14, 0, 14, 0);
+            btnRegistrar.Size = new Size(176, 40);
+            btnRegistrar.TabIndex = 2;
+            btnRegistrar.Text = "REGISTRAR COMPRA";
+            btnRegistrar.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            btnRegistrar.UseAccentColor = true;
+            btnRegistrar.UseVisualStyleBackColor = true;
             //
             // ComprasForm
             //
@@ -1055,26 +1162,31 @@ namespace CapaPresentacion.Compras
             Controls.Add(pnlContenedor);
             Name = "ComprasForm";
             Size = new Size(1083, 700);
+            SizeChanged += ComprasForm_SizeChanged;
             pnlContenedor.ResumeLayout(false);
             tblPrincipal.ResumeLayout(false);
-            pnlEncabezado.ResumeLayout(false);
-            tblBloqueProducto.ResumeLayout(false);
-            pnlDatosProducto.ResumeLayout(false);
-            tblDatosProducto.ResumeLayout(false);
-            pnlListadoProductos.ResumeLayout(false);
-            tblListadoProductos.ResumeLayout(false);
-            tblListadoProductos.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)gridProductos).EndInit();
-            tblBloqueProveedor.ResumeLayout(false);
-            pnlDatosProveedor.ResumeLayout(false);
-            tblDatosProveedor.ResumeLayout(false);
-            pnlListadoProveedores.ResumeLayout(false);
+            tblCatalogo.ResumeLayout(false);
+            cardProveedor.ResumeLayout(false);
+            tblTituloProveedores.ResumeLayout(false);
+            tblTituloProveedores.PerformLayout();
             tblListadoProveedores.ResumeLayout(false);
-            tblListadoProveedores.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)gridProveedores).EndInit();
+            cardProducto.ResumeLayout(false);
+            tblTituloProductos.ResumeLayout(false);
+            tblTituloProductos.PerformLayout();
+            tblListadoProductos.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)gridProductos).EndInit();
+            tblDocumento.ResumeLayout(false);
+            cardDatosProveedor.ResumeLayout(false);
+            tblDatosProveedor.ResumeLayout(false);
+            tblDatosProveedor.PerformLayout();
+            cardDatosProducto.ResumeLayout(false);
+            tblDatosProducto.ResumeLayout(false);
+            tblDatosProducto.PerformLayout();
             tblCompraActual.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridLineas).EndInit();
             tblPieCompra.ResumeLayout(false);
+            tblPieCompra.PerformLayout();
             flpAcciones.ResumeLayout(false);
             flpAcciones.PerformLayout();
             ResumeLayout(false);
@@ -1084,41 +1196,47 @@ namespace CapaPresentacion.Compras
 
         private Panel pnlContenedor;
         private TableLayoutPanel tblPrincipal;
-        private Panel pnlEncabezado;
         private MaterialSkin.Controls.MaterialLabel lblTitulo;
-        private TableLayoutPanel tblBloqueProducto;
-        private Panel pnlDatosProducto;
-        private TableLayoutPanel tblDatosProducto;
-        private MaterialSkin.Controls.MaterialLabel lblTituloDatosProducto;
-        private MaterialSkin.Controls.MaterialLabel lblNombreProducto;
-        private MaterialSkin.Controls.MaterialLabel lblCodigoProducto;
-        private MaterialSkin.Controls.MaterialTextBox2 txtCantidad;
-        private MaterialSkin.Controls.MaterialTextBox2 txtPrecioCompra;
-        private MaterialSkin.Controls.MaterialTextBox2 txtPrecioVenta;
-        private MaterialSkin.Controls.MaterialLabel lblSubtotalPreparacion;
-        private MaterialSkin.Controls.MaterialButton btnAgregarLinea;
-        private Panel pnlListadoProductos;
-        private TableLayoutPanel tblListadoProductos;
-        private MaterialSkin.Controls.MaterialLabel lblTituloListadoProductos;
-        private MaterialSkin.Controls.MaterialTextBox2 txtBuscarProducto;
-        private DataGridView gridProductos;
-        private DataGridViewTextBoxColumn colProductoCodigo;
-        private DataGridViewTextBoxColumn colProductoNombre;
-        private MaterialSkin.Controls.MaterialLabel lblMensajeProductos;
-        private TableLayoutPanel tblBloqueProveedor;
-        private Panel pnlDatosProveedor;
-        private TableLayoutPanel tblDatosProveedor;
-        private MaterialSkin.Controls.MaterialLabel lblTituloDatosProveedor;
-        private MaterialSkin.Controls.MaterialLabel lblRazonSocialProveedor;
-        private MaterialSkin.Controls.MaterialLabel lblDocumentoProveedor;
-        private Panel pnlListadoProveedores;
+        private TableLayoutPanel tblCatalogo;
+        private MaterialSkin.Controls.MaterialCard cardProveedor;
         private TableLayoutPanel tblListadoProveedores;
+        private TableLayoutPanel tblTituloProveedores;
+        private MaterialSkin.Controls.MaterialCheckbox chkMostrarTodosProveedores;
         private MaterialSkin.Controls.MaterialLabel lblTituloListadoProveedores;
         private MaterialSkin.Controls.MaterialTextBox2 txtBuscarProveedor;
         private DataGridView gridProveedores;
         private DataGridViewTextBoxColumn colProveedorRazonSocial;
         private DataGridViewTextBoxColumn colProveedorDocumento;
         private MaterialSkin.Controls.MaterialLabel lblMensajeProveedores;
+        private MaterialSkin.Controls.MaterialCard cardProducto;
+        private TableLayoutPanel tblListadoProductos;
+        private TableLayoutPanel tblTituloProductos;
+        private MaterialSkin.Controls.MaterialCheckbox chkMostrarTodosProductos;
+        private MaterialSkin.Controls.MaterialLabel lblTituloListadoProductos;
+        private MaterialSkin.Controls.MaterialTextBox2 txtBuscarProducto;
+        private DataGridView gridProductos;
+        private DataGridViewTextBoxColumn colProductoCodigo;
+        private DataGridViewTextBoxColumn colProductoNombre;
+        private MaterialSkin.Controls.MaterialLabel lblMensajeProductos;
+        private TableLayoutPanel tblDocumento;
+        private MaterialSkin.Controls.MaterialCard cardDatosProveedor;
+        private TableLayoutPanel tblDatosProveedor;
+        private MaterialSkin.Controls.MaterialLabel lblTituloDatosProveedor;
+        private MaterialSkin.Controls.MaterialLabel lblRazonSocialProveedor;
+        private MaterialSkin.Controls.MaterialLabel lblDocumentoProveedor;
+        private MaterialSkin.Controls.MaterialCard cardDatosProducto;
+        private TableLayoutPanel tblDatosProducto;
+        private MaterialSkin.Controls.MaterialLabel lblTituloDatosProducto;
+        private MaterialSkin.Controls.MaterialLabel lblNombreProducto;
+        private MaterialSkin.Controls.MaterialLabel lblCodigoProducto;
+        private MaterialSkin.Controls.MaterialLabel lblSubtotalPreparacion;
+        private MaterialSkin.Controls.MaterialLabel lblRotuloCantidad;
+        private MaterialSkin.Controls.MaterialLabel lblRotuloPrecioCompra;
+        private MaterialSkin.Controls.MaterialLabel lblRotuloPrecioVenta;
+        private MaterialSkin.Controls.MaterialTextBox2 txtCantidad;
+        private MaterialSkin.Controls.MaterialTextBox2 txtPrecioCompra;
+        private MaterialSkin.Controls.MaterialTextBox2 txtPrecioVenta;
+        private MaterialSkin.Controls.MaterialButton btnAgregarLinea;
         private TableLayoutPanel tblCompraActual;
         private MaterialSkin.Controls.MaterialLabel lblTituloCompraActual;
         private DataGridView gridLineas;
@@ -1130,11 +1248,11 @@ namespace CapaPresentacion.Compras
         private DataGridViewButtonColumn colLineaEditar;
         private DataGridViewButtonColumn colLineaQuitar;
         private TableLayoutPanel tblPieCompra;
-        private MaterialSkin.Controls.MaterialLabel lblMontoTotal;
         private MaterialSkin.Controls.MaterialLabel lblMensaje;
+        private MaterialSkin.Controls.MaterialLabel lblMontoTotal;
         private TableLayoutPanel flpAcciones;
-        private MaterialSkin.Controls.MaterialButton btnRegistrar;
-        private MaterialSkin.Controls.MaterialButton btnLimpiar;
         private MaterialSkin.Controls.MaterialButton btnVerHistorial;
+        private MaterialSkin.Controls.MaterialButton btnLimpiar;
+        private MaterialSkin.Controls.MaterialButton btnRegistrar;
     }
 }

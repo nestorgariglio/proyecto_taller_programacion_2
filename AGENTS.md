@@ -46,7 +46,12 @@ Una compilación exitosa demuestra que el código compila. Un test demuestra ún
 
 **GIT: PROHIBIDO ABSOLUTAMENTE.** Ningún agente ejecuta comandos Git, directos o indirectos, ni siquiera de lectura. El usuario administra ramas, commits, restauraciones y cualquier operación de versionado. No ejecutar scripts o comandos envoltorio sin inspeccionar que no invoquen Git.
 
-## 5. Contexto y documentación
+## 5. Modificación de archivos
+- Antes de editar, presentar en texto plano los cambios propuestos, agrupados en **AGREGADO**, **MODIFICADO** y **ELIMINADO**. Indicar archivo, ubicación y código exacto; en MODIFICADO mostrar original y reemplazo. No depender de colores ni diffs visuales.
+- Esperar autorización explícita del usuario antes de aplicar cada propuesta.
+- Aplicar parches puntuales, preservar código ajeno al alcance y evitar sobrescrituras completas salvo necesidad justificada.
+
+## 6. Contexto y documentación
 
 - `docs/constitution.md`: autoridad arquitectónica y de dominio.
 - `MEMORY.md`: estado vigente y decisiones persistentes.
@@ -55,7 +60,7 @@ Una compilación exitosa demuestra que el código compila. Un test demuestra ún
 
 No duplicar estas fuentes dentro de los perfiles ni volver a leer documentos cuyo contenido pertinente ya haya sido transmitido por Coordinator.
 
-## 6. Control de salidas y logs
+## 7. Control de salidas y logs
 
 - No volcar logs extensos, stack traces ni diffs gigantes en las respuestas al Coordinator.
 - Antes de ejecutar comandos que previsiblemente produzcan más de 20 líneas (por ejemplo, `dotnet build`, `dotnet test` o scripts), redirigir stdout y stderr a un archivo en `%TEMP%\G70\`.
@@ -65,7 +70,7 @@ No duplicar estas fuentes dentro de los perfiles ni volver a leer documentos cuy
 - No copiar secretos, credenciales ni cadenas de conexión al log resumido ni al chat.
 - Mantener los logs temporales fuera del repositorio. No crear `temp/` en el proyecto para este fin.
 
-## 7. Finalización y memoria
+## 8. Finalización y memoria
 
 Distinguir siempre `IMPLEMENTADO`, `COMPILADO`, `TESTEADO` y `VERIFICADO`.
 

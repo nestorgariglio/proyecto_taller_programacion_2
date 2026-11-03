@@ -20,7 +20,7 @@ Estado: verificación con evidencia del código (T1–T9a completo; código C# i
 - **Estado**: ✅ verificado; ninguna regresión tras T1–T9a (`dotnet test` verde).
 
 ### RNF-3 — Proyección + `AsNoTracking` (sin materializar catálogo)
-- Búsquedas (`BuscarProveedoresAsync`, `BuscarProductosAsync`): `.AsNoTracking()` + `.Select(...)` con `Take(20)` (líneas 130–143 y 197–210); sin `.ToList()` sobre tablas completas.
+- Búsquedas (`BuscarProveedoresAsync`, `BuscarProductosAsync`): `.AsNoTracking()` + `.Select(...)` con `Take(20)` (líneas 130–143 y 197–210); sin `.ToList()` sobre tablas completas. **Nota D-23**: `BuscarProveedoresParaCompraAsync` y `BuscarProductosParaCompraAsync` no tienen `Take` (excepción deliberada de RNF-3: «Mostrar todos» devuelve todos los activos, con proyección a DTO).
 - `ValidarProductosAsync` (línea 1510, `AsNoTracking` en 1520): `.Where(...).ToListAsync()` solo sobre los `ids` enviados (`Contains`), no sobre `Productos` completo. `ValidarProveedorAsync` (línea 1369) y `ValidarUsuarioAsync` (línea 1408) también usan `AsNoTracking`.
 - `ObtenerHistorialAsync` (`AsNoTracking` en la línea 915) y `ObtenerCompraConDetalleAsync` (líneas 1011 y 1044): proyección defensiva (`Select`) con textos fijos para navegaciones nulas (`«(Sin proveedor)»`, `«(Sin usuario)»`, constantes en las líneas 85–86).
 - **Estado**: ✅ verificado; referencia `CompraNegocio.cs` líneas 130, 197, 251, 915, 1011, 1044, 1377, 1416, 1520.

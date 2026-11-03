@@ -18,13 +18,14 @@ namespace CapaPresentacion.Compras
     /// Pantalla de carga de compras a proveedores organizada en tres bloques:
     /// producto y proveedor (búsquedas a demanda), compra actual y barra de
     /// acciones. El producto y el proveedor se buscan a demanda (RF-9 … RF-17)
-    /// sobre catálogos independientes y la selección es bidireccional (D-22 y
-    /// RF-66): elegir un producto propone los proveedores que ya lo vendieron
-    /// (RF-12) y elegir un proveedor lista sus productos habituales (RF-66). La
-    /// búsqueda por texto tiene precedencia mientras el cuadro no esté vacío y,
-    /// al vaciarlo, se restituye el listado del proveedor desde lo ya cargado y
-    /// sin consultar (RF-16). La sincronización no encadena consultas ni bucles
-    /// de eventos y ninguna selección programática dispara el flujo inverso. El
+    /// sobre catálogos independientes. El historial de compras solo prioriza:
+    /// elegir un producto muestra primero los proveedores que ya lo vendieron y
+    /// elegir un proveedor muestra primero sus productos habituales; las casillas
+    /// «Mostrar todos» amplían cada listado a todos los activos y la búsqueda por
+    /// texto se aplica sobre el universo vigente. Nunca se autoselecciona una
+    /// fila ni se descarta lo elegido. Cada selector tiene una única rutina de
+    /// refresco, sin encadenar consultas ni bucles de eventos; ninguna selección
+    /// programática dispara el flujo inverso. El
     /// historial ya no se lista dentro de la pantalla: la barra de acciones abre
     /// <see cref="DetalleCompraForm"/> en modo lista (RF-52 … RF-54). La pantalla
     /// no valida, no calcula importes ni redacta mensajes: solo invoca
@@ -46,6 +47,8 @@ namespace CapaPresentacion.Compras
         private const string TextoCodigoSinElegir = "Código: —";
         private const string TextoSubtotalInvalido = "Subtotal: —";
         private const string TextoSeleccioneProveedor = "Seleccione el proveedor...";
+        private const string TextoProveedorFueraDelListado = "El proveedor elegido no figura en este listado.";
+        private const string TextoProductoFueraDelListado = "El producto elegido no figura en este listado.";
         private const string TextoBotonAgregar = "Agregar a la compra";
         private const string TextoBotonGuardar = "Guardar línea";
 
@@ -56,9 +59,14 @@ namespace CapaPresentacion.Compras
             new() { Interval = 350 };
         private readonly List<LineaCompraDto> _lineas = new();
         private readonly List<ProveedorSeleccionadoDto> _proveedoresBuscados = new();
-        private readonly List<ProveedorDeProductoDto> _proveedoresHistoricos = new();
         private readonly List<ProductoBuscadoDto> _productosBuscados = new();
-        private readonly List<ProductoDeProveedorDto> _productosDelProveedor = new();
+
+        /// <summary>
+        /// Último listado completo de productos (texto vacío) con la clave que lo
+        /// produjo: permite restituirlo sin consultar al limpiar la captura (RF-16).
+        /// </summary>
+        private readonly List<ProductoBuscadoDto> _cacheProductos = new();
+        private (int? IdProveedor, bool MostrarTodos)? _claveCacheProductos;
 
         private int? _idProveedorElegido;
         private string? _razonSocialProveedor;
@@ -67,7 +75,6 @@ namespace CapaPresentacion.Compras
         private string? _codigoProductoElegido;
         private string? _nombreProductoElegido;
         private int? _indiceEdicion;
-        private int? _idProveedorProductosVigente;
         private int _idUsuario;
         private string? _rolActual;
         private bool _registrando;
@@ -97,6 +104,8 @@ namespace CapaPresentacion.Compras
             AplicarEstiloGrilla(gridProductos);
             AplicarEstiloGrilla(gridProveedores);
             AplicarEstiloGrilla(gridLineas);
+            AlinearCabecerasNumericas();
+            AplicarEscalaYDisposicion();
 
             // Los listados arrancan vacíos: solo se llenan al tipear (RF-10, RF-16).
             MostrarProductos(null);
@@ -125,6 +134,8 @@ namespace CapaPresentacion.Compras
             btnRegistrar.Click += btnRegistrar_Click;
             btnLimpiar.Click += btnLimpiar_Click;
             btnVerHistorial.Click += btnVerHistorial_Click;
+            chkMostrarTodosProveedores.CheckedChanged += chkMostrarTodosProveedores_CheckedChanged;
+            chkMostrarTodosProductos.CheckedChanged += chkMostrarTodosProductos_CheckedChanged;
 
             RefrescarGrillaLineas();
         }
@@ -147,6 +158,8 @@ namespace CapaPresentacion.Compras
             gridProveedores.Enabled = habilitado;
             txtBuscarProducto.Enabled = habilitado;
             gridProductos.Enabled = habilitado;
+            chkMostrarTodosProveedores.Enabled = habilitado;
+            chkMostrarTodosProductos.Enabled = habilitado;
             txtCantidad.Enabled = habilitado;
             txtPrecioCompra.Enabled = habilitado;
             txtPrecioVenta.Enabled = habilitado;
@@ -195,8 +208,8 @@ namespace CapaPresentacion.Compras
             grilla.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
             grilla.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(55, 71, 79);
             grilla.ColumnHeadersDefaultCellStyle.SelectionForeColor = Color.White;
-            grilla.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            grilla.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.True;
+            grilla.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            grilla.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
 
             grilla.DefaultCellStyle = grilla.DefaultCellStyle.Clone();
             grilla.DefaultCellStyle.BackColor = Color.FromArgb(48, 48, 48);
@@ -236,48 +249,70 @@ namespace CapaPresentacion.Compras
         private async void temporizadorProveedores_Tick(object? sender, EventArgs e)
         {
             _temporizadorProveedores.Stop();
-            await EjecutarAsync(BuscarProveedoresAsync);
+            await EjecutarAsync(RefrescarProveedoresAsync);
+        }
+
+        private async void chkMostrarTodosProveedores_CheckedChanged(object? sender, EventArgs e)
+        {
+            if (_nivelActualizando > 0)
+            {
+                return;
+            }
+
+            _temporizadorProveedores.Stop();
+            await EjecutarAsync(RefrescarProveedoresAsync);
         }
 
         /// <summary>
-        /// Consulta proveedores activos con el texto actual. Con el texto vacío no
-        /// se invoca el negocio y el listado queda vacío (RF-10).
+        /// Única rutina de refresco del selector de proveedores. Depende del texto
+        /// de búsqueda, del producto elegido (solo prioriza con el historial) y de
+        /// la casilla «Mostrar todos los proveedores». No modifica la selección: tras
+        /// enlazar el listado restituye la fila del proveedor elegido si está en él,
+        /// sin disparar el manejador de selección, y nunca selecciona otra fila.
         /// </summary>
-        /// <returns>Tarea que representa la búsqueda.</returns>
-        private async Task BuscarProveedoresAsync()
+        /// <returns>Tarea que representa el refresco.</returns>
+        private async Task RefrescarProveedoresAsync()
         {
             string texto = txtBuscarProveedor.Text;
-
-            if (string.IsNullOrWhiteSpace(texto))
-            {
-                using (SuspenderEventos())
-                {
-                    _proveedoresBuscados.Clear();
-                    _proveedoresHistoricos.Clear();
-                    MostrarProveedores(null);
-                }
-
-                lblMensajeProveedores.Text = string.Empty;
-                return;
-            }
+            int? idProducto = _idProductoElegido;
+            bool mostrarTodos = chkMostrarTodosProveedores.Checked;
 
             RespuestaBusquedaProveedoresCompra respuesta =
-                await _negocio.BuscarProveedoresAsync(texto);
+                await _negocio.BuscarProveedoresParaCompraAsync(texto, idProducto, mostrarTodos, _rolActual);
 
-            if (EsRespuestaObsoleta(texto, txtBuscarProveedor.Text))
+            if (EsRespuestaObsoleta(texto, txtBuscarProveedor.Text)
+                || idProducto != _idProductoElegido
+                || mostrarTodos != chkMostrarTodosProveedores.Checked)
             {
                 return;
             }
 
-            using (SuspenderEventos())
+            if (respuesta.Resultado == ResultadoBusquedaCompras.ErrorPersistencia)
+            {
+                // Solo se informa el mensaje del negocio, sin tocar el listado (RF-57).
+                lblMensajeProveedores.Text = respuesta.Mensaje;
+                return;
+            }
+
+            using (SuspenderSeleccion())
             {
                 _proveedoresBuscados.Clear();
                 _proveedoresBuscados.AddRange(respuesta.Proveedores);
-                _proveedoresHistoricos.Clear();
                 MostrarProveedores(_proveedoresBuscados.ToList());
+
+                if (_idProveedorElegido.HasValue)
+                {
+                    SeleccionarProveedorEnGrilla(_idProveedorElegido.Value);
+                }
             }
 
-            lblMensajeProveedores.Text = respuesta.Mensaje;
+            // El elegido sigue vigente en sus rótulos aunque no figure en el listado;
+            // se avisa para que la grilla sin fila marcada no resulte confusa.
+            bool elegidoFuera = _idProveedorElegido.HasValue
+                && respuesta.Proveedores.Count > 0
+                && !respuesta.Proveedores.Any(p => p.IdProveedor == _idProveedorElegido.Value);
+
+            lblMensajeProveedores.Text = elegidoFuera ? TextoProveedorFueraDelListado : respuesta.Mensaje;
         }
 
         private void txtBuscarProducto_TextChanged(object? sender, EventArgs e)
@@ -294,46 +329,73 @@ namespace CapaPresentacion.Compras
         private async void temporizadorProductos_Tick(object? sender, EventArgs e)
         {
             _temporizadorProductos.Stop();
-            await EjecutarAsync(BuscarProductosAsync);
+            await EjecutarAsync(RefrescarProductosAsync);
+        }
+
+        private async void chkMostrarTodosProductos_CheckedChanged(object? sender, EventArgs e)
+        {
+            if (_nivelActualizando > 0)
+            {
+                return;
+            }
+
+            _temporizadorProductos.Stop();
+            await EjecutarAsync(RefrescarProductosAsync);
         }
 
         /// <summary>
-        /// Consulta productos activos con el texto actual. Con el texto vacío no se
-        /// invoca el negocio y el listado queda vacío (RF-16).
+        /// Única rutina de refresco del selector de productos. Depende del texto de
+        /// búsqueda, del proveedor elegido (solo prioriza con el historial) y de la
+        /// casilla «Mostrar todos los productos». No modifica la selección: tras
+        /// enlazar el listado restituye la fila del producto elegido si está en él,
+        /// sin disparar el manejador de selección, y nunca selecciona otra fila.
         /// </summary>
-        /// <returns>Tarea que representa la búsqueda.</returns>
-        private async Task BuscarProductosAsync()
+        /// <returns>Tarea que representa el refresco.</returns>
+        private async Task RefrescarProductosAsync()
         {
             string texto = txtBuscarProducto.Text;
-
-            if (string.IsNullOrWhiteSpace(texto))
-            {
-                using (SuspenderEventos())
-                {
-                    _productosBuscados.Clear();
-                    RefrescarListadoProductosVigente();
-                }
-
-                lblMensajeProductos.Text = string.Empty;
-                return;
-            }
+            int? idProveedor = _idProveedorElegido;
+            bool mostrarTodos = chkMostrarTodosProductos.Checked;
 
             RespuestaBusquedaProductosCompra respuesta =
-                await _negocio.BuscarProductosAsync(texto);
+                await _negocio.BuscarProductosParaCompraAsync(texto, idProveedor, mostrarTodos, _rolActual);
 
-            if (EsRespuestaObsoleta(texto, txtBuscarProducto.Text))
+            if (EsRespuestaObsoleta(texto, txtBuscarProducto.Text)
+                || idProveedor != _idProveedorElegido
+                || mostrarTodos != chkMostrarTodosProductos.Checked)
             {
                 return;
             }
 
-            using (SuspenderEventos())
+            if (respuesta.Resultado == ResultadoBusquedaCompras.ErrorPersistencia)
+            {
+                // Solo se informa el mensaje del negocio, sin tocar el listado (RF-57).
+                lblMensajeProductos.Text = respuesta.Mensaje;
+                return;
+            }
+
+            using (SuspenderSeleccion())
             {
                 _productosBuscados.Clear();
                 _productosBuscados.AddRange(respuesta.Productos);
                 MostrarProductos(_productosBuscados.ToList());
+                SeleccionarProductoEnGrilla(_idProductoElegido);
             }
 
-            lblMensajeProductos.Text = respuesta.Mensaje;
+            if (string.IsNullOrWhiteSpace(texto))
+            {
+                _cacheProductos.Clear();
+                _cacheProductos.AddRange(respuesta.Productos);
+                _claveCacheProductos = (idProveedor, mostrarTodos);
+            }
+
+            // El elegido sigue vigente en sus rótulos aunque no figure en el listado;
+            // se avisa para que la grilla sin fila marcada no resulte confusa.
+            bool elegidoFuera = _idProductoElegido.HasValue
+                && respuesta.Productos.Count > 0
+                && !respuesta.Productos.Any(p => p.IdProducto == _idProductoElegido.Value);
+
+            lblMensajeProductos.Text = elegidoFuera ? TextoProductoFueraDelListado : respuesta.Mensaje;
         }
 
         private async void gridProductos_SelectionChanged(object? sender, EventArgs e)
@@ -379,7 +441,9 @@ namespace CapaPresentacion.Compras
                 txtCantidad.Focus();
                 txtCantidad.SelectAll();
 
-                await ResolverProveedoresDelProductoAsync(idProducto);
+                // El historial solo prioriza: se refresca el listado de proveedores
+                // sin tocar el proveedor elegido ni autoseleccionar ninguno.
+                await RefrescarProveedoresAsync();
             });
         }
 
@@ -410,16 +474,16 @@ namespace CapaPresentacion.Compras
 
             ActualizarProveedorSeleccionado(idProveedor, razonSocial, documento);
 
-            // RF-66 / D-22: elegir proveedor lista sus productos habituales. La
-            // consulta la centraliza EjecutarAsync y no encadena otros eventos.
-            await EjecutarAsync(() => SincronizarProductosDelProveedorAsync(idProveedor));
+            // Elegir proveedor refresca solo el listado de productos (prioriza los
+            // habituales); no cambia el producto elegido ni encadena otros eventos.
+            await EjecutarAsync(RefrescarProductosAsync);
         }
 
         /// <summary>
         /// Fija el proveedor elegido y refresca solo sus rótulos descriptivos y el
         /// estado de la acción primaria (RF-12 y RF-58). No invoca el negocio ni
-        /// toca por sí mismo el listado de productos: la búsqueda por texto manda
-        /// y la sincronización de habituales la resuelve su manejador (RF-66).
+        /// toca por sí mismo el listado de productos: el refresco del listado
+        /// de productos lo resuelve su manejador.
         /// </summary>
         /// <param name="idProveedor">Identificador del proveedor elegido.</param>
         /// <param name="razonSocial">Razón social del proveedor elegido.</param>
@@ -434,61 +498,6 @@ namespace CapaPresentacion.Compras
             // MostrarDatosProveedor refresca los dos rótulos y, con ellos, el
             // estado de «REGISTRAR COMPRA» (RF-58).
             MostrarDatosProveedor();
-        }
-
-        /// <summary>
-        /// Lista los productos habituales del proveedor elegido (RF-66). Con texto
-        /// en la búsqueda de productos no consulta ni toca la grilla, porque la
-        /// búsqueda tiene precedencia (D-22). La respuesta que llega tarde —otro
-        /// proveedor elegido o una búsqueda iniciada mientras viajaba— se descarta
-        /// sin alterar el listado (RNF-11).
-        /// </summary>
-        /// <param name="idProveedor">Proveedor recién elegido en la grilla.</param>
-        /// <returns>Tarea que representa la consulta de habituales.</returns>
-        private async Task SincronizarProductosDelProveedorAsync(int idProveedor)
-        {
-            if (!string.IsNullOrWhiteSpace(txtBuscarProducto.Text))
-            {
-                return;
-            }
-
-            RespuestaProductosDeProveedor respuesta =
-                await _negocio.ObtenerProductosDeProveedorAsync(idProveedor, _rolActual);
-
-            // Anti-obsolescencia: relectura del texto después del await.
-            if (EsRespuestaObsoleta(idProveedor, _idProveedorElegido)
-                || !string.IsNullOrWhiteSpace(txtBuscarProducto.Text))
-            {
-                return;
-            }
-
-            using (SuspenderSeleccion())
-            {
-                switch (respuesta.Resultado)
-                {
-                    case ResultadoConsultaHistoricaCompra.ConResultados:
-                        _productosBuscados.Clear();
-                        _productosDelProveedor.Clear();
-                        _productosDelProveedor.AddRange(respuesta.Productos);
-                        _idProveedorProductosVigente = idProveedor;
-                        MostrarProductos(_productosDelProveedor.ToList());
-                        SeleccionarProductoEnGrilla(_idProductoElegido);
-                        break;
-
-                    case ResultadoConsultaHistoricaCompra.SinResultados:
-                        _productosDelProveedor.Clear();
-                        _idProveedorProductosVigente = idProveedor;
-                        MostrarProductos(null);
-                        break;
-
-                    default:
-                        // PermisoDenegado o ErrorPersistencia: solo se informa el
-                        // mensaje del negocio, sin tocar la grilla (RF-57).
-                        break;
-                }
-            }
-
-            lblMensajeProductos.Text = respuesta.Mensaje;
         }
 
         /// <summary>
@@ -518,65 +527,6 @@ namespace CapaPresentacion.Compras
                 respuesta.Precios.PrecioCompra.ToString("0.00", CultureInfo.CurrentCulture);
             txtPrecioVenta.Text =
                 respuesta.Precios.PrecioVenta.ToString("0.00", CultureInfo.CurrentCulture);
-        }
-
-        /// <summary>
-        /// Resuelve los proveedores históricos del producto elegido (RF-12): con
-        /// uno solo se autocompleta el proveedor activo; con varios se acota el
-        /// listado y se pide elegir; sin históricos el listado queda libre.
-        /// </summary>
-        /// <param name="idProducto">Producto elegido en la búsqueda.</param>
-        /// <returns>Tarea que representa la consulta.</returns>
-        private async Task ResolverProveedoresDelProductoAsync(int idProducto)
-        {
-            RespuestaProveedoresDeProducto respuesta =
-                await _negocio.ObtenerProveedoresDeProductoAsync(idProducto, _rolActual);
-
-            if (IsDisposed || _idProductoElegido != idProducto)
-            {
-                return;
-            }
-
-            using (SuspenderEventos())
-            {
-                _proveedoresBuscados.Clear();
-                _proveedoresHistoricos.Clear();
-
-                switch (respuesta.Resultado)
-                {
-                    case ResultadoConsultaHistoricaCompra.ConResultados:
-                        _proveedoresHistoricos.AddRange(respuesta.Proveedores);
-                        MostrarProveedores(_proveedoresHistoricos.ToList());
-
-                        if (_proveedoresHistoricos.Count == 1)
-                        {
-                            ProveedorDeProductoDto unico = _proveedoresHistoricos[0];
-
-                            // RF-12: con un solo proveedor histórico se autocompleta,
-                            // salvo que ya hubiera uno elegido, que no se descarta (RF-13).
-                            if (!_idProveedorElegido.HasValue)
-                            {
-                                ActualizarProveedorSeleccionado(
-                                    unico.IdProveedor, unico.RazonSocial, unico.Documento);
-                                SeleccionarProveedorEnGrilla(unico.IdProveedor);
-                            }
-                        }
-
-                        lblMensajeProveedores.Text = _proveedoresHistoricos.Count == 1
-                            ? respuesta.Mensaje
-                            : TextoSeleccioneProveedor;
-                        return;
-
-                    case ResultadoConsultaHistoricaCompra.SinResultados:
-                        MostrarProveedores(null);
-                        lblMensajeProveedores.Text = respuesta.Mensaje;
-                        return;
-
-                    default:
-                        lblMensajeProveedores.Text = respuesta.Mensaje;
-                        return;
-                }
-            }
         }
 
         // =====================================================================
@@ -898,9 +848,10 @@ namespace CapaPresentacion.Compras
                 _razonSocialProveedor = null;
                 _documentoProveedor = null;
                 _proveedoresBuscados.Clear();
-                _proveedoresHistoricos.Clear();
-                _productosDelProveedor.Clear();
-                _idProveedorProductosVigente = null;
+                chkMostrarTodosProveedores.Checked = false;
+                chkMostrarTodosProductos.Checked = false;
+                _cacheProductos.Clear();
+                _claveCacheProductos = null;
                 _temporizadorProveedores.Stop();
                 txtBuscarProveedor.Text = string.Empty;
                 MostrarProveedores(null);
@@ -914,8 +865,10 @@ namespace CapaPresentacion.Compras
 
         /// <summary>
         /// Deja el área de captura vacía y sin modo edición. El listado de
-        /// productos vuelve a los habituales del proveedor vigente desde la caché,
-        /// sin consultar el origen de datos (RF-16 y RF-66).
+        /// productos se restituye desde la caché si coincide con el proveedor vigente y
+        /// la casilla «Mostrar todos los productos»; si no hay caché coherente queda
+        /// vacío, sin consultar el origen de datos (RF-16). No modifica las casillas
+        /// ni el listado de proveedores.
         /// </summary>
         private void LimpiarCaptura()
         {
@@ -937,9 +890,32 @@ namespace CapaPresentacion.Compras
                 btnAgregarLinea.Text = TextoBotonAgregar;
             }
 
-            // Sin consultar: restituye los habituales del proveedor vigente.
-            RefrescarListadoProductosVigente();
+            // Sin consultar: restituye desde la caché el listado del proveedor vigente.
+            RestituirProductosDesdeCache();
             ActualizarSubtotalPreparacion();
+        }
+
+        /// <summary>
+        /// Restituye el último listado completo de productos si su clave (proveedor y
+        /// casilla) coincide con el estado actual. Sin caché coherente no hace nada:
+        /// el listado queda vacío. Nunca consulta el origen de datos (RF-16).
+        /// </summary>
+        private void RestituirProductosDesdeCache()
+        {
+            if (!string.IsNullOrWhiteSpace(txtBuscarProducto.Text)
+                || _claveCacheProductos is not { } clave
+                || clave.IdProveedor != _idProveedorElegido
+                || clave.MostrarTodos != chkMostrarTodosProductos.Checked
+                || _cacheProductos.Count == 0)
+            {
+                return;
+            }
+
+            using (SuspenderSeleccion())
+            {
+                MostrarProductos(_cacheProductos.ToList());
+                SeleccionarProductoEnGrilla(_idProductoElegido);
+            }
         }
 
         // =====================================================================
@@ -971,30 +947,6 @@ namespace CapaPresentacion.Compras
                 gridProductos.DataSource = copia;
                 gridProductos.ClearSelection();
                 gridProductos.CurrentCell = null;
-            }
-        }
-
-        /// <summary>
-        /// Restituye en el listado de productos lo que corresponde al estado
-        /// vigente sin consultar el origen de datos: los habituales del proveedor
-        /// elegido si su caché es coherente o un listado vacío. Con texto en la
-        /// búsqueda no hace nada, porque la búsqueda manda (RF-16 y D-22).
-        /// </summary>
-        private void RefrescarListadoProductosVigente()
-        {
-            if (!string.IsNullOrWhiteSpace(txtBuscarProducto.Text))
-            {
-                return;
-            }
-
-            using (SuspenderSeleccion())
-            {
-                MostrarProductos(
-                    _idProveedorElegido == _idProveedorProductosVigente
-                        && _productosDelProveedor.Count > 0
-                        ? _productosDelProveedor.ToList()
-                        : null);
-                SeleccionarProductoEnGrilla(_idProductoElegido);
             }
         }
 
@@ -1204,7 +1156,237 @@ namespace CapaPresentacion.Compras
         }
 
         // =====================================================================
-        // 7. AYUDA COMÚN DE LOS MANEJADORES
+        // 7. ADAPTACIÓN AL DPI Y AL ANCHO DISPONIBLE
+        // =====================================================================
+
+        // Valores lógicos (96 DPI). Los píxeles que no escalan solos (alto de
+        // cabeceras y filas de las grillas, anchos de columna, alto mínimo de
+        // desplazamiento y relleno de celda) se calculan aquí con el factor de
+        // escala actual; los tamaños del diseñador sí los escala AutoScaleMode.Dpi.
+        private const float UmbralApiladoLogico = 840F;
+
+        // A 100 % el título «1 · Proveedor» y el checkbox de 140 px ya no caben en la columna
+        // del catálogo con 840 lógicos de ancho: la disposición apilada empieza antes.
+        private const float UmbralApiladoCienPorCientoLogico = 950F;
+        private const int AltoMinimoDosColumnasLogico = 456;
+        private const int AltoMinimoApiladoLogico = 1080;
+        private const int AltoCatalogoApiladoLogico = 460;
+        private const int SeparacionLogica = 6;
+
+        // El MaterialCheckbox dibuja su caja y su texto sin escalar con el DPI: centrados a
+        // 15 px del borde superior (se recorta con menos de 30 px de alto) y ocupando unos
+        // 140 px de ancho con «Mostrar todos». La fila del título de cada tarjeta no baja de
+        // 30 px y el checkbox no baja de 140 px: a 150 % (24 y 124 lógicos = 36 y 186 px) no
+        // cambia nada y a 100 % la fila pasa de 24 a 30 px y el ancho de 124 a 140 px.
+        private const int AltoMinimoFilaTituloPx = 30;
+        private const int AnchoMinimoCheckboxPx = 140;
+
+        private bool? _disposicionApilada;
+        private float _escalaDisposicion;
+        private float _escalaGrillas;
+
+        private static int Escalar(float valorLogico, float factor)
+            => (int)Math.Round(valorLogico * factor);
+
+        private void ComprasForm_SizeChanged(object? sender, EventArgs e)
+        {
+            AplicarEscalaYDisposicion();
+        }
+
+        /// <summary>
+        /// Ajusta lo que depende del DPI y elige la disposición: dos columnas
+        /// (catálogo a la izquierda, compra actual a la derecha) o una sola columna
+        /// apilada cuando el ancho lógico no alcanza. El desplazamiento es solo
+        /// vertical y vive en <c>pnlContenedor</c>.
+        /// </summary>
+        private void AplicarEscalaYDisposicion()
+        {
+            if (IsDisposed || ClientSize.Width <= 0 || ClientSize.Height <= 0)
+            {
+                return;
+            }
+
+            float factor = DeviceDpi / 96F;
+
+            AjustarGrillas(factor);
+
+            float umbralApilado = factor <= 1F ? UmbralApiladoCienPorCientoLogico : UmbralApiladoLogico;
+            bool apilar = ClientSize.Width < Escalar(umbralApilado, factor);
+            AplicarDisposicion(apilar, factor);
+
+            pnlContenedor.AutoScrollMinSize = new Size(
+                0,
+                Escalar(apilar ? AltoMinimoApiladoLogico : AltoMinimoDosColumnasLogico, factor));
+        }
+
+        /// <summary>
+        /// Garantiza que la fila del título de las dos tarjetas del catálogo, que aloja el
+        /// checkbox «Mostrar todos», mida al menos <see cref="AltoMinimoFilaTituloPx"/> píxeles
+        /// reales y que el checkbox mida al menos <see cref="AnchoMinimoCheckboxPx"/> de ancho. Al cargar, el escalado automático del diseñador todavía no se aplicó a las
+        /// filas, así que se fija el valor lógico que, ya escalado, cumple el mínimo (24 a
+        /// 150 %, 30 a 100 %); tras un cambio de DPI las filas ya están escaladas y se fijan
+        /// en píxeles reales.
+        /// </summary>
+        /// <param name="yaEscalado">Indica si las filas ya reflejan el DPI actual.</param>
+        private void AjustarFilaTitulo(bool yaEscalado)
+        {
+            float factor = DeviceDpi / 96F;
+            float alto = yaEscalado
+                ? Math.Max(Escalar(24, factor), AltoMinimoFilaTituloPx)
+                : Math.Max(24, (float)Math.Ceiling(AltoMinimoFilaTituloPx / factor));
+            int ancho = yaEscalado
+                ? Math.Max(Escalar(124, factor), AnchoMinimoCheckboxPx)
+                : Math.Max(124, (int)Math.Ceiling(AnchoMinimoCheckboxPx / factor));
+            tblListadoProveedores.RowStyles[0].Height = alto;
+            tblListadoProductos.RowStyles[0].Height = alto;
+            chkMostrarTodosProveedores.Width = ancho;
+            chkMostrarTodosProductos.Width = ancho;
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            AjustarFilaTitulo(false);
+        }
+
+        protected override void OnDpiChangedAfterParent(EventArgs e)
+        {
+            base.OnDpiChangedAfterParent(e);
+            AjustarFilaTitulo(true);
+        }
+        private void AplicarDisposicion(bool apilar, float factor)
+        {
+            if (_disposicionApilada == apilar && _escalaDisposicion == factor)
+            {
+                return;
+            }
+
+            _disposicionApilada = apilar;
+            _escalaDisposicion = factor;
+            int separacion = Escalar(SeparacionLogica, factor);
+
+            tblPrincipal.SuspendLayout();
+
+            if (apilar)
+            {
+                tblPrincipal.SetColumn(tblDocumento, 0);
+                tblPrincipal.SetRow(tblDocumento, 2);
+                tblPrincipal.ColumnStyles[0].SizeType = SizeType.Percent;
+                tblPrincipal.ColumnStyles[0].Width = 100F;
+                tblPrincipal.ColumnStyles[1].SizeType = SizeType.Absolute;
+                tblPrincipal.ColumnStyles[1].Width = 0F;
+                tblPrincipal.RowStyles[1].SizeType = SizeType.Absolute;
+                tblPrincipal.RowStyles[1].Height = Escalar(AltoCatalogoApiladoLogico, factor);
+                tblPrincipal.RowStyles[2].SizeType = SizeType.Percent;
+                tblPrincipal.RowStyles[2].Height = 100F;
+                tblCatalogo.Margin = new Padding(0, 0, 0, separacion);
+                tblDocumento.Margin = new Padding(0, separacion, 0, 0);
+            }
+            else
+            {
+                tblPrincipal.SetColumn(tblDocumento, 1);
+                tblPrincipal.SetRow(tblDocumento, 1);
+                tblPrincipal.ColumnStyles[0].SizeType = SizeType.Percent;
+                tblPrincipal.ColumnStyles[0].Width = 30F;
+                tblPrincipal.ColumnStyles[1].SizeType = SizeType.Percent;
+                tblPrincipal.ColumnStyles[1].Width = 70F;
+                tblPrincipal.RowStyles[1].SizeType = SizeType.Percent;
+                tblPrincipal.RowStyles[1].Height = 100F;
+                tblPrincipal.RowStyles[2].SizeType = SizeType.Absolute;
+                tblPrincipal.RowStyles[2].Height = 0F;
+                tblCatalogo.Margin = new Padding(0, 0, separacion, 0);
+                tblDocumento.Margin = new Padding(separacion, 0, 0, 0);
+            }
+
+            tblPrincipal.ResumeLayout(true);
+        }
+
+        /// <summary>
+        /// Fija en píxeles reales las medidas de las grillas que
+        /// <c>AutoScaleMode</c> no escala (cabeceras sin recorte de descendentes,
+        /// filas, anchos mínimos y relleno de celda).
+        /// </summary>
+        /// <param name="factor">Factor de escala (DPI actual / 96).</param>
+        private void AjustarGrillas(float factor)
+        {
+            if (_escalaGrillas == factor)
+            {
+                return;
+            }
+
+            _escalaGrillas = factor;
+
+            AjustarGrilla(gridProveedores, 30, 26, factor);
+            AjustarGrilla(gridProductos, 30, 26, factor);
+            AjustarGrilla(gridLineas, 32, 32, factor);
+
+            // Con los mínimos ajustados al ancho disponible, el relleno horizontal de
+            // esta grilla baja a 4 (celdas) y 3 (cabeceras) lógicos para que los textos
+            // de las cabeceras no se trunquen.
+            Padding rellenoCelda = new(Escalar(4, factor), 0, Escalar(4, factor), 0);
+            gridLineas.DefaultCellStyle.Padding = rellenoCelda;
+            gridLineas.AlternatingRowsDefaultCellStyle.Padding = rellenoCelda;
+            gridLineas.ColumnHeadersDefaultCellStyle.Padding =
+                new Padding(Escalar(3, factor), 0, Escalar(3, factor), 0);
+
+            // Razón social + Documento = 188 lógicos: caben en la grilla de proveedores
+            // con barra vertical en el umbral (≈194) usando el relleno reducido de abajo.
+            colProveedorRazonSocial.MinimumWidth = Escalar(90, factor);
+            colProveedorDocumento.MinimumWidth = Escalar(104, factor);
+            gridProveedores.DefaultCellStyle.Padding = rellenoCelda;
+            gridProveedores.AlternatingRowsDefaultCellStyle.Padding = rellenoCelda;
+            gridProveedores.ColumnHeadersDefaultCellStyle.Padding =
+                new Padding(Escalar(3, factor), 0, Escalar(3, factor), 0);
+            colProductoCodigo.MinimumWidth = Escalar(80, factor);
+            colProductoNombre.MinimumWidth = Escalar(90, factor);
+
+            // Suma de mínimos = 544 lógicos: con la barra vertical (~17) cabe en la
+            // grilla en el umbral de apilado (≈563) y a 1366x768 a 150 % (≈579).
+            colLineaProducto.MinimumWidth = Escalar(114, factor);
+            colLineaCantidad.MinimumWidth = Escalar(70, factor);
+            colLineaPrecioCompra.MinimumWidth = Escalar(100, factor);
+            colLineaPrecioVenta.MinimumWidth = Escalar(92, factor);
+            colLineaSubtotal.MinimumWidth = Escalar(76, factor);
+            colLineaEditar.MinimumWidth = Escalar(46, factor);
+            colLineaEditar.Width = Escalar(46, factor);
+            colLineaQuitar.MinimumWidth = Escalar(46, factor);
+            colLineaQuitar.Width = Escalar(46, factor);
+        }
+
+        private static void AjustarGrilla(
+            DataGridView grilla, int altoCabecera, int altoFila, float factor)
+        {
+            Padding relleno = new(Escalar(6, factor), 0, Escalar(6, factor), 0);
+            int altoFilaReal = Escalar(altoFila, factor);
+
+            grilla.ColumnHeadersHeightSizeMode =
+                DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            grilla.ColumnHeadersHeight = Escalar(altoCabecera, factor);
+            grilla.RowTemplate.Height = altoFilaReal;
+            grilla.ColumnHeadersDefaultCellStyle.Padding = relleno;
+            grilla.DefaultCellStyle.Padding = relleno;
+            grilla.AlternatingRowsDefaultCellStyle.Padding = relleno;
+
+            foreach (DataGridViewRow fila in grilla.Rows)
+            {
+                fila.Height = altoFilaReal;
+            }
+        }
+
+        /// <summary>
+        /// Alinea a la derecha las cabeceras de las columnas numéricas para que
+        /// coincidan con sus importes (desktop-ux-patterns §2).
+        /// </summary>
+        private void AlinearCabecerasNumericas()
+        {
+            colLineaCantidad.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+            colLineaPrecioCompra.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+            colLineaPrecioVenta.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+            colLineaSubtotal.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+        }
+
+        // =====================================================================
+        // 8. AYUDA COMÚN DE LOS MANEJADORES
         // =====================================================================
 
         /// <summary>

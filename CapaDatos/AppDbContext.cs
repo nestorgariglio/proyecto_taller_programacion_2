@@ -100,17 +100,21 @@ namespace CapaDatos
             modelBuilder.Entity<Proveedor>(entity =>
             {
                 entity.Property(proveedor => proveedor.Cuit)
+                    .HasMaxLength(13)
                     .IsUnicode(false)
                     .IsRequired();
 
                 entity.Property(proveedor => proveedor.RazonSocial)
+                    .HasMaxLength(200)
                     .IsUnicode(false)
                     .IsRequired();
 
                 entity.Property(proveedor => proveedor.Correo)
+                    .HasMaxLength(254)
                     .IsUnicode(false);
 
                 entity.Property(proveedor => proveedor.Telefono)
+                    .HasMaxLength(15)
                     .IsUnicode(false);
 
                 entity.HasIndex(proveedor => proveedor.Cuit)

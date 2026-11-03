@@ -152,6 +152,8 @@ Carpeta `CapaNegocio/DTOs/Compras/` (namespace `CapaNegocio.DTOs.Compras`) y `Ca
 |---|---|---|
 | `Task<RespuestaBusquedaProveedoresCompra> BuscarProveedoresAsync(string? textoBusqueda)` | Solo activos, coincidencia parcial por `Cuit` o `RazonSocial` (`ToUpper().Contains`), `OrderBy(RazonSocial).ThenBy(IdProveedor)`, `Take(20)`, proyección a `ProveedorSeleccionadoDto`. Texto vacío ⇒ `SinResultados` **sin consultar**. | RF-9, RF-10, RF-11, RF-12 |
 | `Task<RespuestaBusquedaProductosCompra> BuscarProductosAsync(string? textoBusqueda)` | Solo activos, parcial por `Codigo` o `Nombre`, `OrderBy(Nombre).ThenBy(IdProducto)`, `Take(20)`, proyección a `ProductoBuscadoDto`. Texto vacío ⇒ lista vacía **sin consultar**. | RF-15, RF-16, RF-17 |
+| `Task<RespuestaBusquedaProveedoresCompra> BuscarProveedoresParaCompraAsync(string? texto, int? idProducto, bool mostrarTodos, string? rol)` | Historial (`DetallesCompra → Compras → Proveedores`, `GROUP BY` con `Max(Compra.FechaRegistro)`) solo **prioriza**: históricos activos primero (compra más reciente, razón social, Id); `mostrarTodos` agrega los demás activos; **sin `Take`**. Sin contexto, sin ampliación y sin texto ⇒ vacío **sin consultar**. Con contexto valida `PuedeOperarCompras` primero (sin permiso ⇒ `ErrorPersistencia` + mensaje de permiso). No filtra por `Compra.Estado`. | RF-9, RF-10, RF-12, RF-67 (D-23) |
+| `Task<RespuestaBusquedaProductosCompra> BuscarProductosParaCompraAsync(string? texto, int? idProveedor, bool mostrarTodos, string? rol)` | Igual que el anterior sobre `DetallesCompra → Compras → Productos` (código o nombre); **sin `Take`**. | RF-15, RF-16, RF-66 (D-23) |
 | `Task<RespuestaPreciosProducto> ObtenerPreciosProductoAsync(int idProducto)` | `Productos.AsNoTracking().Where(IdProducto).Select(PrecioCompra, PrecioVenta, Estado)`; inexistente/inactivo ⇒ resultado propio. **No escribe** (RF-41). | RF-38, RF-39, RF-41 |
 
 ### 4.2 Cálculo (sin base de datos)
@@ -568,7 +570,7 @@ Disposición: `Panel` principal con `Dock = Fill`, `Padding(15)`, encabezado arr
 | RF-65 | `CalcularSubtotalEnPreparacion` + `_lblSubtotalPreparacion` | T3, T9a | G1b + manual (T9b) |
 | RNF-1 | `decimal` en todo el flujo; `AnalizadorImporte` sin redondeos | T2, T3, T5a | G1a, G2a, G2b |
 | RNF-2 | `async/await` **solo** en los métodos con acceso a datos; los demás síncronos (§4) | T3, T4, T5b, T7 | G4, G7, G8, G11 |
-| RNF-3 | `AsNoTracking` + proyección + `Take(20)` + `Contains` de ids | T3, T4, T5b, T7 | G4, G7, G12 |
+| RNF-3 | `AsNoTracking` + proyección + `Take(20)` solo en la búsqueda global (sin tope en las búsquedas priorizadas, D-23) + `Contains` de ids | T3, T4, T5b, T7 | G4, G7, G12 |
 | RNF-4 | Sin `Remove`/`DELETE`; quitar línea en memoria | T3, T7 | G1b, G5, G13 |
 | RNF-5 | DTOs propios sin correo, teléfono, stock ni entidades | T1, T4, T7 | G7, G12 |
 | RNF-6 | Alcance de `dotnet test` limitado a `CapaNegocio`; lo excluido se lista en §9.2 | T2 … T10 | Suite completa + §9.2 |

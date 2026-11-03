@@ -3054,6 +3054,538 @@ public class CompraNegocioTests
         Assert.Empty(respuesta.Productos);
     }
 
+    // ---------- G17 · Búsqueda priorizada por historial: proveedores de un producto ----------
+
+    // El historial solo prioriza: primero los proveedores de compra más reciente del producto.
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_ConProducto_DevuelveSoloHistoricosPorCompraReciente()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        Proveedor antiguo = await SembrarProveedorAsync(db, "30711111118", "Alfa Insumos");
+        Proveedor reciente = await SembrarProveedorAsync(db, "30722222225", "Zeta Ferretería");
+        await SembrarProveedorAsync(db, "30733333332", "Beta Metales");
+        await SembrarCompraConProductoAsync(
+            db, antiguo.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 8, 1, 10, 0, 0));
+        await SembrarCompraConProductoAsync(
+            db, reciente.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+
+        RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Administrador");
+
+        Assert.Equal(ResultadoBusquedaCompras.ConResultados, respuesta.Resultado);
+        Assert.Equal(
+            new[] { reciente.IdProveedor, antiguo.IdProveedor },
+            respuesta.Proveedores.Select(p => p.IdProveedor));
+    }
+
+    // Varias compras y varios detalles del mismo proveedor no repiten la fila.
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_ConVariasComprasDelMismoProveedor_NoDuplica()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        Producto otro = await SembrarProductoAsync(db, "COD2", "Dos");
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        await SembrarCompraConProductoAsync(
+            db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+        Compra segunda = await SembrarCompraConProductoAsync(
+            db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 2, 10, 0, 0));
+        await SembrarDetalleAsync(db, segunda.IdCompra, otro.IdProducto, 1, 10m);
+
+        RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Administrador");
+
+        Assert.Single(respuesta.Proveedores);
+    }
+
+    // «Mostrar todos»: históricos primero y luego los activos que nunca lo vendieron.
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_ConMostrarTodos_AgregaNoHistoricosTrasLosHistoricos()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        Proveedor historico = await SembrarProveedorAsync(db, "30711111118", "Zeta Ferretería");
+        Proveedor nuevoB = await SembrarProveedorAsync(db, "30722222225", "Beta Metales");
+        Proveedor nuevoA = await SembrarProveedorAsync(db, "30733333332", "Alfa Insumos");
+        await SembrarCompraConProductoAsync(
+            db, historico.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+
+        RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Administrador");
+
+        Assert.Equal(
+            new[] { historico.IdProveedor, nuevoA.IdProveedor, nuevoB.IdProveedor },
+            respuesta.Proveedores.Select(p => p.IdProveedor));
+    }
+
+    // La búsqueda por razón social o CUIT se aplica sobre el universo vigente.
+    [Theory]
+    [InlineData("metales", 2)]
+    [InlineData("30711", 1)]
+    public async Task BuscarProveedoresParaCompra_ConTexto_FiltraPorRazonSocialOCuit(string texto, int indiceEsperado)
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        Proveedor[] proveedores =
+        {
+            await SembrarProveedorAsync(db, "30700000001", "Gama Tornillos"),
+            await SembrarProveedorAsync(db, "30711111118", "Alfa Insumos"),
+            await SembrarProveedorAsync(db, "30722222225", "Beta Metales")
+        };
+
+        foreach (Proveedor proveedor in proveedores)
+        {
+            await SembrarCompraConProductoAsync(
+                db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+        }
+
+        RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
+            .BuscarProveedoresParaCompraAsync(texto, producto.IdProducto, false, "Administrador");
+
+        Proveedor esperado = proveedores[indiceEsperado];
+        Assert.Equal(esperado.IdProveedor, Assert.Single(respuesta.Proveedores).IdProveedor);
+    }
+
+    // Los proveedores inactivos no aparecen, ni como históricos ni al ampliar.
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_ConProveedorInactivo_NoLoDevuelve()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        Proveedor activo = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Proveedor inactivoHistorico = await SembrarProveedorAsync(db, "30711111118", "Zeta", estado: false);
+        await SembrarProveedorAsync(db, "30722222225", "Beta Inactivo", estado: false);
+        await SembrarCompraConProductoAsync(
+            db, inactivoHistorico.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+
+        RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Administrador");
+
+        Assert.Equal(activo.IdProveedor, Assert.Single(respuesta.Proveedores).IdProveedor);
+    }
+
+    // Combinación nueva permitida y, una vez registrada la compra, prioritaria.
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_CombinacionNueva_SeListaConMostrarTodosYTrasRegistrarEsPrioritaria()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        var negocio = new CompraNegocio(db);
+
+        RespuestaBusquedaProveedoresCompra sinHistorial = await negocio
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Administrador");
+        RespuestaBusquedaProveedoresCompra conTodos = await negocio
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Administrador");
+
+        Assert.Empty(sinHistorial.Proveedores);
+        Assert.Equal(proveedor.IdProveedor, Assert.Single(conTodos.Proveedores).IdProveedor);
+
+        RespuestaRegistroCompra registro = await negocio.RegistrarCompraAsync(
+            SolicitudRegistrar(proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 2, 10m, 15m)),
+            usuario.IdUsuario,
+            "Administrador");
+        Assert.Equal(ResultadoRegistroCompra.Exito, registro.Resultado);
+
+        RespuestaBusquedaProveedoresCompra tras = await negocio
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Administrador");
+
+        Assert.Equal(proveedor.IdProveedor, Assert.Single(tras.Proveedores).IdProveedor);
+    }
+
+    // Sin tope ni paginación: «Mostrar todos» sin contexto devuelve TODOS los activos, ordenados y sin duplicados.
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_ConMostrarTodosSinContexto_DevuelveTodosLosActivosSinTope()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+
+        for (int i = 0; i < 25; i++)
+        {
+            await SembrarProveedorAsync(db, $"3070000{i:D4}", $"Proveedor {i:D2}");
+        }
+
+        await SembrarProveedorAsync(db, "30799999999", "Proveedor Inactivo", estado: false);
+
+        RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
+            .BuscarProveedoresParaCompraAsync(null, null, true, "Administrador");
+
+        Assert.Equal(25, respuesta.Proveedores.Count);
+        Assert.Equal(25, respuesta.Proveedores.Select(p => p.IdProveedor).Distinct().Count());
+        Assert.Equal(
+            Enumerable.Range(0, 25).Select(i => $"Proveedor {i:D2}"),
+            respuesta.Proveedores.Select(p => p.RazonSocial));
+        Assert.Equal(string.Format(MensajeProveedoresEncontradosFormato, 25), respuesta.Mensaje);
+    }
+
+    // Sin tope: la búsqueda global con texto devuelve todas las coincidencias.
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_ConTextoSinContexto_DevuelveTodasLasCoincidenciasSinTope()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+
+        for (int i = 0; i < 25; i++)
+        {
+            await SembrarProveedorAsync(db, $"3070000{i:D4}", $"Proveedor {i:D2}");
+        }
+
+        await SembrarProveedorAsync(db, "30788888888", "Otra Razón");
+
+        RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
+            .BuscarProveedoresParaCompraAsync("proveedor", null, false, "Administrador");
+
+        Assert.Equal(25, respuesta.Proveedores.Count);
+        Assert.Equal(25, respuesta.Proveedores.Select(p => p.IdProveedor).Distinct().Count());
+    }
+
+    // Sin tope en el bloque histórico: más de 20 históricos, más reciente primero.
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_ConMasDeVeinteHistoricos_LosDevuelveTodosPorCompraReciente()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        var ids = new List<int>();
+
+        for (int i = 0; i < 25; i++)
+        {
+            Proveedor proveedor = await SembrarProveedorAsync(db, $"3070000{i:D4}", $"Proveedor {i:D2}");
+            ids.Add(proveedor.IdProveedor);
+            await SembrarCompraConProductoAsync(
+                db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto,
+                new DateTime(2026, 1, 1, 10, 0, 0).AddDays(i));
+        }
+
+        RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Administrador");
+
+        ids.Reverse();
+        Assert.Equal(ids, respuesta.Proveedores.Select(p => p.IdProveedor));
+    }
+
+    // Sin tope en la ampliación: históricos primero y luego TODOS los demás activos, sin duplicados.
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_ConMostrarTodosYMasDeVeinteNoHistoricos_LosDevuelveTodos()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        Proveedor historico = await SembrarProveedorAsync(db, "30711111118", "Zeta Histórico");
+        await SembrarCompraConProductoAsync(
+            db, historico.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+
+        for (int i = 0; i < 25; i++)
+        {
+            await SembrarProveedorAsync(db, $"3070000{i:D4}", $"Proveedor {i:D2}");
+        }
+
+        RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Administrador");
+
+        Assert.Equal(26, respuesta.Proveedores.Count);
+        Assert.Equal(26, respuesta.Proveedores.Select(p => p.IdProveedor).Distinct().Count());
+        Assert.Equal(historico.IdProveedor, respuesta.Proveedores[0].IdProveedor);
+        Assert.Equal(
+            Enumerable.Range(0, 25).Select(i => $"Proveedor {i:D2}"),
+            respuesta.Proveedores.Skip(1).Select(p => p.RazonSocial));
+    }
+    // Con el historial en juego se valida el rol antes de leer nada.
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_ConProductoYRolNoAutorizado_NoEntregaDatos()
+    {
+        AppDbContext db = await CrearContextoVacioAsync();
+        var negocio = new CompraNegocio(db);
+        await db.DisposeAsync();
+
+        RespuestaBusquedaProveedoresCompra respuesta = await negocio
+            .BuscarProveedoresParaCompraAsync(null, 1, false, "Vendedor");
+
+        Assert.Equal(ResultadoBusquedaCompras.ErrorPersistencia, respuesta.Resultado);
+        Assert.Equal(MensajePermisoConsultarCompras, respuesta.Mensaje);
+        Assert.Empty(respuesta.Proveedores);
+    }
+
+    // Sin contexto, sin ampliación y sin texto no se consulta (RF-10).
+    [Fact]
+    public async Task BuscarProveedoresParaCompra_SinContextoNiTexto_DevuelveVacioSinConsultar()
+    {
+        AppDbContext db = await CrearContextoVacioAsync();
+        var negocio = new CompraNegocio(db);
+        await db.DisposeAsync();
+
+        RespuestaBusquedaProveedoresCompra respuesta = await negocio
+            .BuscarProveedoresParaCompraAsync("  ", null, false, "Administrador");
+
+        Assert.Equal(ResultadoBusquedaCompras.SinResultados, respuesta.Resultado);
+        Assert.Equal(string.Empty, respuesta.Mensaje);
+        Assert.Empty(respuesta.Proveedores);
+    }
+
+    // ---------- G18 · Búsqueda priorizada por historial: productos de un proveedor ----------
+
+    [Fact]
+    public async Task BuscarProductosParaCompra_ConProveedor_DevuelveSoloHistoricosPorCompraReciente()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Producto antiguo = await SembrarProductoAsync(db, "COD1", "Abrazadera");
+        Producto reciente = await SembrarProductoAsync(db, "COD2", "Zócalo");
+        await SembrarProductoAsync(db, "COD3", "Bulón");
+        await SembrarCompraConProductoAsync(
+            db, proveedor.IdProveedor, usuario.IdUsuario, antiguo.IdProducto, new DateTime(2026, 8, 1, 10, 0, 0));
+        await SembrarCompraConProductoAsync(
+            db, proveedor.IdProveedor, usuario.IdUsuario, reciente.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+
+        RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Administrador");
+
+        Assert.Equal(ResultadoBusquedaCompras.ConResultados, respuesta.Resultado);
+        Assert.Equal(
+            new[] { reciente.IdProducto, antiguo.IdProducto },
+            respuesta.Productos.Select(p => p.IdProducto));
+    }
+
+    [Fact]
+    public async Task BuscarProductosParaCompra_ConVariasComprasDelMismoProducto_NoDuplica()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        await SembrarCompraConProductoAsync(
+            db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+        Compra segunda = await SembrarCompraConProductoAsync(
+            db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 2, 10, 0, 0));
+        await SembrarDetalleAsync(db, segunda.IdCompra, producto.IdProducto, 2, 10m);
+
+        RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Administrador");
+
+        Assert.Single(respuesta.Productos);
+    }
+
+    [Fact]
+    public async Task BuscarProductosParaCompra_ConMostrarTodos_AgregaNoHistoricosTrasLosHistoricos()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Producto historico = await SembrarProductoAsync(db, "COD1", "Zócalo");
+        Producto nuevoB = await SembrarProductoAsync(db, "COD2", "Bulón");
+        Producto nuevoA = await SembrarProductoAsync(db, "COD3", "Abrazadera");
+        await SembrarCompraConProductoAsync(
+            db, proveedor.IdProveedor, usuario.IdUsuario, historico.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+
+        RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Administrador");
+
+        Assert.Equal(
+            new[] { historico.IdProducto, nuevoA.IdProducto, nuevoB.IdProducto },
+            respuesta.Productos.Select(p => p.IdProducto));
+    }
+
+    [Theory]
+    [InlineData("tornillo", 0)]
+    [InlineData("cod2", 1)]
+    public async Task BuscarProductosParaCompra_ConTexto_FiltraPorNombreOCodigo(string texto, int indiceEsperado)
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Producto[] productos =
+        {
+            await SembrarProductoAsync(db, "COD1", "Tornillo"),
+            await SembrarProductoAsync(db, "COD2", "Bulón"),
+            await SembrarProductoAsync(db, "COD3", "Cable")
+        };
+
+        foreach (Producto producto in productos)
+        {
+            await SembrarCompraConProductoAsync(
+                db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+        }
+
+        RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
+            .BuscarProductosParaCompraAsync(texto, proveedor.IdProveedor, false, "Administrador");
+
+        Assert.Equal(productos[indiceEsperado].IdProducto, Assert.Single(respuesta.Productos).IdProducto);
+    }
+
+    [Fact]
+    public async Task BuscarProductosParaCompra_ConProductoInactivo_NoLoDevuelve()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Producto activo = await SembrarProductoAsync(db, "COD1", "Uno");
+        Producto inactivoHistorico = await SembrarProductoAsync(db, "COD2", "Dos", estado: false);
+        await SembrarProductoAsync(db, "COD3", "Tres", estado: false);
+        await SembrarCompraConProductoAsync(
+            db, proveedor.IdProveedor, usuario.IdUsuario, inactivoHistorico.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+
+        RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Administrador");
+
+        Assert.Equal(activo.IdProducto, Assert.Single(respuesta.Productos).IdProducto);
+    }
+
+    [Fact]
+    public async Task BuscarProductosParaCompra_CombinacionNueva_SeListaConMostrarTodosYTrasRegistrarEsPrioritaria()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        var negocio = new CompraNegocio(db);
+
+        RespuestaBusquedaProductosCompra sinHistorial = await negocio
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Administrador");
+        RespuestaBusquedaProductosCompra conTodos = await negocio
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Administrador");
+
+        Assert.Empty(sinHistorial.Productos);
+        Assert.Equal(producto.IdProducto, Assert.Single(conTodos.Productos).IdProducto);
+
+        RespuestaRegistroCompra registro = await negocio.RegistrarCompraAsync(
+            SolicitudRegistrar(proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 2, 10m, 15m)),
+            usuario.IdUsuario,
+            "Administrador");
+        Assert.Equal(ResultadoRegistroCompra.Exito, registro.Resultado);
+
+        RespuestaBusquedaProductosCompra tras = await negocio
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Administrador");
+
+        Assert.Equal(producto.IdProducto, Assert.Single(tras.Productos).IdProducto);
+    }
+
+    // Sin tope ni paginación: «Mostrar todos» sin contexto devuelve TODOS los activos, ordenados y sin duplicados.
+    [Fact]
+    public async Task BuscarProductosParaCompra_ConMostrarTodosSinContexto_DevuelveTodosLosActivosSinTope()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+
+        for (int i = 0; i < 25; i++)
+        {
+            await SembrarProductoAsync(db, $"COD{i:D3}", $"Producto {i:D2}");
+        }
+
+        await SembrarProductoAsync(db, "COD999", "Producto Inactivo", estado: false);
+
+        RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
+            .BuscarProductosParaCompraAsync(null, null, true, "Administrador");
+
+        Assert.Equal(25, respuesta.Productos.Count);
+        Assert.Equal(25, respuesta.Productos.Select(p => p.IdProducto).Distinct().Count());
+        Assert.Equal(
+            Enumerable.Range(0, 25).Select(i => $"Producto {i:D2}"),
+            respuesta.Productos.Select(p => p.Nombre));
+        Assert.Equal(string.Format(MensajeProductosEncontradosFormato, 25), respuesta.Mensaje);
+    }
+
+    [Fact]
+    public async Task BuscarProductosParaCompra_ConTextoSinContexto_DevuelveTodasLasCoincidenciasSinTope()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+
+        for (int i = 0; i < 25; i++)
+        {
+            await SembrarProductoAsync(db, $"COD{i:D3}", $"Producto {i:D2}");
+        }
+
+        await SembrarProductoAsync(db, "ZZZ001", "Otro Artículo");
+
+        RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
+            .BuscarProductosParaCompraAsync("producto", null, false, "Administrador");
+
+        Assert.Equal(25, respuesta.Productos.Count);
+        Assert.Equal(25, respuesta.Productos.Select(p => p.IdProducto).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task BuscarProductosParaCompra_ConMasDeVeinteHistoricos_LosDevuelveTodosPorCompraReciente()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        var ids = new List<int>();
+
+        for (int i = 0; i < 25; i++)
+        {
+            Producto producto = await SembrarProductoAsync(db, $"COD{i:D3}", $"Producto {i:D2}");
+            ids.Add(producto.IdProducto);
+            await SembrarCompraConProductoAsync(
+                db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto,
+                new DateTime(2026, 1, 1, 10, 0, 0).AddDays(i));
+        }
+
+        RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Administrador");
+
+        ids.Reverse();
+        Assert.Equal(ids, respuesta.Productos.Select(p => p.IdProducto));
+    }
+
+    [Fact]
+    public async Task BuscarProductosParaCompra_ConMostrarTodosYMasDeVeinteNoHistoricos_LosDevuelveTodos()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Producto historico = await SembrarProductoAsync(db, "ZZZ001", "Zócalo Histórico");
+        await SembrarCompraConProductoAsync(
+            db, proveedor.IdProveedor, usuario.IdUsuario, historico.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
+
+        for (int i = 0; i < 25; i++)
+        {
+            await SembrarProductoAsync(db, $"COD{i:D3}", $"Producto {i:D2}");
+        }
+
+        RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Administrador");
+
+        Assert.Equal(26, respuesta.Productos.Count);
+        Assert.Equal(26, respuesta.Productos.Select(p => p.IdProducto).Distinct().Count());
+        Assert.Equal(historico.IdProducto, respuesta.Productos[0].IdProducto);
+        Assert.Equal(
+            Enumerable.Range(0, 25).Select(i => $"Producto {i:D2}"),
+            respuesta.Productos.Skip(1).Select(p => p.Nombre));
+    }
+    [Fact]
+    public async Task BuscarProductosParaCompra_ConProveedorYRolNoAutorizado_NoEntregaDatos()
+    {
+        AppDbContext db = await CrearContextoVacioAsync();
+        var negocio = new CompraNegocio(db);
+        await db.DisposeAsync();
+
+        RespuestaBusquedaProductosCompra respuesta = await negocio
+            .BuscarProductosParaCompraAsync(null, 1, false, "Vendedor");
+
+        Assert.Equal(ResultadoBusquedaCompras.ErrorPersistencia, respuesta.Resultado);
+        Assert.Equal(MensajePermisoConsultarCompras, respuesta.Mensaje);
+        Assert.Empty(respuesta.Productos);
+    }
+
+    [Fact]
+    public async Task BuscarProductosParaCompra_SinContextoNiTexto_DevuelveVacioSinConsultar()
+    {
+        AppDbContext db = await CrearContextoVacioAsync();
+        var negocio = new CompraNegocio(db);
+        await db.DisposeAsync();
+
+        RespuestaBusquedaProductosCompra respuesta = await negocio
+            .BuscarProductosParaCompraAsync("  ", null, false, "Administrador");
+
+        Assert.Equal(ResultadoBusquedaCompras.SinResultados, respuesta.Resultado);
+        Assert.Equal(string.Empty, respuesta.Mensaje);
+        Assert.Empty(respuesta.Productos);
+    }
     // ---------- Ayudas de las pruebas de CompraNegocio ----------
 
     private static SolicitudRegistrarCompraDto SolicitudRegistrar(

@@ -2,11 +2,18 @@
 
 ## 1) ¿Qué hace?
 
-`scripts/preparar-bd.ps1` prepara la base de datos de desarrollo en dos pasos ordenados y finaliza con una verificación de control:
+`scripts/preparar-bd.ps1` prepara la base de datos de desarrollo en 8 pasos ordenados. Se detiene en el primer error, propaga el código de salida y termina con `ESTADO FINAL: ÉXITO` o `ESTADO FINAL: ERROR`:
 
-- **Paso 1 (opcional si se usa `-SoloDatos`)**: Aplica las migraciones de Entity Framework Core. Antes restaura la herramienta `dotnet-ef` definida en `.config/dotnet-tools.json` con `dotnet tool restore` y luego ejecuta `dotnet ef database update --project CapaDatos --startup-project CapaDatos --context AppDbContext`. Esto crea o actualiza el esquema de `DB_SISTEMA_VENTA`.
-- **Paso 2 (siempre)**: Ejecuta el script `scripts/seed-desarrollo.sql` contra la base con `sqlcmd`, usando autenticación integrada y forzando UTF-8 con `-f 65001` para evitar la lectura OEM de los caracteres con tilde. El script asigna `id_usuario` de los productos al **Administrador** (DNI `90000001`) mediante variable y es idempotente. Toda la seed se ejecuta dentro de **una única transacción** (`TRY/CATCH` con `ROLLBACK`): si algo falla no queda nada a medias y `sqlcmd -b` devuelve un código de error distinto de 0.
-- **Paso 3 (verificación)**: Consulta los conteos y muestra una línea como `Categorías: 6 (activas: 5) | Productos: 201 (activos: 200)`. En caso de que los conteos sean 0, el script emite una advertencia (no compara contra valores fijos).
+1. Verifica que el servidor y la base de `appsettings.json` sean exactamente `localhost\SQLEXPRESS` / `DB_SISTEMA_VENTA` (si no, aborta).
+2. Verifica la conexión a SQL Server y que la base exista.
+3. Restaura `dotnet-ef` (`dotnet tool restore`, manifiesto `.config/dotnet-tools.json`).
+4. Comprueba que el modelo de EF Core no tenga cambios sin migración (`dotnet ef migrations has-pending-model-changes`). Si los hay, aborta: el script nunca genera migraciones.
+5. Aplica las migraciones pendientes (`dotnet ef database update`) y comprueba que no quede ninguna pendiente. Con `-SoloDatos` no aplica nada: solo comprueba que el esquema esté al día y se detiene si no lo está.
+6. Ejecuta `scripts/seed-desarrollo.sql` con `sqlcmd` (solo si lo anterior terminó bien).
+7. Verifica los datos de la seed (ver `$VerificacionesSeed` en el script).
+8. Muestra el resumen y el estado final.
+
+- **Detalle de la seed (paso 6)**: Ejecuta el script `scripts/seed-desarrollo.sql` contra la base con `sqlcmd`, usando autenticación integrada y forzando UTF-8 con `-f 65001` para evitar la lectura OEM de los caracteres con tilde. El script asigna `id_usuario` de los productos al **Administrador** (DNI `90000001`) mediante variable y es idempotente. Toda la seed se ejecuta dentro de **una única transacción** (`TRY/CATCH` con `ROLLBACK`): si algo falla no queda nada a medias y `sqlcmd -b` devuelve un código de error distinto de 0.
 
 ### Contenido de la seed (`seed-desarrollo.sql`)
 
@@ -33,8 +40,8 @@ Sobre una base limpia (recién migrada), deja exactamente:
 
 ## 3) Cómo funciona
 
-1. **Orden lógico**: esquema (`EF Core`, migraciones) → datos (`seed`) → verificación (`sqlcmd`). Si las migraciones fallan, el script se detiene y no ejecuta la seed.
-2. **Idempotencia**: la re-ejecución no duplica registros. Al ejecutar una segunda vez, los conteos deben mantenerse en `Categorías: 6 (activas: 5) | Productos: 201 (activos: 200)` (sobre una base limpia; si la base ya tenía otros registros, los totales los incluyen).
+1. **Orden lógico**: destino y conexión → herramientas → modelo sin cambios pendientes → esquema (`EF Core`, migraciones) → datos (`seed`) → verificación (`sqlcmd`) → resumen. Si cualquier paso falla, el script se detiene y no ejecuta los siguientes (en particular, la seed).
+2. **Idempotencia**: la re-ejecución no duplica registros. La verificación (paso 7) cuenta únicamente los registros que administra la seed, identificados por claves determinísticas, y no el total de cada tabla: usuarios `90000001`-`90000004`; las 6 categorías de la seed; productos con código `7790001...` (12 base), `7790002...` (188 de volumen) y `7790003000001` (1 inactivo); los 11 CUIT de proveedores de la seed (`30123456789`, `20123456789`, `27123456789` y `30711000001` a `30711000008`); clientes `CLI0000001` a `CLI0000012`. Los registros ajenos (por ejemplo un proveedor, producto o cliente creado a mano, y todas las compras) no se cuentan, no se modifican y no se borran.
 3. **Lectura desde appsettings**: el script lee `ConnectionStrings:CadenaSQL` de `CapaPresentacion/appsettings.json` (por defecto). Se respeta la cadena existente: `Server=localhost\SQLEXPRESS;Database=DB_SISTEMA_VENTA;Integrated Security=true;TrustServerCertificate=true;`. Solo admite autenticación integrada.
 4. **UTF-8 para `sqlcmd`**: para leer/escribir correctamente tildes y `ñ`, el script usa `sqlcmd -f 65001` (entrada/salida UTF-8) y, en la verificación, vuelca temporalmente a un archivo UTF-8 para mostrarlo correctamente en la consola.
 5. **Validaciones**: verifica que `dotnet` y `sqlcmd` existan en el `PATH`, que los archivos de seed y appsettings existan y que la cadena de conexión sea válida.
@@ -68,11 +75,13 @@ Desde la raíz del repositorio:
 powershell -ExecutionPolicy Bypass -File .\scripts\preparar-bd.ps1
 ```
 
-### Solo datos (omite migraciones; útil cuando el esquema ya está actualizado)
+### Solo datos (exige esquema al día; no aplica migraciones)
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\preparar-bd.ps1 -SoloDatos
 ```
+
+`-SoloDatos` no sirve para saltear un problema de esquema: antes de la seed comprueba que no haya migraciones pendientes y que el modelo no tenga cambios sin migración. Si el esquema está atrasado se detiene y pide ejecutar el script completo (sin `-SoloDatos`).
 
 ### Pasando rutas explícitas (opcionales)
 
@@ -84,13 +93,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\preparar-bd.ps1 `
 
 ### Cómo re-ejecutarlo de forma segura
 
-Volvé a correrlo: `-SoloDatos` o completo. Como la seed es idempotente, no se duplicarán `ROL`, `USUARIO`, `CATEGORIA`, `PRODUCTO`, `CLIENTE` ni `PROVEEDOR`. Al re-ejecutar, los conteos deben seguir siendo `Categorías: 6 (activas: 5) | Productos: 201 (activos: 200)`.
+Volvé a correrlo: `-SoloDatos` o completo. Como la seed es idempotente, no se duplicarán `ROL`, `USUARIO`, `CATEGORIA`, `PRODUCTO`, `CLIENTE` ni `PROVEEDOR`. Al re-ejecutar, la verificación del paso 7 debe seguir mostrando todas las líneas en `[OK]`: 4 usuarios, 6 categorías (5 activas), 201 productos de seed (200 activos, 12 base activos), 11 proveedores de seed (10 activos) y 12 clientes de seed (9 activos).
 
-**Importante**: cada re-ejecución restablece a su valor inicial el stock, los precios, los nombres y el estado de los registros de la seed. **No la ejecutes durante T10 ni entre sus pasos** (falsearía la verificación de RF-47) ni en medio de una verificación manual que haya modificado esos datos. Las compras registradas desde la aplicación no se borran (la seed no elimina filas).
+**Importante**: cada re-ejecución restablece a su valor inicial, solo para los registros de la seed, estos campos: en productos, categoría, usuario, nombre, descripción, stock, precios, estado y `fecha_registro`; en proveedores, razón social, correo, teléfono, estado y `fecha_registro`; en clientes, nombre, apellido, correo, teléfono, estado y `fecha_registro`; en usuarios, rol, nombre, apellido, correo, sexo, clave de prueba, estado e intentos fallidos; en categorías, el estado de las que figuran en la seed. **No la ejecutes durante T10 ni entre sus pasos** (falsearía la verificación de RF-47) ni en medio de una verificación manual que haya modificado esos datos. Las compras registradas desde la aplicación no se borran (la seed no elimina filas).
 
 ## 7) Qué esperar en consola
 
-La ejecución muestra pasos numerados en español, mensajes OK/info y, al final, una línea de verificación. Si todo sale bien, termina con `Listo: base preparada.` y código de salida `0`.
+La ejecución muestra 8 pasos numerados en español, mensajes OK/info, el detalle de la verificación de datos y un resumen. Si todo sale bien, termina con `ESTADO FINAL: ÉXITO - base preparada.` y código de salida `0`. Si algo falla, muestra el paso donde falló, `ESTADO FINAL: ERROR - la base NO quedó preparada.` y un código de salida distinto de `0`.
 
 ## 8) Comprobar el resultado en SSMS
 
@@ -118,12 +127,15 @@ Resultado esperado sobre una base limpia: `CantCategorias=6`, `Activas=5`; `Cant
 | `Las migraciones aún no existen` / `No existe la tabla ...` | Migraciones no aplicadas | Correte el script **completo** (sin `-SoloDatos`). |
 | Tildes/ñ rotas en salida o en datos | Archivo `.sql` sin BOM UTF-8 | Guardá `seed-desarrollo.sql` con BOM UTF-8. El script fuerza `-f 65001`. |
 | Política de ejecución bloquea el script | PowerShell restringido | Usá `powershell -ExecutionPolicy Bypass -File ...` |
-| `Verificación devolvió 0...` | Seed corrió contra otra base o falló silenciosamente | Revisá servidor/base (`DataSource`/`InitialCatalog`) en la salida. Verificá mensajes de `sqlcmd`. |
+| `Verificación de datos fallida: ...` | La seed no cargó lo esperado o corrió contra otra base | Revisá servidor/base en el paso 1 y los mensajes de `sqlcmd` del paso 6. |
+| `Destino no permitido ...` | `appsettings.json` apunta a otro servidor o base | El script solo opera sobre `localhost\SQLEXPRESS` / `DB_SISTEMA_VENTA`. Corregí `appsettings.json`. |
+| `El modelo tiene cambios sin migración ...` | El modelo de EF Core (`AppDbContext`/entidades) difiere del snapshot | Revisá qué cambió. Si es una configuración perdida, restaurala; si es un cambio intencional, hay que generar una migración (requiere autorización). El script nunca la crea. |
+| `Hay migraciones pendientes en la base ...` (con `-SoloDatos`) | El esquema está atrasado | Ejecutá el script completo, sin `-SoloDatos`. |
 
 ## 10) Cuándo usar cada modo
 
 - **Completo (sin flags)**: primera vez, esquema desactualizado o después de bajar cambios con nuevas migraciones.
-- **`-SoloDatos`**: esquema ya está al día; solo querés re-sembrar o verificar los datos de desarrollo.
+- **`-SoloDatos`**: solo si el esquema ya está al día; re-siembra y verifica los datos. Si el esquema está atrasado, se detiene.
 
 ## 11) Limitaciones
 
