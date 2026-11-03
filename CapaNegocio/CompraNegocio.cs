@@ -807,7 +807,7 @@ public class CompraNegocio
             await _context.SaveChangesAsync();
 
             // Paso 11: hook de HU-10, dentro de la misma transacción y antes del commit.
-            await AplicarEfectosSecundariosAsync(cabecera);
+            await AplicarEfectosSecundariosAsync(cabecera, lineas);
 
             // Paso 12: commit.
             await transaccion.CommitAsync();
@@ -843,16 +843,41 @@ public class CompraNegocio
     }
 
     /// <summary>
-    /// Punto de extensión de HU-10 (stock y precios del producto) dentro de la
-    /// misma operación y del mismo ámbito transaccional (RF-46). Hoy es un
-    /// <b>no-op</b>: devuelve <see cref="Task.CompletedTask"/> sin la palabra
-    /// clave <c>async</c> y no escribe sobre <c>Producto</c> (RF-47 y RF-48).
+    /// Efectos de HU-10 dentro de la misma operación y transacción (RF-46): si la
+    /// compra está confirmada, suma la cantidad de cada línea a <c>Stock</c> y
+    /// sobrescribe <c>PrecioCompra</c> y <c>PrecioVenta</c> del producto con los de
+    /// la línea. Si no está confirmada no modifica <c>Producto</c>.
     /// </summary>
-    private Task AplicarEfectosSecundariosAsync(Compra cabecera, CancellationToken ct = default)
+    private async Task AplicarEfectosSecundariosAsync(
+        Compra cabecera, IReadOnlyList<LineaCompraDto> lineas, CancellationToken ct = default)
     {
-        _ = cabecera;
-        _ = ct;
-        return Task.CompletedTask;
+        if (!cabecera.Estado || lineas.Count == 0)
+        {
+            return;
+        }
+
+        // Defensivo: líneas repetidas se agrupan sumando cantidad, con los precios de la última.
+        var porProducto = new Dictionary<int, (int Cantidad, decimal PrecioCompra, decimal PrecioVenta)>();
+        foreach (LineaCompraDto linea in lineas)
+        {
+            int cantidadPrevia = porProducto.TryGetValue(linea.IdProducto, out var previo) ? previo.Cantidad : 0;
+            porProducto[linea.IdProducto] = (cantidadPrevia + linea.Cantidad, linea.PrecioCompra, linea.PrecioVenta);
+        }
+
+        List<int> ids = porProducto.Keys.ToList();
+        List<Producto> productos = await _context.Productos
+            .Where(p => ids.Contains(p.IdProducto))
+            .ToListAsync(ct);
+
+        foreach (Producto producto in productos)
+        {
+            var efecto = porProducto[producto.IdProducto];
+            producto.Stock += efecto.Cantidad;
+            producto.PrecioCompra = efecto.PrecioCompra;
+            producto.PrecioVenta = efecto.PrecioVenta;
+        }
+
+        await _context.SaveChangesAsync(ct);
     }
 
     /// <summary>

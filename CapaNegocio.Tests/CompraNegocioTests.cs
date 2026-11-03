@@ -1580,10 +1580,10 @@ public class CompraNegocioTests
     }
 
 
-    // RF-47 / RF-48: registrar no modifica stock, precios, usuario de modificación,
-    // fecha de modificación ni motivo de ajuste del producto.
+    // HU-10: registrar suma el stock y sobrescribe ambos precios; no toca usuario de
+    // modificación, fecha de modificación ni motivo de ajuste del producto.
     [Fact]
-    public async Task RegistrarCompra_NoModificaElCatalogoDeProductos()
+    public async Task RegistrarCompra_IncrementaStockYSobrescribePrecios_SinTocarAuditoria()
     {
         await using AppDbContext db = await CrearContextoVacioAsync();
         Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
@@ -1610,20 +1610,147 @@ public class CompraNegocioTests
 
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
             SolicitudRegistrar(
-                proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 2, 12.34m, 18.9m)),
+                proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 2, 15.5m, 21.75m)),
             usuario.IdUsuario,
             "Administrador");
 
         Producto despues = await LeerProductoAsync(db, producto.IdProducto);
 
         Assert.Equal(ResultadoRegistroCompra.Exito, respuesta.Resultado);
-        Assert.Equal(antes.Stock, despues.Stock);
-        Assert.Equal(antes.PrecioCompra, despues.PrecioCompra);
-        Assert.Equal(antes.PrecioVenta, despues.PrecioVenta);
+        Assert.Equal(7, antes.Stock);
+        Assert.Equal(9, despues.Stock);
+        Assert.Equal(15.5m, despues.PrecioCompra);
+        Assert.Equal(21.75m, despues.PrecioVenta);
         Assert.Equal(antes.IdUsuarioModifica, despues.IdUsuarioModifica);
         Assert.Equal(antes.FechaModificacion, despues.FechaModificacion);
         Assert.Equal(antes.MotivoAjusteStock, despues.MotivoAjusteStock);
         Assert.Equal(0, db.ChangeTracker.Entries<Producto>().Count(e => e.State != EntityState.Unchanged));
+    }
+
+    // HU-10: precio de venta puede bajar; ambos precios se sobrescriben con los de la línea.
+    [Fact]
+    public async Task RegistrarCompra_SobrescribePrecioCompraYPrecioVentaAunqueBajen()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno", precioCompra: 50m, precioVenta: 80m);
+        var negocio = new CompraNegocio(db);
+
+        RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
+            SolicitudRegistrar(
+                proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 40m, 60m)),
+            usuario.IdUsuario,
+            "Administrador");
+
+        Producto despues = await LeerProductoAsync(db, producto.IdProducto);
+        Assert.Equal(ResultadoRegistroCompra.Exito, respuesta.Resultado);
+        Assert.Equal(40m, despues.PrecioCompra);
+        Assert.Equal(60m, despues.PrecioVenta);
+        Assert.Equal(6, despues.Stock);
+    }
+
+    // HU-10: Estado != true no modifica PRODUCTO. RegistrarCompraAsync siempre crea
+    // Estado = true y no hay acceso al hook privado sin cambiar proyectos (limitación);
+    // se cubre con la compra rechazada, que no deja ningún cambio en el producto.
+    [Fact]
+    public async Task RegistrarCompra_Rechazada_NoModificaElProducto()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
+        var negocio = new CompraNegocio(db);
+
+        RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
+            SolicitudRegistrar(
+                proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 3, 10.333m, 99m)),
+            usuario.IdUsuario,
+            "Administrador");
+
+        Producto despues = await LeerProductoAsync(db, producto.IdProducto);
+        Assert.NotEqual(ResultadoRegistroCompra.Exito, respuesta.Resultado);
+        Assert.Equal(5, despues.Stock);
+        Assert.Equal(10.5m, despues.PrecioCompra);
+        Assert.Equal(12m, despues.PrecioVenta);
+        await AssertSinComprasAsync(db);
+    }
+
+    // HU-10: un registro = un incremento; un registro fallido no cambia el stock.
+    [Fact]
+    public async Task RegistrarCompra_SinDobleIncremento_YFalloNoCambiaStock()
+    {
+        EscenarioDeFallo escenario = await CrearEscenarioDeFalloAsync();
+        await using AppDbContext sano = escenario.Sano;
+
+        await using (var falloDb = new FalloDbContext(escenario.Opciones))
+        {
+            RespuestaRegistroCompra fallo = await new CompraNegocio(falloDb).RegistrarCompraAsync(
+                escenario.Solicitud, escenario.IdUsuario, "Administrador");
+            Assert.Equal(ResultadoRegistroCompra.ErrorPersistencia, fallo.Resultado);
+        }
+
+        Assert.All(await sano.Productos.AsNoTracking().ToListAsync(), p => Assert.Equal(5, p.Stock));
+
+        RespuestaRegistroCompra exito = await new CompraNegocio(sano).RegistrarCompraAsync(
+            escenario.Solicitud, escenario.IdUsuario, "Administrador");
+        Assert.Equal(ResultadoRegistroCompra.Exito, exito.Resultado);
+
+        List<Producto> productos = await sano.Productos.AsNoTracking().OrderBy(p => p.Codigo).ToListAsync();
+        Assert.Equal(7, productos[0].Stock);
+        Assert.Equal(8, productos[1].Stock);
+    }
+
+    // HU-10: varios productos suman cada uno con sus propios precios.
+    [Fact]
+    public async Task RegistrarCompra_ConVariosProductos_AplicaCadaLinea()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto uno = await SembrarProductoAsync(db, "COD1", "Uno");
+        Producto dos = await SembrarProductoAsync(db, "COD2", "Dos");
+        Producto tres = await SembrarProductoAsync(db, "COD3", "Tres");
+        var negocio = new CompraNegocio(db);
+
+        RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
+            SolicitudRegistrar(
+                proveedor.IdProveedor,
+                Linea(uno.IdProducto, "COD1", "Uno", 2, 11m, 13m),
+                Linea(dos.IdProducto, "COD2", "Dos", 10, 20m, 25m)),
+            usuario.IdUsuario,
+            "Administrador");
+
+        Assert.Equal(ResultadoRegistroCompra.Exito, respuesta.Resultado);
+        Producto u = await LeerProductoAsync(db, uno.IdProducto);
+        Producto d = await LeerProductoAsync(db, dos.IdProducto);
+        Producto t = await LeerProductoAsync(db, tres.IdProducto);
+        Assert.Equal((7, 11m, 13m), (u.Stock, u.PrecioCompra, u.PrecioVenta));
+        Assert.Equal((15, 20m, 25m), (d.Stock, d.PrecioCompra, d.PrecioVenta));
+        Assert.Equal((5, 10.5m, 12m), (t.Stock, t.PrecioCompra, t.PrecioVenta));
+    }
+
+    // HU-10: línea repetida rechazada antes de escribir; el stock no cambia.
+    [Fact]
+    public async Task RegistrarCompra_ConLineaRepetida_RechazaSinTocarStock()
+    {
+        await using AppDbContext db = await CrearContextoVacioAsync();
+        Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
+        Usuario usuario = await SembrarUsuarioAsync(db);
+        Producto uno = await SembrarProductoAsync(db, "COD1", "Uno");
+        var negocio = new CompraNegocio(db);
+
+        RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
+            SolicitudRegistrar(
+                proveedor.IdProveedor,
+                Linea(uno.IdProducto, "COD1", "Uno", 1, 10m, 12m),
+                Linea(uno.IdProducto, "COD1", "Uno", 2, 10m, 12m)),
+            usuario.IdUsuario,
+            "Administrador");
+
+        Assert.Equal(ResultadoRegistroCompra.ProductoInvalido, respuesta.Resultado);
+        Assert.Equal(5, (await LeerProductoAsync(db, uno.IdProducto)).Stock);
+        await AssertSinComprasAsync(db);
     }
 
     // ---------- G9 · Registro rechazado (RF-5, RF-14, RF-18, RF-19, RF-24, RF-26 … RF-28, RF-37, RF-64) ----------
