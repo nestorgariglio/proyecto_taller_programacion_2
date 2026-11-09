@@ -7,5 +7,6 @@ public enum ResultadoModificacionProveedor
 	ProveedorNoEncontrado,
 	CuitDuplicado,
 	CorreoDuplicado,
-	ErrorPersistencia
+	ErrorPersistencia,
+	RazonSocialPosiblementeDuplicada
 }

@@ -170,6 +170,16 @@ namespace CapaPresentacion.Proveedores
                         Telefono = txtTelefono.Text
                     };
                     var resp = await _negocio.CrearProveedorAsync(dto);
+                    if (resp.Resultado == ResultadoCreacionProveedor.RazonSocialPosiblementeDuplicada)
+                    {
+                        if (!ConfirmarContinuarConRazonSocialDuplicada(resp.Mensaje))
+                        {
+                            txtRazonSocial.Focus();
+                            return;
+                        }
+                        dto.ConfirmarRazonSocialDuplicada = true;
+                        resp = await _negocio.CrearProveedorAsync(dto);
+                    }
                     if (resp.Resultado != ResultadoCreacionProveedor.Exito)
                     {
                         MaterialMessageBox.Show(this, resp.Mensaje, "Atención");
@@ -189,6 +199,16 @@ namespace CapaPresentacion.Proveedores
                         Telefono = txtTelefono.Text
                     };
                     var resp = await _negocio.ModificarProveedorAsync(dto);
+                    if (resp.Resultado == ResultadoModificacionProveedor.RazonSocialPosiblementeDuplicada)
+                    {
+                        if (!ConfirmarContinuarConRazonSocialDuplicada(resp.Mensaje))
+                        {
+                            txtRazonSocial.Focus();
+                            return;
+                        }
+                        dto.ConfirmarRazonSocialDuplicada = true;
+                        resp = await _negocio.ModificarProveedorAsync(dto);
+                    }
                     if (resp.Resultado != ResultadoModificacionProveedor.Exito)
                     {
                         MaterialMessageBox.Show(this, resp.Mensaje, "Atención");
@@ -205,6 +225,12 @@ namespace CapaPresentacion.Proveedores
                 _guardando = false;
                 btnGuardar.Enabled = true;
             }
+        }
+
+        private bool ConfirmarContinuarConRazonSocialDuplicada(string mensaje)
+        {
+            var dialogo = new MaterialDialog(this, "Razón Social posiblemente duplicada", mensaje, "CONTINUAR IGUALMENTE", true, "REVISAR");
+            return dialogo.ShowDialog(this) == DialogResult.OK;
         }
 
         private void btnCancelar_Click(object? sender, EventArgs e)

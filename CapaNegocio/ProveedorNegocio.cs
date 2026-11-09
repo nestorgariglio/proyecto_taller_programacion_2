@@ -34,7 +34,7 @@ public class ProveedorNegocio
     }
 
     private static readonly Regex PatronCuit = new(@"^[0-9]+$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    private static readonly Regex PatronRazonSocial = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]{2,}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex PatronRazonSocial = new(@"^[\p{L}0-9 .,'\-&/()+]{2,200}\z",RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex PatronCorreo = new(@"^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex PatronTelefono = new(@"^\d+$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
@@ -64,7 +64,7 @@ public class ProveedorNegocio
     private static string? ValidarRazonSocial(string? razonRecortado)
     {
         if (razonRecortado is null || !PatronRazonSocial.IsMatch(razonRecortado))
-            return "La Razón Social debe admitir letras, espacios internos, apóstrofo y guion.";
+            return "La Razón Social solo admite letras, números, espacios y los signos . , ' - & / ( ) + (2 a 200 caracteres).";
         return null;
     }
 
@@ -110,6 +110,18 @@ public class ProveedorNegocio
         return $"Ya existe un proveedor con el CUIT \"{cuit}\", actualmente inactivo.";
     }
 
+    private async Task<string?> DetectarCuitDuplicadoConcurrenteAsync(string cuit, int? idExcluir)
+    {
+        try
+        {
+            return await ValidarUnicidadCuitAsync(cuit, idExcluir);
+        }
+        catch (Exception ex) when (EsFalloDeOrigenDeDatos(ex))
+        {
+            return null;
+        }
+    }
+
     private async Task<string?> ValidarUnicidadCorreoAsync(string correo, int? idExcluir)
     {
         string comparacion = correo.ToUpper();
@@ -117,6 +129,25 @@ public class ProveedorNegocio
             .AnyAsync(p => (!idExcluir.HasValue || p.IdProveedor != idExcluir.Value)
                 && p.Correo != null && p.Correo != "" && p.Correo.ToUpper() == comparacion);
         return existe ? $"Ya existe un proveedor con el correo \"{correo}\"." : null;
+    }
+
+    private async Task<CoincidenciaRazonSocialDto?> BuscarCoincidenciaRazonSocialAsync(string razonSocial, int? idExcluir)
+    {
+        var candidatos = await _context.Proveedores.AsNoTracking()
+            .Where(p => !idExcluir.HasValue || p.IdProveedor != idExcluir.Value)
+            .Select(p => new CoincidenciaRazonSocialDto { IdProveedor = p.IdProveedor, RazonSocial = p.RazonSocial ?? string.Empty, Cuit = p.Cuit ?? string.Empty, Estado = p.Estado })
+            .ToListAsync();
+        return candidatos
+            .Where(c => ComparadorRazonSocialProveedor.SonEquivalentes(c.RazonSocial, razonSocial))
+            .OrderByDescending(c => c.Estado)
+            .ThenBy(c => c.IdProveedor)
+            .FirstOrDefault();
+    }
+
+    private static string ConstruirMensajeRazonSocialPosiblementeDuplicada(CoincidenciaRazonSocialDto c)
+    {
+        string estado = c.Estado ? "activo" : "inactivo";
+        return $"Ya existe un proveedor con una Razón Social similar: \"{c.RazonSocial}\" (CUIT {c.Cuit}, {estado}). Es posible que se trate de un proveedor duplicado. Puede revisar los datos o continuar igualmente.";
     }
 
     private static bool EsFalloDeOrigenDeDatos(Exception excepcion)
@@ -135,11 +166,6 @@ public class ProveedorNegocio
         string? razonSocial = NormalizarOpcional(dto.RazonSocial);
         string? correo = NormalizarOpcional(dto.Correo);
         string? telefono = NormalizarOpcional(dto.Telefono);
-
-        if (string.IsNullOrWhiteSpace(cuit) || string.IsNullOrWhiteSpace(razonSocial))
-        {
-            // redundante con ValidarDatosProveedor; se mantiene por claridad
-        }
 
         string? errorValidacion = ValidarDatosProveedor(cuit, razonSocial, correo, telefono);
         if (errorValidacion is not null)
@@ -161,6 +187,13 @@ public class ProveedorNegocio
                     return new RespuestaCreacionProveedor { Resultado = ResultadoCreacionProveedor.CorreoDuplicado, Mensaje = mensajeCorreoDuplicado };
             }
 
+            if (!dto.ConfirmarRazonSocialDuplicada)
+            {
+                var coincidencia = await BuscarCoincidenciaRazonSocialAsync(razonSocial!, null);
+                if (coincidencia is not null)
+                    return new RespuestaCreacionProveedor { Resultado = ResultadoCreacionProveedor.RazonSocialPosiblementeDuplicada, Coincidencia = coincidencia, Mensaje = ConstruirMensajeRazonSocialPosiblementeDuplicada(coincidencia) };
+            }
+
             _context.Proveedores.Add(nuevo);
             await _context.SaveChangesAsync();
             var creado = MapearProveedor(nuevo);
@@ -169,6 +202,9 @@ public class ProveedorNegocio
         catch (Exception ex) when (EsFalloDeOrigenDeDatos(ex))
         {
             DesadjuntarSiEsPosible(nuevo);
+            string? duplicadoConcurrente = await DetectarCuitDuplicadoConcurrenteAsync(cuit!, null);
+            if (duplicadoConcurrente is not null)
+                return new RespuestaCreacionProveedor { Resultado = ResultadoCreacionProveedor.CuitDuplicado, Mensaje = duplicadoConcurrente };
             return new RespuestaCreacionProveedor { Resultado = ResultadoCreacionProveedor.ErrorPersistencia, Mensaje = MensajeErrorPersistencia };
         }
     }
@@ -205,6 +241,13 @@ public class ProveedorNegocio
                     return new RespuestaModificacionProveedor { Resultado = ResultadoModificacionProveedor.CorreoDuplicado, Mensaje = mensajeCorreoDuplicado };
             }
 
+            if (!dto.ConfirmarRazonSocialDuplicada && !ComparadorRazonSocialProveedor.SonEquivalentes(razonSocial, proveedor.RazonSocial))
+            {
+                var coincidencia = await BuscarCoincidenciaRazonSocialAsync(razonSocial!, dto.IdProveedor);
+                if (coincidencia is not null)
+                    return new RespuestaModificacionProveedor { Resultado = ResultadoModificacionProveedor.RazonSocialPosiblementeDuplicada, Coincidencia = coincidencia, Mensaje = ConstruirMensajeRazonSocialPosiblementeDuplicada(coincidencia) };
+            }
+
             proveedor.Cuit = cuit!;
             proveedor.RazonSocial = razonSocial!;
             proveedor.Correo = correo;
@@ -217,6 +260,9 @@ public class ProveedorNegocio
         catch (Exception ex) when (EsFalloDeOrigenDeDatos(ex))
         {
             if (proveedor is not null) DesadjuntarSiEsPosible(proveedor);
+            string? duplicadoConcurrente = await DetectarCuitDuplicadoConcurrenteAsync(cuit!, dto.IdProveedor);
+            if (duplicadoConcurrente is not null)
+                return new RespuestaModificacionProveedor { Resultado = ResultadoModificacionProveedor.CuitDuplicado, Mensaje = duplicadoConcurrente };
             return new RespuestaModificacionProveedor { Resultado = ResultadoModificacionProveedor.ErrorPersistencia, Mensaje = MensajeErrorPersistencia };
         }
     }

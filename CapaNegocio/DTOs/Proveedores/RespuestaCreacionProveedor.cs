@@ -12,5 +12,8 @@ public class RespuestaCreacionProveedor
 
 	public ProveedorRespuestaDto? Proveedor { get; set; }
 
+	/// <summary>Proveedor existente con Razón Social posiblemente duplicada (solo con ese resultado).</summary>
+	public CoincidenciaRazonSocialDto? Coincidencia { get; set; }
+
 	public string Mensaje { get; set; } = string.Empty;
 }
