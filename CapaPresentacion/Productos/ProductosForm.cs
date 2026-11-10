@@ -280,7 +280,6 @@ namespace CapaPresentacion.Productos
             dgv.DefaultCellStyle.SelectionForeColor = Color.White;
             dgv.RowTemplate.Height = 35;
 
-            // Datos de prueba
             DataTable dt = new DataTable();
             dt.Columns.Add("Código");
             dt.Columns.Add("Producto");
@@ -289,10 +288,6 @@ namespace CapaPresentacion.Productos
             dt.Columns.Add("P. Venta");
             dt.Columns.Add("Stock", typeof(int));
             dt.Columns.Add("Estado");
-
-            dt.Rows.Add("PROD-001", "Teclado Mecánico RGB", "Periféricos", "$ 25.000", "$ 45.000", 12, "Activo");
-            dt.Rows.Add("PROD-002", "Mouse Inalámbrico", "Periféricos", "$ 12.000", "$ 22.500", 3, "Activo");
-            dt.Rows.Add("PROD-003", "Monitor 24\" 144Hz", "Monitores", "$ 140.000", "$ 210.000", 8, "Activo");
 
             dgv.DataSource = dt;
 
