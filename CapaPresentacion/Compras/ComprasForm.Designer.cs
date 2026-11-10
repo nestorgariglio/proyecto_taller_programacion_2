@@ -41,7 +41,10 @@ namespace CapaPresentacion.Compras
             gridProveedores = new DataGridView();
             colProveedorRazonSocial = new DataGridViewTextBoxColumn();
             colProveedorDocumento = new DataGridViewTextBoxColumn();
+            colProveedorAccion = new DataGridViewButtonColumn();
+            tblMensajeProveedores = new TableLayoutPanel();
             lblMensajeProveedores = new MaterialSkin.Controls.MaterialLabel();
+            lnkDeseleccionarProveedor = new LinkLabel();
             cardProducto = new MaterialSkin.Controls.MaterialCard();
             tblListadoProductos = new TableLayoutPanel();
             tblTituloProductos = new TableLayoutPanel();
@@ -51,7 +54,10 @@ namespace CapaPresentacion.Compras
             gridProductos = new DataGridView();
             colProductoCodigo = new DataGridViewTextBoxColumn();
             colProductoNombre = new DataGridViewTextBoxColumn();
+            colProductoAccion = new DataGridViewButtonColumn();
+            tblMensajeProductos = new TableLayoutPanel();
             lblMensajeProductos = new MaterialSkin.Controls.MaterialLabel();
+            lnkDeseleccionarProducto = new LinkLabel();
             tblDocumento = new TableLayoutPanel();
             cardDatosProveedor = new MaterialSkin.Controls.MaterialCard();
             tblDatosProveedor = new TableLayoutPanel();
@@ -95,10 +101,12 @@ namespace CapaPresentacion.Compras
             tblListadoProveedores.SuspendLayout();
             tblTituloProveedores.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridProveedores).BeginInit();
+            tblMensajeProveedores.SuspendLayout();
             cardProducto.SuspendLayout();
             tblListadoProductos.SuspendLayout();
             tblTituloProductos.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridProductos).BeginInit();
+            tblMensajeProductos.SuspendLayout();
             tblDocumento.SuspendLayout();
             cardDatosProveedor.SuspendLayout();
             tblDatosProveedor.SuspendLayout();
@@ -205,7 +213,7 @@ namespace CapaPresentacion.Compras
             tblListadoProveedores.Controls.Add(tblTituloProveedores, 0, 0);
             tblListadoProveedores.Controls.Add(txtBuscarProveedor, 0, 1);
             tblListadoProveedores.Controls.Add(gridProveedores, 0, 2);
-            tblListadoProveedores.Controls.Add(lblMensajeProveedores, 0, 3);
+            tblListadoProveedores.Controls.Add(tblMensajeProveedores, 0, 3);
             tblListadoProveedores.Dock = DockStyle.Fill;
             tblListadoProveedores.Location = new Point(12, 8);
             tblListadoProveedores.Margin = new Padding(0);
@@ -220,7 +228,7 @@ namespace CapaPresentacion.Compras
             //
             // tblTituloProveedores
             //
-            // Fila del título: el título absorbe el ancho y el checkbox se ajusta a la derecha.
+            // Fila del título: el título absorbe el ancho; el checkbox se ajusta a la derecha.
             tblTituloProveedores.ColumnCount = 2;
             tblTituloProveedores.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tblTituloProveedores.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -302,7 +310,7 @@ namespace CapaPresentacion.Compras
             gridProveedores.AutoGenerateColumns = false;
             gridProveedores.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridProveedores.ColumnHeadersHeight = 30;
-            gridProveedores.Columns.AddRange(new DataGridViewColumn[] { colProveedorRazonSocial, colProveedorDocumento });
+            gridProveedores.Columns.AddRange(new DataGridViewColumn[] { colProveedorRazonSocial, colProveedorDocumento, colProveedorAccion });
             gridProveedores.Dock = DockStyle.Fill;
             gridProveedores.Margin = new Padding(0, 4, 0, 0);
             gridProveedores.MinimumSize = new Size(0, 72);
@@ -329,10 +337,41 @@ namespace CapaPresentacion.Compras
             //
             colProveedorDocumento.DataPropertyName = "Documento";
             colProveedorDocumento.FillWeight = 50F;
-            colProveedorDocumento.HeaderText = "Documento";
+            colProveedorDocumento.HeaderText = "CUIT";
             colProveedorDocumento.Name = "colProveedorDocumento";
             colProveedorDocumento.ReadOnly = true;
             colProveedorDocumento.SortMode = DataGridViewColumnSortMode.NotSortable;
+            //
+            // colProveedorAccion
+            //
+            // Columna del botón «Deseleccionar» que dibuja PintorAccionFila en la fila elegida.
+            // El ancho es fijo; ComprasForm.cs lo escala con el DPI.
+            colProveedorAccion.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            colProveedorAccion.FlatStyle = FlatStyle.Flat;
+            colProveedorAccion.HeaderText = "";
+            colProveedorAccion.MinimumWidth = 104;
+            colProveedorAccion.Name = "colProveedorAccion";
+            colProveedorAccion.ReadOnly = true;
+            colProveedorAccion.Resizable = DataGridViewTriState.False;
+            colProveedorAccion.SortMode = DataGridViewColumnSortMode.NotSortable;
+            colProveedorAccion.Width = 104;
+            //
+            // tblMensajeProveedores
+            //
+            // Fila del mensaje: el mensaje absorbe el ancho y el enlace «Deseleccionar» de
+            // respaldo (oculto salvo que el elegido no figure en la grilla) se ajusta a la derecha.
+            tblMensajeProveedores.ColumnCount = 2;
+            tblMensajeProveedores.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblMensajeProveedores.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tblMensajeProveedores.Controls.Add(lblMensajeProveedores, 0, 0);
+            tblMensajeProveedores.Controls.Add(lnkDeseleccionarProveedor, 1, 0);
+            tblMensajeProveedores.Dock = DockStyle.Fill;
+            tblMensajeProveedores.Margin = new Padding(0);
+            tblMensajeProveedores.Name = "tblMensajeProveedores";
+            tblMensajeProveedores.RowCount = 1;
+            tblMensajeProveedores.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblMensajeProveedores.Size = new Size(309, 20);
+            tblMensajeProveedores.TabIndex = 3;
             //
             // lblMensajeProveedores
             //
@@ -344,8 +383,29 @@ namespace CapaPresentacion.Compras
             lblMensajeProveedores.MouseState = MaterialSkin.MouseState.HOVER;
             lblMensajeProveedores.Name = "lblMensajeProveedores";
             lblMensajeProveedores.Size = new Size(309, 20);
-            lblMensajeProveedores.TabIndex = 3;
+            lblMensajeProveedores.TabIndex = 0;
             lblMensajeProveedores.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // lnkDeseleccionarProveedor
+            //
+            // Enlace de respaldo: subrayado siempre (no depende solo del color); #FFBBA0 da 4,94:1
+            // sobre el fondo real de la tarjeta (80, 80, 80) y #FFE0D6 (activo) 6,48:1.
+            lnkDeseleccionarProveedor.AccessibleName = "Deseleccionar proveedor";
+            lnkDeseleccionarProveedor.ActiveLinkColor = Color.FromArgb(255, 224, 214);
+            lnkDeseleccionarProveedor.Anchor = AnchorStyles.Right;
+            lnkDeseleccionarProveedor.AutoSize = true;
+            lnkDeseleccionarProveedor.DisabledLinkColor = Color.FromArgb(200, 200, 200);
+            lnkDeseleccionarProveedor.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            lnkDeseleccionarProveedor.LinkBehavior = LinkBehavior.AlwaysUnderline;
+            lnkDeseleccionarProveedor.LinkColor = Color.FromArgb(255, 187, 160);
+            lnkDeseleccionarProveedor.Margin = new Padding(8, 0, 0, 0);
+            lnkDeseleccionarProveedor.Name = "lnkDeseleccionarProveedor";
+            lnkDeseleccionarProveedor.Size = new Size(79, 15);
+            lnkDeseleccionarProveedor.TabIndex = 1;
+            lnkDeseleccionarProveedor.TabStop = true;
+            lnkDeseleccionarProveedor.Text = "Deseleccionar";
+            lnkDeseleccionarProveedor.VisitedLinkColor = Color.FromArgb(255, 187, 160);
+            lnkDeseleccionarProveedor.Visible = false;
             //
             // cardProducto
             //
@@ -367,7 +427,7 @@ namespace CapaPresentacion.Compras
             tblListadoProductos.Controls.Add(tblTituloProductos, 0, 0);
             tblListadoProductos.Controls.Add(txtBuscarProducto, 0, 1);
             tblListadoProductos.Controls.Add(gridProductos, 0, 2);
-            tblListadoProductos.Controls.Add(lblMensajeProductos, 0, 3);
+            tblListadoProductos.Controls.Add(tblMensajeProductos, 0, 3);
             tblListadoProductos.Dock = DockStyle.Fill;
             tblListadoProductos.Location = new Point(12, 8);
             tblListadoProductos.Margin = new Padding(0);
@@ -382,7 +442,7 @@ namespace CapaPresentacion.Compras
             //
             // tblTituloProductos
             //
-            // Fila del título: el título absorbe el ancho y el checkbox se ajusta a la derecha.
+            // Fila del título: el título absorbe el ancho; el checkbox se ajusta a la derecha.
             tblTituloProductos.ColumnCount = 2;
             tblTituloProductos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tblTituloProductos.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -464,7 +524,7 @@ namespace CapaPresentacion.Compras
             gridProductos.AutoGenerateColumns = false;
             gridProductos.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridProductos.ColumnHeadersHeight = 30;
-            gridProductos.Columns.AddRange(new DataGridViewColumn[] { colProductoCodigo, colProductoNombre });
+            gridProductos.Columns.AddRange(new DataGridViewColumn[] { colProductoCodigo, colProductoNombre, colProductoAccion });
             gridProductos.Dock = DockStyle.Fill;
             gridProductos.Margin = new Padding(0, 4, 0, 0);
             gridProductos.MinimumSize = new Size(0, 72);
@@ -496,6 +556,37 @@ namespace CapaPresentacion.Compras
             colProductoNombre.ReadOnly = true;
             colProductoNombre.SortMode = DataGridViewColumnSortMode.NotSortable;
             //
+            // colProductoAccion
+            //
+            // Columna del botón «Deseleccionar» que dibuja PintorAccionFila en la fila elegida.
+            // El ancho es fijo; ComprasForm.cs lo escala con el DPI.
+            colProductoAccion.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            colProductoAccion.FlatStyle = FlatStyle.Flat;
+            colProductoAccion.HeaderText = "";
+            colProductoAccion.MinimumWidth = 104;
+            colProductoAccion.Name = "colProductoAccion";
+            colProductoAccion.ReadOnly = true;
+            colProductoAccion.Resizable = DataGridViewTriState.False;
+            colProductoAccion.SortMode = DataGridViewColumnSortMode.NotSortable;
+            colProductoAccion.Width = 104;
+            //
+            // tblMensajeProductos
+            //
+            // Fila del mensaje: el mensaje absorbe el ancho y el enlace «Deseleccionar» de
+            // respaldo (oculto salvo que el elegido no figure en la grilla) se ajusta a la derecha.
+            tblMensajeProductos.ColumnCount = 2;
+            tblMensajeProductos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblMensajeProductos.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tblMensajeProductos.Controls.Add(lblMensajeProductos, 0, 0);
+            tblMensajeProductos.Controls.Add(lnkDeseleccionarProducto, 1, 0);
+            tblMensajeProductos.Dock = DockStyle.Fill;
+            tblMensajeProductos.Margin = new Padding(0);
+            tblMensajeProductos.Name = "tblMensajeProductos";
+            tblMensajeProductos.RowCount = 1;
+            tblMensajeProductos.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblMensajeProductos.Size = new Size(309, 20);
+            tblMensajeProductos.TabIndex = 3;
+            //
             // lblMensajeProductos
             //
             lblMensajeProductos.AutoSize = false;
@@ -506,8 +597,29 @@ namespace CapaPresentacion.Compras
             lblMensajeProductos.MouseState = MaterialSkin.MouseState.HOVER;
             lblMensajeProductos.Name = "lblMensajeProductos";
             lblMensajeProductos.Size = new Size(309, 20);
-            lblMensajeProductos.TabIndex = 3;
+            lblMensajeProductos.TabIndex = 0;
             lblMensajeProductos.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // lnkDeseleccionarProducto
+            //
+            // Enlace de respaldo: subrayado siempre (no depende solo del color); #FFBBA0 da 4,94:1
+            // sobre el fondo real de la tarjeta (80, 80, 80) y #FFE0D6 (activo) 6,48:1.
+            lnkDeseleccionarProducto.AccessibleName = "Deseleccionar producto";
+            lnkDeseleccionarProducto.ActiveLinkColor = Color.FromArgb(255, 224, 214);
+            lnkDeseleccionarProducto.Anchor = AnchorStyles.Right;
+            lnkDeseleccionarProducto.AutoSize = true;
+            lnkDeseleccionarProducto.DisabledLinkColor = Color.FromArgb(200, 200, 200);
+            lnkDeseleccionarProducto.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            lnkDeseleccionarProducto.LinkBehavior = LinkBehavior.AlwaysUnderline;
+            lnkDeseleccionarProducto.LinkColor = Color.FromArgb(255, 187, 160);
+            lnkDeseleccionarProducto.Margin = new Padding(8, 0, 0, 0);
+            lnkDeseleccionarProducto.Name = "lnkDeseleccionarProducto";
+            lnkDeseleccionarProducto.Size = new Size(79, 15);
+            lnkDeseleccionarProducto.TabIndex = 1;
+            lnkDeseleccionarProducto.TabStop = true;
+            lnkDeseleccionarProducto.Text = "Deseleccionar";
+            lnkDeseleccionarProducto.VisitedLinkColor = Color.FromArgb(255, 187, 160);
+            lnkDeseleccionarProducto.Visible = false;
             //
             // tblDocumento
             //
@@ -607,7 +719,7 @@ namespace CapaPresentacion.Compras
             lblDocumentoProveedor.Name = "lblDocumentoProveedor";
             lblDocumentoProveedor.Size = new Size(96, 19);
             lblDocumentoProveedor.TabIndex = 2;
-            lblDocumentoProveedor.Text = "Documento: —";
+            lblDocumentoProveedor.Text = "CUIT: —";
             lblDocumentoProveedor.TextAlign = ContentAlignment.MiddleRight;
             //
             // cardDatosProducto
@@ -1171,11 +1283,15 @@ namespace CapaPresentacion.Compras
             tblTituloProveedores.PerformLayout();
             tblListadoProveedores.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridProveedores).EndInit();
+            tblMensajeProveedores.ResumeLayout(false);
+            tblMensajeProveedores.PerformLayout();
             cardProducto.ResumeLayout(false);
             tblTituloProductos.ResumeLayout(false);
             tblTituloProductos.PerformLayout();
             tblListadoProductos.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridProductos).EndInit();
+            tblMensajeProductos.ResumeLayout(false);
+            tblMensajeProductos.PerformLayout();
             tblDocumento.ResumeLayout(false);
             cardDatosProveedor.ResumeLayout(false);
             tblDatosProveedor.ResumeLayout(false);
@@ -1207,7 +1323,10 @@ namespace CapaPresentacion.Compras
         private DataGridView gridProveedores;
         private DataGridViewTextBoxColumn colProveedorRazonSocial;
         private DataGridViewTextBoxColumn colProveedorDocumento;
+        private DataGridViewButtonColumn colProveedorAccion;
+        private TableLayoutPanel tblMensajeProveedores;
         private MaterialSkin.Controls.MaterialLabel lblMensajeProveedores;
+        private LinkLabel lnkDeseleccionarProveedor;
         private MaterialSkin.Controls.MaterialCard cardProducto;
         private TableLayoutPanel tblListadoProductos;
         private TableLayoutPanel tblTituloProductos;
@@ -1217,7 +1336,10 @@ namespace CapaPresentacion.Compras
         private DataGridView gridProductos;
         private DataGridViewTextBoxColumn colProductoCodigo;
         private DataGridViewTextBoxColumn colProductoNombre;
+        private DataGridViewButtonColumn colProductoAccion;
+        private TableLayoutPanel tblMensajeProductos;
         private MaterialSkin.Controls.MaterialLabel lblMensajeProductos;
+        private LinkLabel lnkDeseleccionarProducto;
         private TableLayoutPanel tblDocumento;
         private MaterialSkin.Controls.MaterialCard cardDatosProveedor;
         private TableLayoutPanel tblDatosProveedor;

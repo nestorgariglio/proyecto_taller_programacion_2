@@ -9,6 +9,7 @@ El Coordinator selecciona un único flujo según la solicitud:
 - **A — Corrección puntual:** Coordinator → Implementer → verificación específica de Reviewer. Sin spec ni plan cuando el alcance, el comportamiento esperado y el criterio de aceptación están claros y autorizados.
 - **B — Diagnóstico:** Coordinator → Reviewer → informe consolidado.
 - **C — Funcionalidad nueva o cambio amplio:** Coordinator → Planner → aprobación del usuario → Implementer → Reviewer.
+- **D — Funcionalidad nueva autónoma** (**Coordinator → Planner [aprobación interna de spec y plan] → Implementer → Reviewer**). Es el único flujo que exime a los agentes de consultas y aprobaciones intermedias del usuario. Su asignación otorga autorización previa para tomar decisiones de diseño, lógica e implementación, incluyendo modificaciones de código y pruebas, priorizando la arquitectura, las buenas prácticas y la eficiencia en el uso de contexto y tokens. Esta autonomía se limita al objetivo y alcance asignados: no autoriza alterar infraestructura, esquemas, contratos, dependencias ni archivos protegidos. Ante estas restricciones, el agente debe omitir la parte bloqueada, continuar con el trabajo autorizado e informar la limitación.
 
 No convocar agentes ni generar documentos si no aportan valor al objetivo.
 
