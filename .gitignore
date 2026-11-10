@@ -240,3 +240,14 @@ orig_appdb.txt
 test_result.txt
 test_result2.txt
 .claude/
+
+# AI Agent harness and configurations
+AGENTS.md
+CLAUDE.md
+MEMORY.md
+docs/TESTING_POLICY.md
+opencode.json
+.opencode/
+.claude/
+.agents/
+docs/constitution.md
