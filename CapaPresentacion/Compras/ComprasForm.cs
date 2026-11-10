@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -42,7 +43,7 @@ namespace CapaPresentacion.Compras
         private const string ColumnaLineaQuitar = "colLineaQuitar";
 
         private const string TextoProveedorSinElegir = "Sin proveedor seleccionado";
-        private const string TextoDocumentoSinElegir = "Documento: —";
+        private const string TextoDocumentoSinElegir = "CUIT: —";
         private const string TextoProductoSinElegir = "(Sin producto seleccionado)";
         private const string TextoCodigoSinElegir = "Código: —";
         private const string TextoSubtotalInvalido = "Subtotal: —";
@@ -104,6 +105,8 @@ namespace CapaPresentacion.Compras
             AplicarEstiloGrilla(gridProductos);
             AplicarEstiloGrilla(gridProveedores);
             AplicarEstiloGrilla(gridLineas);
+            AplicarColorFilaElegida(gridProveedores);
+            AplicarColorFilaElegida(gridProductos);
             AlinearCabecerasNumericas();
             AplicarEscalaYDisposicion();
 
@@ -136,6 +139,10 @@ namespace CapaPresentacion.Compras
             btnVerHistorial.Click += btnVerHistorial_Click;
             chkMostrarTodosProveedores.CheckedChanged += chkMostrarTodosProveedores_CheckedChanged;
             chkMostrarTodosProductos.CheckedChanged += chkMostrarTodosProductos_CheckedChanged;
+            lnkDeseleccionarProveedor.LinkClicked += lnkDeseleccionarProveedor_LinkClicked;
+            lnkDeseleccionarProducto.LinkClicked += lnkDeseleccionarProducto_LinkClicked;
+            ConectarAccionDeFila(gridProveedores);
+            ConectarAccionDeFila(gridProductos);
 
             RefrescarGrillaLineas();
         }
@@ -167,6 +174,7 @@ namespace CapaPresentacion.Compras
             btnLimpiar.Enabled = habilitado;
             btnVerHistorial.Enabled = habilitado;
             ActualizarEstadoAcciones();
+            ActualizarAccionesDeSeleccion();
         }
 
         /// <summary>
@@ -229,6 +237,21 @@ namespace CapaPresentacion.Compras
             grilla.AlternatingRowsDefaultCellStyle.Alignment = DataGridViewContentAlignment.NotSet;
 
             grilla.GridColor = Color.FromArgb(80, 80, 80);
+        }
+
+        /// <summary>
+        /// Pinta la fila elegida de los selectores con el color de acento oscuro
+        /// <see cref="PintorAccionFila.ColorFilaElegida"/> y texto blanco (5,60:1), también en
+        /// las filas alternadas. Una grilla de WinForms no atenúa la selección al perder el
+        /// foco: mantiene <c>SelectionBackColor</c>. Solo se aplica a los dos selectores.
+        /// </summary>
+        /// <param name="grilla">Grilla de proveedores o de productos.</param>
+        private static void AplicarColorFilaElegida(DataGridView grilla)
+        {
+            grilla.DefaultCellStyle.SelectionBackColor = PintorAccionFila.ColorFilaElegida;
+            grilla.DefaultCellStyle.SelectionForeColor = PintorAccionFila.ColorTextoFilaElegida;
+            grilla.AlternatingRowsDefaultCellStyle.SelectionBackColor = PintorAccionFila.ColorFilaElegida;
+            grilla.AlternatingRowsDefaultCellStyle.SelectionForeColor = PintorAccionFila.ColorTextoFilaElegida;
         }
 
         // =====================================================================
@@ -774,6 +797,7 @@ namespace CapaPresentacion.Compras
 
             _registrando = true;
             btnRegistrar.Enabled = false;
+            ActualizarAccionesDeSeleccion();
 
             try
             {
@@ -799,6 +823,7 @@ namespace CapaPresentacion.Compras
             {
                 _registrando = false;
                 ActualizarEstadoAcciones();
+                ActualizarAccionesDeSeleccion();
             }
         }
 
@@ -918,6 +943,455 @@ namespace CapaPresentacion.Compras
             }
         }
 
+        /// <summary>
+        /// Deselecciona el proveedor elegido sin tocar textos, casillas, producto,
+        /// captura ni líneas, y refresca el listado de productos sin contexto de
+        /// proveedor. Cambiar el contexto invalida por sí solo las respuestas pendientes.
+        /// </summary>
+        /// <returns>Tarea que representa el refresco del listado de productos.</returns>
+        private async Task QuitarProveedorAsync()
+        {
+            _idProveedorElegido = null;
+            _razonSocialProveedor = null;
+            _documentoProveedor = null;
+            MostrarDatosProveedor();
+            QuitarMarcaDeGrilla(gridProveedores);
+
+            await RefrescarProductosAsync();
+        }
+
+        /// <summary>
+        /// Deselecciona el producto elegido, limpia la captura prellenada y refresca
+        /// el listado de proveedores sin contexto de producto. No toca al proveedor
+        /// elegido, los textos de búsqueda, las casillas ni las líneas.
+        /// </summary>
+        /// <returns>Tarea que representa el refresco del listado de proveedores.</returns>
+        private async Task QuitarProductoAsync()
+        {
+            _idProductoElegido = null;
+            _codigoProductoElegido = null;
+            _nombreProductoElegido = null;
+
+            txtCantidad.Text = string.Empty;
+            txtPrecioCompra.Text = string.Empty;
+            txtPrecioVenta.Text = string.Empty;
+
+            MostrarDatosProducto();
+            QuitarMarcaDeGrilla(gridProductos);
+            ActualizarSubtotalPreparacion();
+
+            await RefrescarProveedoresAsync();
+        }
+
+        /// <summary>
+        /// Quita la fila marcada de una grilla sin disparar su manejador de selección.
+        /// </summary>
+        /// <param name="grilla">Grilla cuya marca se quita.</param>
+        private void QuitarMarcaDeGrilla(DataGridView grilla)
+        {
+            using (SuspenderSeleccion())
+            {
+                grilla.CurrentCell = null;
+                grilla.ClearSelection();
+            }
+        }
+
+        // =====================================================================
+        // 4b. ACCIÓN «DESELECCIONAR» DENTRO DE LA FILA ELEGIDA
+        // =====================================================================
+
+        private const string TextoDeseleccionarProveedor = "Deseleccionar proveedor";
+        private const string TextoDeseleccionarProducto = "Deseleccionar producto";
+
+        /// <summary>
+        /// Estado del puntero sobre el botón de una grilla: fila con el puntero sobre el
+        /// botón y fila con el botón presionado (<c>-1</c> si no hay ninguna).
+        /// </summary>
+        private sealed class EstadoAccionGrilla
+        {
+            public int FilaSobreBoton { get; set; } = -1;
+
+            public int FilaPresionada { get; set; } = -1;
+        }
+
+        private readonly EstadoAccionGrilla _accionProveedores = new();
+        private readonly EstadoAccionGrilla _accionProductos = new();
+
+        /// <summary>
+        /// Conecta a una grilla de selección los eventos que dibujan y operan el botón
+        /// «Deseleccionar» de su última columna.
+        /// </summary>
+        /// <param name="grilla">Grilla de proveedores o de productos.</param>
+        private void ConectarAccionDeFila(DataGridView grilla)
+        {
+            grilla.CellPainting += gridAccion_CellPainting;
+            grilla.CellMouseMove += gridAccion_CellMouseMove;
+            grilla.CellMouseLeave += gridAccion_CellMouseLeave;
+            grilla.CellMouseDown += gridAccion_CellMouseDown;
+            grilla.CellMouseUp += gridAccion_CellMouseUp;
+            grilla.CellMouseClick += gridAccion_CellMouseClick;
+            grilla.CellToolTipTextNeeded += gridAccion_CellToolTipTextNeeded;
+            grilla.SizeChanged += gridAccion_SizeChanged;
+        }
+
+        private EstadoAccionGrilla EstadoAccionDe(DataGridView grilla)
+            => ReferenceEquals(grilla, gridProveedores) ? _accionProveedores : _accionProductos;
+
+        private DataGridViewColumn ColumnaAccionDe(DataGridView grilla)
+            => ReferenceEquals(grilla, gridProveedores) ? colProveedorAccion : colProductoAccion;
+
+        /// <summary>
+        /// Indica si la sesión puede operar el módulo y no hay un registro en curso.
+        /// </summary>
+        private bool PuedeOperarSelectores
+            => PoliticaAcceso.PuedeOperarCompras(_rolActual) && !_registrando;
+
+        private bool PuedeDeseleccionarProveedor()
+            => PuedeOperarSelectores && _idProveedorElegido.HasValue;
+
+        /// <summary>
+        /// «Deseleccionar producto» no se ofrece mientras se edita una línea.
+        /// </summary>
+        private bool PuedeDeseleccionarProducto()
+            => PuedeOperarSelectores && _idProductoElegido.HasValue && !_indiceEdicion.HasValue;
+
+        /// <summary>
+        /// Obtiene el identificador de la entidad que muestra una fila leyendo la lista
+        /// enlazada, sin tocar <c>Rows[i]</c>: así el dibujo no desacopla filas compartidas.
+        /// </summary>
+        /// <param name="grilla">Grilla de proveedores o de productos.</param>
+        /// <param name="indiceFila">Índice de la fila en la grilla.</param>
+        /// <returns>El identificador o <see langword="null"/> si la fila no existe.</returns>
+        private int? ObtenerIdDeFila(DataGridView grilla, int indiceFila)
+        {
+            if (grilla.DataSource is not IList lista || indiceFila < 0 || indiceFila >= lista.Count)
+            {
+                return null;
+            }
+
+            object? elemento = lista[indiceFila];
+
+            if (ReferenceEquals(grilla, gridProveedores))
+            {
+                return TryObtenerProveedorSeleccionado(elemento, out int idProveedor, out _, out _)
+                    ? idProveedor
+                    : null;
+            }
+
+            return TryObtenerProductoSeleccionado(elemento, out int idProducto, out _, out _)
+                ? idProducto
+                : null;
+        }
+
+        /// <summary>
+        /// Indica si la entidad elegida de la grilla figura en su listado vigente
+        /// (comparación por identificador).
+        /// </summary>
+        /// <param name="grilla">Grilla de proveedores o de productos.</param>
+        private bool ElegidoEstaEnGrilla(DataGridView grilla)
+        {
+            int? idElegido = ReferenceEquals(grilla, gridProveedores)
+                ? _idProveedorElegido
+                : _idProductoElegido;
+
+            if (!idElegido.HasValue || grilla.DataSource is not IList lista)
+            {
+                return false;
+            }
+
+            for (int indice = 0; indice < lista.Count; indice++)
+            {
+                if (ObtenerIdDeFila(grilla, indice) == idElegido)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Indica si el botón de la columna de acción de una fila debe mostrarse: la
+        /// columna cabe en la grilla, se puede operar y la fila es la de la entidad elegida
+        /// (por identificador, nunca por posición ni por <c>Selected</c>).
+        /// </summary>
+        /// <param name="grilla">Grilla de proveedores o de productos.</param>
+        /// <param name="indiceFila">Índice de la fila en la grilla.</param>
+        private bool EsAccionVisibleEnFila(DataGridView grilla, int indiceFila)
+        {
+            bool esProveedores = ReferenceEquals(grilla, gridProveedores);
+            bool puede = esProveedores ? PuedeDeseleccionarProveedor() : PuedeDeseleccionarProducto();
+            int? idElegido = esProveedores ? _idProveedorElegido : _idProductoElegido;
+
+            return puede
+                && ColumnaAccionDe(grilla).Visible
+                && idElegido.HasValue
+                && ObtenerIdDeFila(grilla, indiceFila) == idElegido;
+        }
+
+        /// <summary>
+        /// Refresca todo lo que depende de qué está elegido y de si se puede operar: invalida
+        /// la columna de acción de ambas grillas, restablece el hover y el cursor y muestra el
+        /// enlace «Deseleccionar» de respaldo solo cuando hay algo para deseleccionar y su
+        /// botón no está disponible en la grilla (el elegido no figura en el listado o la
+        /// columna no cabe).
+        /// </summary>
+        private void ActualizarAccionesDeSeleccion()
+        {
+            RestablecerEstadoAccion(gridProveedores);
+            RestablecerEstadoAccion(gridProductos);
+
+            lnkDeseleccionarProveedor.Visible = PuedeDeseleccionarProveedor()
+                && !BotonEnFilaDisponible(gridProveedores);
+            lnkDeseleccionarProducto.Visible = PuedeDeseleccionarProducto()
+                && !BotonEnFilaDisponible(gridProductos);
+        }
+
+        private bool BotonEnFilaDisponible(DataGridView grilla)
+            => ColumnaAccionDe(grilla).Visible && ElegidoEstaEnGrilla(grilla);
+
+        private void RestablecerEstadoAccion(DataGridView grilla)
+        {
+            EstadoAccionGrilla estado = EstadoAccionDe(grilla);
+            estado.FilaSobreBoton = -1;
+            estado.FilaPresionada = -1;
+            grilla.Cursor = Cursors.Default;
+
+            DataGridViewColumn columna = ColumnaAccionDe(grilla);
+
+            if (columna.Visible && columna.Index >= 0)
+            {
+                grilla.InvalidateColumn(columna.Index);
+            }
+        }
+
+        /// <summary>
+        /// Muestra u oculta la columna de acción según el ancho disponible: cabe si, con la
+        /// barra vertical, quedan los anchos mínimos de las demás columnas y el ancho fijo del
+        /// botón. Si no cabe, la acción queda en el enlace de respaldo en lugar de recortarse.
+        /// </summary>
+        /// <param name="grilla">Grilla de proveedores o de productos.</param>
+        /// <returns><see langword="true"/> si cambió la visibilidad de la columna.</returns>
+        private bool AjustarVisibilidadAccion(DataGridView grilla)
+        {
+            DataGridViewColumn accion = ColumnaAccionDe(grilla);
+            int minimoDemasColumnas = 0;
+
+            foreach (DataGridViewColumn columna in grilla.Columns)
+            {
+                if (!ReferenceEquals(columna, accion) && columna.Visible)
+                {
+                    minimoDemasColumnas += columna.MinimumWidth;
+                }
+            }
+
+            int barraVertical = SystemInformation.GetVerticalScrollBarWidthForDpi(grilla.DeviceDpi);
+            bool cabe = grilla.ClientSize.Width - barraVertical >= minimoDemasColumnas + accion.Width;
+
+            if (accion.Visible == cabe)
+            {
+                return false;
+            }
+
+            accion.Visible = cabe;
+            return true;
+        }
+
+        private void gridAccion_SizeChanged(object? sender, EventArgs e)
+        {
+            if (sender is DataGridView grilla && AjustarVisibilidadAccion(grilla))
+            {
+                ActualizarAccionesDeSeleccion();
+            }
+        }
+
+        /// <summary>
+        /// Dibuja la columna de acción: siempre el fondo y el borde de la celda y, solo en
+        /// la fila de la entidad elegida, el botón «Deseleccionar» con el estado del puntero.
+        /// </summary>
+        private void gridAccion_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (sender is not DataGridView grilla
+                || e.RowIndex < 0
+                || e.ColumnIndex < 0
+                || e.ColumnIndex != ColumnaAccionDe(grilla).Index)
+            {
+                return;
+            }
+
+            e.PaintBackground(e.ClipBounds, true);
+            e.Paint(e.ClipBounds, DataGridViewPaintParts.Border);
+            e.Handled = true;
+
+            if (!EsAccionVisibleEnFila(grilla, e.RowIndex))
+            {
+                return;
+            }
+
+            EstadoAccionGrilla estado = EstadoAccionDe(grilla);
+            EstadoAccionFila estadoBoton = estado.FilaPresionada == e.RowIndex
+                ? EstadoAccionFila.Presionado
+                : estado.FilaSobreBoton == e.RowIndex
+                    ? EstadoAccionFila.Hover
+                    : EstadoAccionFila.Reposo;
+
+            if (e.Graphics is null)
+            {
+                return;
+            }
+
+            PintorAccionFila.Pintar(
+                e.Graphics, e.CellBounds, estadoBoton, e.CellStyle?.Font ?? grilla.Font, grilla.DeviceDpi / 96F);
+        }
+
+        /// <summary>
+        /// Indica si el puntero está sobre el botón visible de una fila (hit-test con el mismo
+        /// rectángulo que usa el dibujo).
+        /// </summary>
+        private bool EstaSobreBotonVisible(DataGridView grilla, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.RowIndex < 0
+                || e.ColumnIndex < 0
+                || e.ColumnIndex != ColumnaAccionDe(grilla).Index
+                || !EsAccionVisibleEnFila(grilla, e.RowIndex))
+            {
+                return false;
+            }
+
+            Rectangle celda = grilla.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false);
+            Rectangle boton = PintorAccionFila.ObtenerRectanguloBoton(
+                new Rectangle(Point.Empty, celda.Size), grilla.DeviceDpi / 96F);
+
+            return boton.Contains(e.Location);
+        }
+
+        private void gridAccion_CellMouseMove(object? sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (sender is not DataGridView grilla)
+            {
+                return;
+            }
+
+            EstadoAccionGrilla estado = EstadoAccionDe(grilla);
+            int filaNueva = EstaSobreBotonVisible(grilla, e) ? e.RowIndex : -1;
+
+            if (estado.FilaSobreBoton == filaNueva)
+            {
+                return;
+            }
+
+            InvalidarCeldaDeAccion(grilla, estado.FilaSobreBoton);
+            estado.FilaSobreBoton = filaNueva;
+            InvalidarCeldaDeAccion(grilla, filaNueva);
+            grilla.Cursor = filaNueva >= 0 ? Cursors.Hand : Cursors.Default;
+        }
+
+        private void gridAccion_CellMouseLeave(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (sender is not DataGridView grilla)
+            {
+                return;
+            }
+
+            EstadoAccionGrilla estado = EstadoAccionDe(grilla);
+            InvalidarCeldaDeAccion(grilla, estado.FilaSobreBoton);
+            InvalidarCeldaDeAccion(grilla, estado.FilaPresionada);
+            estado.FilaSobreBoton = -1;
+            estado.FilaPresionada = -1;
+            grilla.Cursor = Cursors.Default;
+        }
+
+        private void gridAccion_CellMouseDown(object? sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (sender is not DataGridView grilla
+                || e.Button != MouseButtons.Left
+                || !EstaSobreBotonVisible(grilla, e))
+            {
+                return;
+            }
+
+            EstadoAccionDe(grilla).FilaPresionada = e.RowIndex;
+            InvalidarCeldaDeAccion(grilla, e.RowIndex);
+        }
+
+        private void gridAccion_CellMouseUp(object? sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (sender is not DataGridView grilla)
+            {
+                return;
+            }
+
+            EstadoAccionGrilla estado = EstadoAccionDe(grilla);
+            int filaPrevia = estado.FilaPresionada;
+            estado.FilaPresionada = -1;
+            InvalidarCeldaDeAccion(grilla, filaPrevia);
+        }
+
+        /// <summary>
+        /// Deselecciona la entidad elegida al hacer clic sobre el botón de su fila. Un clic
+        /// fuera del botón o en la celda de acción de una fila no elegida no deselecciona.
+        /// </summary>
+        private async void gridAccion_CellMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (sender is not DataGridView grilla
+                || e.Button != MouseButtons.Left
+                || !EstaSobreBotonVisible(grilla, e))
+            {
+                return;
+            }
+
+            if (ReferenceEquals(grilla, gridProveedores))
+            {
+                await EjecutarAsync(QuitarProveedorAsync);
+            }
+            else
+            {
+                await EjecutarAsync(QuitarProductoAsync);
+            }
+        }
+
+        private void gridAccion_CellToolTipTextNeeded(object? sender, DataGridViewCellToolTipTextNeededEventArgs e)
+        {
+            if (sender is DataGridView grilla
+                && e.RowIndex >= 0
+                && e.ColumnIndex == ColumnaAccionDe(grilla).Index
+                && EstadoAccionDe(grilla).FilaSobreBoton == e.RowIndex)
+            {
+                e.ToolTipText = ReferenceEquals(grilla, gridProveedores)
+                    ? TextoDeseleccionarProveedor
+                    : TextoDeseleccionarProducto;
+            }
+        }
+
+        /// <summary>
+        /// Invalida solo la celda de acción de una fila (no toda la grilla).
+        /// </summary>
+        private void InvalidarCeldaDeAccion(DataGridView grilla, int indiceFila)
+        {
+            DataGridViewColumn columna = ColumnaAccionDe(grilla);
+
+            if (indiceFila >= 0 && indiceFila < grilla.Rows.Count && columna.Visible)
+            {
+                grilla.InvalidateCell(columna.Index, indiceFila);
+            }
+        }
+
+        private async void lnkDeseleccionarProveedor_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)
+        {
+            if (PuedeDeseleccionarProveedor())
+            {
+                await EjecutarAsync(QuitarProveedorAsync);
+            }
+        }
+
+        private async void lnkDeseleccionarProducto_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)
+        {
+            if (PuedeDeseleccionarProducto())
+            {
+                await EjecutarAsync(QuitarProductoAsync);
+            }
+        }
+
         // =====================================================================
         // 5. PRESENTACIÓN DE LOS LISTADOS Y DATOS SELECCIONADOS
         // =====================================================================
@@ -948,6 +1422,8 @@ namespace CapaPresentacion.Compras
                 gridProductos.ClearSelection();
                 gridProductos.CurrentCell = null;
             }
+
+            ActualizarAccionesDeSeleccion();
         }
 
         /// <summary>
@@ -974,6 +1450,8 @@ namespace CapaPresentacion.Compras
                 gridProveedores.ClearSelection();
                 gridProveedores.CurrentCell = null;
             }
+
+            ActualizarAccionesDeSeleccion();
         }
 
         private void MostrarDatosProducto()
@@ -983,6 +1461,8 @@ namespace CapaPresentacion.Compras
             lblCodigoProducto.Text = hayProducto
                 ? $"Código: {_codigoProductoElegido}"
                 : TextoCodigoSinElegir;
+
+            ActualizarAccionesDeSeleccion();
         }
 
         private void MostrarDatosProveedor()
@@ -990,11 +1470,12 @@ namespace CapaPresentacion.Compras
             bool hayProveedor = _idProveedorElegido.HasValue;
             lblRazonSocialProveedor.Text = hayProveedor ? _razonSocialProveedor : TextoProveedorSinElegir;
             lblDocumentoProveedor.Text = hayProveedor
-                ? $"Documento: {_documentoProveedor}"
+                ? $"CUIT: {_documentoProveedor}"
                 : TextoDocumentoSinElegir;
 
             // RF-58: sin proveedor elegido la acción primaria queda deshabilitada.
             ActualizarEstadoAcciones();
+            ActualizarAccionesDeSeleccion();
         }
 
         private void SeleccionarProveedorEnGrilla(int idProveedor)
@@ -1023,6 +1504,8 @@ namespace CapaPresentacion.Compras
                     }
                 }
             }
+
+            ActualizarAccionesDeSeleccion();
         }
 
         /// <summary>
@@ -1062,6 +1545,8 @@ namespace CapaPresentacion.Compras
                     break;
                 }
             }
+
+            ActualizarAccionesDeSeleccion();
         }
 
         private static bool TryObtenerProductoSeleccionado(
@@ -1329,9 +1814,12 @@ namespace CapaPresentacion.Compras
             gridLineas.ColumnHeadersDefaultCellStyle.Padding =
                 new Padding(Escalar(3, factor), 0, Escalar(3, factor), 0);
 
-            // Razón social + Documento = 188 lógicos: caben en la grilla de proveedores
-            // con barra vertical en el umbral (≈194) usando el relleno reducido de abajo.
-            colProveedorRazonSocial.MinimumWidth = Escalar(90, factor);
+            // Anchos de la grilla de proveedores (lógicos). El CUIT formateado mide 95 px a
+            // 100 % de DPI y con el relleno reducido necesita 103-104; la columna de acción
+            // («Deseleccionar» mide 89 px) es fija. Razón social 80 + CUIT 104 + acción 104 +
+            // barra vertical 17 = 305, que cabe en el ancho de diseño (309). Con menos ancho
+            // la columna de acción se oculta (AjustarVisibilidadAccion) y queda el enlace.
+            colProveedorRazonSocial.MinimumWidth = Escalar(80, factor);
             colProveedorDocumento.MinimumWidth = Escalar(104, factor);
             gridProveedores.DefaultCellStyle.Padding = rellenoCelda;
             gridProveedores.AlternatingRowsDefaultCellStyle.Padding = rellenoCelda;
@@ -1339,6 +1827,18 @@ namespace CapaPresentacion.Compras
                 new Padding(Escalar(3, factor), 0, Escalar(3, factor), 0);
             colProductoCodigo.MinimumWidth = Escalar(80, factor);
             colProductoNombre.MinimumWidth = Escalar(90, factor);
+
+            // Columna del botón «Deseleccionar»: ancho fijo y estable, escalado con el DPI.
+            int anchoAccion = Escalar(PintorAccionFila.AnchoColumnaLogico, factor);
+            colProveedorAccion.MinimumWidth = anchoAccion;
+            colProveedorAccion.Width = anchoAccion;
+            colProductoAccion.MinimumWidth = anchoAccion;
+            colProductoAccion.Width = anchoAccion;
+
+            if (AjustarVisibilidadAccion(gridProveedores) | AjustarVisibilidadAccion(gridProductos))
+            {
+                ActualizarAccionesDeSeleccion();
+            }
 
             // Suma de mínimos = 544 lógicos: con la barra vertical (~17) cabe en la
             // grilla en el umbral de apilado (≈563) y a 1366x768 a 150 % (≈579).

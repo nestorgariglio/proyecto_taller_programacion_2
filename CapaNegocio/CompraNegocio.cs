@@ -93,11 +93,34 @@ public class CompraNegocio
     private const string MensajeConfirmacionCancelarCompra = "¿Confirma que desea descartar el proveedor y todas las líneas de la compra en carga?";
 
     private readonly AppDbContext _context;
+    private readonly IDbContextFactory<AppDbContext>? _fabricaLectura;
 
-    public CompraNegocio(AppDbContext contexto)
+    /// <param name="contexto">Contexto de las operaciones de escritura y de las lecturas sin fábrica.</param>
+    /// <param name="fabricaLectura">
+    /// Cuando se informa, cada búsqueda y cada lectura de precios usa un contexto
+    /// propio y descartable, de modo que las lecturas simultáneas de la pantalla
+    /// no compartan una misma instancia de EF (no admite uso concurrente).
+    /// </param>
+    public CompraNegocio(AppDbContext contexto, IDbContextFactory<AppDbContext>? fabricaLectura = null)
     {
         ArgumentNullException.ThrowIfNull(contexto);
         _context = contexto;
+        _fabricaLectura = fabricaLectura;
+    }
+
+    /// <summary>
+    /// Ejecuta una lectura con un contexto independiente si hay fábrica; sin ella
+    /// usa el contexto compartido. El resultado debe estar materializado al volver.
+    /// </summary>
+    private async Task<T> EjecutarLecturaAsync<T>(Func<AppDbContext, Task<T>> lectura)
+    {
+        if (_fabricaLectura is null)
+        {
+            return await lectura(_context);
+        }
+
+        await using AppDbContext db = await _fabricaLectura.CreateDbContextAsync();
+        return await lectura(db);
     }
 
     // ---------- Búsquedas y prellenado (RF-9 … RF-17 y RF-38 … RF-41) ----------
@@ -285,16 +308,21 @@ public class CompraNegocio
         try
         {
             string patron = hayTexto ? texto!.ToUpperInvariant() : string.Empty;
-            List<ProveedorSeleccionadoDto> resultado = conContexto
-                ? await ObtenerProveedoresHistoricosAsync(idProducto!.Value, hayTexto, patron)
-                : new List<ProveedorSeleccionadoDto>();
-
-            if (!conContexto || mostrarTodos)
+            List<ProveedorSeleccionadoDto> resultado = await EjecutarLecturaAsync(async db =>
             {
-                int[] idsHistoricos = resultado.Select(p => p.IdProveedor).ToArray();
-                resultado.AddRange(
-                    await ObtenerProveedoresNoHistoricosAsync(idsHistoricos, hayTexto, patron));
-            }
+                List<ProveedorSeleccionadoDto> lista = conContexto
+                    ? await ObtenerProveedoresHistoricosAsync(db, idProducto!.Value, hayTexto, patron)
+                    : new List<ProveedorSeleccionadoDto>();
+
+                if (!conContexto || mostrarTodos)
+                {
+                    int[] idsHistoricos = lista.Select(p => p.IdProveedor).ToArray();
+                    lista.AddRange(
+                        await ObtenerProveedoresNoHistoricosAsync(db, idsHistoricos, hayTexto, patron));
+                }
+
+                return lista;
+            });
 
             if (resultado.Count == 0)
             {
@@ -332,13 +360,13 @@ public class CompraNegocio
     /// reciente primero y sin repetirse.
     /// </summary>
     private async Task<List<ProveedorSeleccionadoDto>> ObtenerProveedoresHistoricosAsync(
-        int idProducto, bool hayTexto, string patron)
+        AppDbContext db, int idProducto, bool hayTexto, string patron)
     {
         var historicos = await (
-                from detalle in _context.DetallesCompra.AsNoTracking()
-                join compra in _context.Compras.AsNoTracking()
+                from detalle in db.DetallesCompra.AsNoTracking()
+                join compra in db.Compras.AsNoTracking()
                     on detalle.IdCompra equals compra.IdCompra
-                join proveedor in _context.Proveedores.AsNoTracking()
+                join proveedor in db.Proveedores.AsNoTracking()
                     on compra.IdProveedor equals proveedor.IdProveedor
                 where detalle.IdProducto == idProducto
                     && proveedor.Estado
@@ -378,9 +406,9 @@ public class CompraNegocio
     /// orden por razón social e identificador.
     /// </summary>
     private async Task<List<ProveedorSeleccionadoDto>> ObtenerProveedoresNoHistoricosAsync(
-        int[] idsExcluidos, bool hayTexto, string patron)
+        AppDbContext db, int[] idsExcluidos, bool hayTexto, string patron)
     {
-        return await _context.Proveedores
+        return await db.Proveedores
             .AsNoTracking()
             .Where(p => p.Estado)
             .Where(p => !idsExcluidos.Contains(p.IdProveedor))
@@ -403,13 +431,13 @@ public class CompraNegocio
     /// más reciente primero y sin repetirse.
     /// </summary>
     private async Task<List<ProductoBuscadoDto>> ObtenerProductosHistoricosAsync(
-        int idProveedor, bool hayTexto, string patron)
+        AppDbContext db, int idProveedor, bool hayTexto, string patron)
     {
         var historicos = await (
-                from detalle in _context.DetallesCompra.AsNoTracking()
-                join compra in _context.Compras.AsNoTracking()
+                from detalle in db.DetallesCompra.AsNoTracking()
+                join compra in db.Compras.AsNoTracking()
                     on detalle.IdCompra equals compra.IdCompra
-                join producto in _context.Productos.AsNoTracking()
+                join producto in db.Productos.AsNoTracking()
                     on detalle.IdProducto equals producto.IdProducto
                 where compra.IdProveedor == idProveedor
                     && producto.Estado
@@ -449,9 +477,9 @@ public class CompraNegocio
     /// orden por nombre e identificador.
     /// </summary>
     private async Task<List<ProductoBuscadoDto>> ObtenerProductosNoHistoricosAsync(
-        int[] idsExcluidos, bool hayTexto, string patron)
+        AppDbContext db, int[] idsExcluidos, bool hayTexto, string patron)
     {
-        return await _context.Productos
+        return await db.Productos
             .AsNoTracking()
             .Where(p => p.Estado)
             .Where(p => !idsExcluidos.Contains(p.IdProducto))
@@ -513,16 +541,21 @@ public class CompraNegocio
         try
         {
             string patron = hayTexto ? texto!.ToUpperInvariant() : string.Empty;
-            List<ProductoBuscadoDto> resultado = conContexto
-                ? await ObtenerProductosHistoricosAsync(idProveedor!.Value, hayTexto, patron)
-                : new List<ProductoBuscadoDto>();
-
-            if (!conContexto || mostrarTodos)
+            List<ProductoBuscadoDto> resultado = await EjecutarLecturaAsync(async db =>
             {
-                int[] idsHistoricos = resultado.Select(p => p.IdProducto).ToArray();
-                resultado.AddRange(
-                    await ObtenerProductosNoHistoricosAsync(idsHistoricos, hayTexto, patron));
-            }
+                List<ProductoBuscadoDto> lista = conContexto
+                    ? await ObtenerProductosHistoricosAsync(db, idProveedor!.Value, hayTexto, patron)
+                    : new List<ProductoBuscadoDto>();
+
+                if (!conContexto || mostrarTodos)
+                {
+                    int[] idsHistoricos = lista.Select(p => p.IdProducto).ToArray();
+                    lista.AddRange(
+                        await ObtenerProductosNoHistoricosAsync(db, idsHistoricos, hayTexto, patron));
+                }
+
+                return lista;
+            });
 
             if (resultado.Count == 0)
             {
@@ -564,11 +597,11 @@ public class CompraNegocio
     {
         try
         {
-            var producto = await _context.Productos
+            var producto = await EjecutarLecturaAsync(db => db.Productos
                 .AsNoTracking()
                 .Where(p => p.IdProducto == idProducto)
                 .Select(p => new { p.IdProducto, p.PrecioCompra, p.PrecioVenta, p.Estado })
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync());
 
             if (producto is null)
             {

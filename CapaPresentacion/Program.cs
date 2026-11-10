@@ -29,7 +29,9 @@ namespace CapaPresentacion
                 {
                     string connectionString = context.Configuration.GetConnectionString("CadenaSQL");
 
-                    services.AddDbContext<AppDbContext>(options =>
+                    // La fábrica también registra AppDbContext (scoped); CompraNegocio
+                    // la usa para que sus lecturas no compartan contexto entre sí.
+                    services.AddDbContextFactory<AppDbContext>(options =>
                         options.UseSqlServer(connectionString));
 
                     services.AddTransient<UsuarioNegocio>();
