@@ -26,6 +26,7 @@ namespace CapaPresentacion
         private readonly AppDbContext _db;
         private readonly GestionUsuariosControl _gestionUsuariosControl;
         private readonly ProductosForm _productosForm;
+        private readonly VentasForm _ventasForm;
         private TabPage? _pestañaAnterior;
         private UsuarioRespuestaDto? _usuarioActual;
         private bool _reconstruyendoNavegacion;
@@ -41,7 +42,8 @@ namespace CapaPresentacion
         public inicio(
             AppDbContext db,
             GestionUsuariosControl gestionUsuariosControl,
-            ProductosForm productosForm)
+            ProductosForm productosForm,
+            VentasForm ventasForm)
         {
             InitializeComponent();
 
@@ -58,6 +60,7 @@ namespace CapaPresentacion
             // La vista de productos llega por DI (patrón de los controles de
             // gestión) y refresca su combo de categorías al entrar en la pestaña.
             _productosForm = productosForm;
+            _ventasForm = ventasForm;
             tab_productos.Enter += tab_productos_Enter;
 
             var materialSkinManager = MaterialSkinManager.Instance;
@@ -88,7 +91,7 @@ namespace CapaPresentacion
 
             // B. Incrustar los subformularios en sus correspondientes TabPages
             AbrirVistaEnTab(_productosForm, tab_productos);
-            AbrirVistaEnTab(new VentasForm(), tab_ventas);
+            AbrirVistaEnTab(_ventasForm, tab_ventas);
             AbrirVistaEnTab(new ComprasForm(), tab_compras);
             AbrirVistaEnTab(new ClientesForm(), tab_clientes);
             AbrirVistaEnTab(new ProveedoresForm(), tab_proveedores);
