@@ -6,5 +6,6 @@ public enum ResultadoCreacionProveedor
 	DatosInvalidos,
 	CuitDuplicado,
 	CorreoDuplicado,
-	ErrorPersistencia
+	ErrorPersistencia,
+	RazonSocialPosiblementeDuplicada
 }

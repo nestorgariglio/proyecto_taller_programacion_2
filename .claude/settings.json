@@ -1,0 +1,6 @@
+{
+  "agent": "coordinator",
+  "permissions": {
+    "defaultMode": "default"
+  }
+}
