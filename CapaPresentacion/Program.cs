@@ -5,7 +5,11 @@ using Microsoft.Extensions.Hosting;
 using CapaDatos;
 using CapaNegocio;
 using CapaPresentacion.Tema;
+using CapaPresentacion.Clientes;
+using CapaPresentacion.Compras;
 using CapaPresentacion.Productos;
+using CapaPresentacion.Proveedores;
+using CapaPresentacion.Ventas;
 
 namespace CapaPresentacion
 {
@@ -26,15 +30,27 @@ namespace CapaPresentacion
                 {
                     string connectionString = context.Configuration.GetConnectionString("CadenaSQL");
 
-                    services.AddDbContext<AppDbContext>(options =>
+                    // La fábrica también registra AppDbContext (scoped); CompraNegocio
+                    // la usa para que sus lecturas no compartan contexto entre sí.
+                    services.AddDbContextFactory<AppDbContext>(options =>
                         options.UseSqlServer(connectionString));
 
                     services.AddTransient<UsuarioNegocio>();
                     services.AddTransient<CategoriaNegocio>();
+                    services.AddTransient<ClienteNegocio>();
+                    services.AddTransient<ProductoNegocio>();
+                    services.AddTransient<ProveedorNegocio>();
+                    services.AddTransient<CompraNegocio>();
+                    services.AddTransient<ConsultaProductosVentaDatos>();
+                    services.AddTransient<CarritoVentaNegocio>();
 
                     services.AddTransient<GestionUsuariosControl>();
                     services.AddTransient<GestionCategoriasControl>();
                     services.AddTransient<ProductosForm>();
+                    services.AddTransient<ClientesForm>();
+                    services.AddTransient<ProveedoresForm>();
+                    services.AddTransient<ComprasForm>();
+                    services.AddTransient<VentasForm>();
                     services.AddTransient<login>();
                     services.AddTransient<inicio>();
 

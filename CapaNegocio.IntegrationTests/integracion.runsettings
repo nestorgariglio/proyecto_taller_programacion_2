@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ejecución de integración contra la BD de pruebas.
+  Uso: dotnet test CapaNegocio.IntegrationTests con el parametro de settings apuntando a este archivo
+
+  ADVERTENCIA DE SEGURIDAD: la identidad Windows actual tiene permisos sysadmin en la instancia.
+  Las guardas de la aplicación (servidor exacto localhost\SQLEXPRESS y DB_NAME() exacto
+  DB_SISTEMA_VENTA_TEST, autenticación integrada, sin credenciales en la cadena) previenen errores
+  accidentales, pero NO son una frontera de seguridad: no impiden que alguien con esa identidad
+  apunte las pruebas a otro destino editando este archivo o el código.
+
+  Los tests no crean, migran ni eliminan la base: solo operan sobre filas con prefijo IT_G70_.
+  Sin este archivo (o sin las variables) todos los tests de integración quedan en Skip.
+-->
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <G70_INTEGRACION>1</G70_INTEGRACION>
+      <G70_TEST_CONNECTION>Server=localhost\SQLEXPRESS;Database=DB_SISTEMA_VENTA_TEST;Integrated Security=true;TrustServerCertificate=True</G70_TEST_CONNECTION>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

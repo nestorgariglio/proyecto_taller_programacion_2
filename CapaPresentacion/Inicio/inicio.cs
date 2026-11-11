@@ -1,4 +1,4 @@
-using CapaDatos;
+﻿using CapaDatos;
 using CapaNegocio;
 using CapaNegocio.DTOs.Usuarios;
 using CapaPresentacion.Clientes;
@@ -23,9 +23,13 @@ namespace CapaPresentacion
     /// </summary>
     public partial class inicio : MaterialForm
     {
-        private readonly AppDbContext _db;
+        private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly GestionUsuariosControl _gestionUsuariosControl;
         private readonly ProductosForm _productosForm;
+        private readonly ClientesForm _clientesForm;
+        private readonly ProveedoresForm _proveedoresForm;
+        private readonly ComprasForm _comprasForm;
+        private readonly VentasForm _ventasForm;
         private TabPage? _pestañaAnterior;
         private UsuarioRespuestaDto? _usuarioActual;
         private bool _reconstruyendoNavegacion;
@@ -39,16 +43,20 @@ namespace CapaPresentacion
         /// Inicializa el formulario principal.
         /// </summary>
         public inicio(
-            AppDbContext db,
+            IDbContextFactory<AppDbContext> dbFactory,
             GestionUsuariosControl gestionUsuariosControl,
-            ProductosForm productosForm)
+            ProductosForm productosForm,
+            ClientesForm clientesForm,
+            ProveedoresForm proveedoresForm,
+            ComprasForm comprasForm,
+            VentasForm ventasForm)
         {
             InitializeComponent();
 
             //LA CONEXIÓN DEL EVENTO
             this.Load += inicio_Load;
 
-            _db = db;
+            _dbFactory = dbFactory;
             _gestionUsuariosControl = gestionUsuariosControl;
             _gestionUsuariosControl.Dock = DockStyle.Fill;
             _gestionUsuariosControl.BackColor = TemaAplicacion.FondoPrincipal;
@@ -59,6 +67,20 @@ namespace CapaPresentacion
             // gestión) y refresca su combo de categorías al entrar en la pestaña.
             _productosForm = productosForm;
             tab_productos.Enter += tab_productos_Enter;
+
+            // La vista del padrón de clientes también llega por DI (D-T8) y recarga
+            // los datos reales al entrar en la pestaña.
+            _clientesForm = clientesForm;
+            tab_clientes.Enter += tab_clientes_Enter;
+
+            _proveedoresForm = proveedoresForm;
+            tab_proveedores.Enter += tab_proveedores_Enter;
+
+            // La pantalla de compras también llega por DI (plan §10.1). Ya no
+            // recarga ningún historial al entrar: el historial se consulta dentro
+            // del modal DetalleCompraForm, así que la pestaña no necesita manejador.
+            _comprasForm = comprasForm;
+            _ventasForm = ventasForm;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -88,10 +110,10 @@ namespace CapaPresentacion
 
             // B. Incrustar los subformularios en sus correspondientes TabPages
             AbrirVistaEnTab(_productosForm, tab_productos);
-            AbrirVistaEnTab(new VentasForm(), tab_ventas);
-            AbrirVistaEnTab(new ComprasForm(), tab_compras);
-            AbrirVistaEnTab(new ClientesForm(), tab_clientes);
-            AbrirVistaEnTab(new ProveedoresForm(), tab_proveedores);
+            AbrirVistaEnTab(_ventasForm, tab_ventas);
+            AbrirVistaEnTab(_comprasForm, tab_compras);
+            AbrirVistaEnTab(_clientesForm, tab_clientes);
+            AbrirVistaEnTab(_proveedoresForm, tab_proveedores);
             AbrirVistaEnTab(new ReportesForm(), tab_reportes);
             AbrirVistaEnTab(new InfoForm(), tab_info);
         }
@@ -251,8 +273,18 @@ namespace CapaPresentacion
 
                 // RF-12: el botón "Gestionar categorías" de la vista de productos
                 // se muestra solo a quien puede acceder al módulo "Categorías"
-                // (Administrador/Encargado); al Vendedor le queda oculto.
-                _productosForm.AplicarRolUsuario(rol);
+                // (Administrador/Encargado); al Vendedor le queda oculto. También
+                // se aplica el gating del ABM de productos (RF-11/RF-18).
+                _productosForm.AplicarRolUsuario(rol, _usuarioActual?.IdUsuario ?? 0);
+
+                // RF-27/D-5: en el padrón, «Desactivar» y «Reactivar» se muestran solo
+                // a Administrador y Encargado; el Vendedor conserva Nuevo y Editar.
+                _clientesForm.AplicarRolUsuario(rol);
+                _proveedoresForm.AplicarRolUsuario(rol);
+
+                // RF-8/RF-59: la pantalla de compras recibe el usuario responsable y
+                // el rol; solo Administrador y Encargado tienen acciones habilitadas.
+                _comprasForm.AplicarSesion(_usuarioActual?.IdUsuario ?? 0, rol);
 
                 TabPage? pestañaASeleccionar = _pestañaAnterior;
                 if (pestañaASeleccionar == null ||
@@ -409,14 +441,33 @@ namespace CapaPresentacion
             }
         }
 
+        private async void tab_clientes_Enter(object? sender, EventArgs e)
+        {
+            // RF-16/RF-20: la grilla del padrón se recarga con datos reales al entrar
+            // en la pestaña, solo para los roles con acceso al módulo (RF-27).
+            if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Clientes"))
+            {
+                await _clientesForm.CargarClientesAsync();
+            }
+        }
+
+        private async void tab_proveedores_Enter(object? sender, EventArgs e)
+        {
+            if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Proveedores"))
+            {
+                await _proveedoresForm.CargarProveedoresAsync();
+            }
+        }
+
         private async void inicio_Shown(object sender, EventArgs e)
         {
             this.ActiveControl = null;
 
             try
             {
-                await _db.Database.OpenConnectionAsync();
-                await _db.Database.CloseConnectionAsync();
+                await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+                await db.Database.OpenConnectionAsync();
+                await db.Database.CloseConnectionAsync();
             }
             catch (Exception ex)
             {

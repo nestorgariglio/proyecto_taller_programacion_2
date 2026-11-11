@@ -178,30 +178,42 @@ public partial class GestionCategoriasControl : UserControl
 
         try
         {
-            // RF-6: primero se determina si hay productos activos vinculados.
-            int productosActivos = await _categoriaNegocio.ContarProductosActivosAsync(categoria.IdCategoria);
+            // RF-6/RF-7/RF-8: la regla vive en CategoriaNegocio. La UI pide la
+            // previsualización, muestra UN único diálogo con el texto del negocio y
+            // reenvía la cantidad confirmada. Cancelar ⇒ sin escritura.
+            PrevisualizacionBajaCategoria previsualizacion =
+                await _categoriaNegocio.PrevisualizarBajaCategoriaAsync(categoria.IdCategoria);
 
-            // RF-7: con activos, el diálogo informa SOLO la cantidad (sin listado)
-            // y ofrece continuar o cancelar. RF-8: sin activos, confirmación simple.
-            string mensaje = productosActivos > 0
-                ? $"La categoría {categoria.Descripcion} tiene {productosActivos} producto(s) activo(s) vinculados. ¿Desea desactivarla igualmente?"
-                : $"¿Confirma que desea dar de baja la categoría {categoria.Descripcion}?";
-
-            var dialogo = new MaterialDialog(
-                formularioPrincipal,
-                "Dar de baja categoría",
-                mensaje,
-                "SÍ",
-                true,
-                "NO");
-
-            // Cancelar ⇒ sin ninguna escritura: la categoría queda sin cambios (RF-7).
-            if (dialogo.ShowDialog(formularioPrincipal) != DialogResult.OK)
+            if (previsualizacion.Resultado != ResultadoPrevisualizacionBaja.Disponible)
             {
+                MaterialMessageBox.Show(this, previsualizacion.Mensaje, "Atención");
                 return;
             }
 
-            RespuestaBajaCategoria respuesta = await _categoriaNegocio.DarBajaCategoriaAsync(categoria.IdCategoria);
+            int productosConfirmados = previsualizacion.ProductosActivos;
+            string mensajeDialogo = previsualizacion.Mensaje;
+            RespuestaBajaCategoria respuesta;
+
+            while (true)
+            {
+                if (!ConfirmarConDialogo(formularioPrincipal, mensajeDialogo))
+                {
+                    return;
+                }
+
+                respuesta = await _categoriaNegocio.DarBajaCategoriaAsync(
+                    categoria.IdCategoria, productosConfirmados);
+
+                if (respuesta.Resultado != ResultadoBajaCategoria.ConfirmacionRequerida)
+                {
+                    break;
+                }
+
+                // La cantidad cambió entre la previsualización y la confirmación:
+                // se muestra la información actualizada y se pide nueva confirmación.
+                productosConfirmados = respuesta.ProductosActivosAfectados;
+                mensajeDialogo = respuesta.Mensaje;
+            }
 
             if (respuesta.Resultado != ResultadoBajaCategoria.Exito)
             {
@@ -225,6 +237,19 @@ public partial class GestionCategoriasControl : UserControl
         {
             ActualizarEstadoBotones();
         }
+    }
+
+    private static bool ConfirmarConDialogo(Form formularioPrincipal, string mensaje)
+    {
+        var dialogo = new MaterialDialog(
+            formularioPrincipal,
+            "Dar de baja categoría",
+            mensaje,
+            "SÍ",
+            true,
+            "NO");
+
+        return dialogo.ShowDialog(formularioPrincipal) == DialogResult.OK;
     }
 
     private async void btnReactivar_Click(object? sender, EventArgs e)
