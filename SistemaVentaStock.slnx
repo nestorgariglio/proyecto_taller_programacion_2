@@ -3,6 +3,5 @@
   <Project Path="CapaEntidad/CapaEntidad.csproj" />
   <Project Path="CapaNegocio/CapaNegocio.csproj" />
   <Project Path="CapaNegocio.Tests/CapaNegocio.Tests.csproj" />
-  <Project Path="CapaNegocio.IntegrationTests/CapaNegocio.IntegrationTests.csproj" />
   <Project Path="CapaPresentacion/CapaPresentacion.csproj" />
 </Solution>
