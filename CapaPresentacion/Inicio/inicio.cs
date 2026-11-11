@@ -1,4 +1,4 @@
-using CapaDatos;
+﻿using CapaDatos;
 using CapaNegocio;
 using CapaNegocio.DTOs.Usuarios;
 using CapaPresentacion.Clientes;
@@ -29,6 +29,7 @@ namespace CapaPresentacion
         private readonly ClientesForm _clientesForm;
         private readonly ProveedoresForm _proveedoresForm;
         private readonly ComprasForm _comprasForm;
+        private readonly VentasForm _ventasForm;
         private TabPage? _pestañaAnterior;
         private UsuarioRespuestaDto? _usuarioActual;
         private bool _reconstruyendoNavegacion;
@@ -47,7 +48,8 @@ namespace CapaPresentacion
             ProductosForm productosForm,
             ClientesForm clientesForm,
             ProveedoresForm proveedoresForm,
-            ComprasForm comprasForm)
+            ComprasForm comprasForm,
+            VentasForm ventasForm)
         {
             InitializeComponent();
 
@@ -78,6 +80,7 @@ namespace CapaPresentacion
             // recarga ningún historial al entrar: el historial se consulta dentro
             // del modal DetalleCompraForm, así que la pestaña no necesita manejador.
             _comprasForm = comprasForm;
+            _ventasForm = ventasForm;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -107,7 +110,7 @@ namespace CapaPresentacion
 
             // B. Incrustar los subformularios en sus correspondientes TabPages
             AbrirVistaEnTab(_productosForm, tab_productos);
-            AbrirVistaEnTab(new VentasForm(), tab_ventas);
+            AbrirVistaEnTab(_ventasForm, tab_ventas);
             AbrirVistaEnTab(_comprasForm, tab_compras);
             AbrirVistaEnTab(_clientesForm, tab_clientes);
             AbrirVistaEnTab(_proveedoresForm, tab_proveedores);

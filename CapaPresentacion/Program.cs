@@ -9,6 +9,7 @@ using CapaPresentacion.Clientes;
 using CapaPresentacion.Compras;
 using CapaPresentacion.Productos;
 using CapaPresentacion.Proveedores;
+using CapaPresentacion.Ventas;
 
 namespace CapaPresentacion
 {
@@ -40,6 +41,8 @@ namespace CapaPresentacion
                     services.AddTransient<ProductoNegocio>();
                     services.AddTransient<ProveedorNegocio>();
                     services.AddTransient<CompraNegocio>();
+                    services.AddTransient<ConsultaProductosVentaDatos>();
+                    services.AddTransient<CarritoVentaNegocio>();
 
                     services.AddTransient<GestionUsuariosControl>();
                     services.AddTransient<GestionCategoriasControl>();
@@ -47,6 +50,7 @@ namespace CapaPresentacion
                     services.AddTransient<ClientesForm>();
                     services.AddTransient<ProveedoresForm>();
                     services.AddTransient<ComprasForm>();
+                    services.AddTransient<VentasForm>();
                     services.AddTransient<login>();
                     services.AddTransient<inicio>();
 
