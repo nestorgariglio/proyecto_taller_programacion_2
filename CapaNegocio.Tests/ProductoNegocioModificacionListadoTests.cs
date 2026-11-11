@@ -28,7 +28,7 @@ public partial class ProductoNegocioTests
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
         DateTime fechaRegistroOriginal = producto.FechaRegistro;
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -90,7 +90,7 @@ public partial class ProductoNegocioTests
         Usuario editor = await SembrarUsuarioAsync(db, 90000002, "bruno.editor@example.com", "Bruno");
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -119,7 +119,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -150,7 +150,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -180,7 +180,7 @@ public partial class ProductoNegocioTests
         Usuario editor = await SembrarUsuarioAsync(db, 90000002, "bruno.editor@example.com", "Bruno");
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario, estado: false);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -219,7 +219,7 @@ public partial class ProductoNegocioTests
             db, 90000003, "carla.editora@example.com", "Carla");
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto primeraEdicion = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -267,7 +267,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -299,7 +299,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -335,7 +335,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -366,7 +366,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -392,7 +392,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -423,7 +423,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -454,7 +454,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -480,7 +480,7 @@ public partial class ProductoNegocioTests
         await using var db = await CrearContextoVacioAsync();
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
         Usuario creador = await SembrarUsuarioAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -507,7 +507,7 @@ public partial class ProductoNegocioTests
         await using var db = await CrearContextoVacioAsync();
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
         Usuario creador = await SembrarUsuarioAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -537,7 +537,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -568,7 +568,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -598,7 +598,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         CatalogoDeListado catalogo = await SembrarCatalogoDeListadoAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto());
@@ -630,7 +630,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCatalogoDeListadoAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Estado = null });
@@ -648,7 +648,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCatalogoDeListadoAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Estado = estado });
@@ -667,7 +667,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCatalogoDeListadoAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Texto = texto });
@@ -685,7 +685,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCatalogoDeListadoAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Texto = texto });
@@ -703,7 +703,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCatalogoDeListadoAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Texto = texto });
@@ -719,7 +719,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         CatalogoDeListado catalogo = await SembrarCatalogoDeListadoAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { IdCategoria = catalogo.Lacteos.IdCategoria });
@@ -735,7 +735,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         CatalogoDeListado catalogo = await SembrarCatalogoDeListadoAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto
@@ -757,7 +757,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCatalogoDeListadoAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Texto = "inexistente-xyz" });
@@ -774,7 +774,7 @@ public partial class ProductoNegocioTests
         await SembrarProductoParaEdicionAsync(
             db, "7790001000099", "Gaseosa", bebidas.IdCategoria, creador.IdUsuario,
             precioCompra: 0.99m, precioVenta: 1234.56m);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto());

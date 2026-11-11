@@ -17,15 +17,15 @@ namespace CapaNegocio
             "No tiene permisos para gestionar productos. "
             + "Solo un Administrador o Encargado puede realizar esta operación.";
 
-        private readonly AppDbContext _db;
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
 
         /// <summary>
-        /// Inicializa una instancia con el contexto de datos utilizado para consultar y persistir productos.
+        /// Inicializa el negocio con una fábrica de contextos independientes por operación.
         /// </summary>
-        /// <param name="db">Contexto de persistencia de la aplicación.</param>
-        public ProductoNegocio(AppDbContext db)
+        /// <param name="contextFactory">Fábrica de contextos de persistencia.</param>
+        public ProductoNegocio(IDbContextFactory<AppDbContext> contextFactory)
         {
-            _db = db;
+            _contextFactory = contextFactory;
         }
 
         private static ProductoRespuestaDto MapearProducto(
@@ -54,9 +54,9 @@ namespace CapaNegocio
         /// </summary>
         /// <param name="idCategoria">Identificador de la categoría a consultar.</param>
         /// <returns>Descripción de la categoría, o <c>null</c> cuando no existe.</returns>
-        private async Task<string?> ObtenerNombreCategoriaAsync(int idCategoria)
+        private async Task<string?> ObtenerNombreCategoriaAsync(AppDbContext db, int idCategoria)
         {
-            return await _db.Categorias
+            return await db.Categorias
                 .AsNoTracking()
                 .Where(categoria => categoria.IdCategoria == idCategoria)
                 .Select(categoria => categoria.Descripcion)
@@ -72,9 +72,9 @@ namespace CapaNegocio
         /// </summary>
         /// <param name="idUsuario">Identificador del usuario que ejecuta la operación.</param>
         /// <returns>El usuario con su rol resuelto, o <c>null</c> cuando no existe.</returns>
-        private async Task<Usuario?> ObtenerUsuarioConRolAsync(int idUsuario)
+        private async Task<Usuario?> ObtenerUsuarioConRolAsync(AppDbContext db, int idUsuario)
         {
-            return await _db.Usuarios
+            return await db.Usuarios
                 .AsNoTracking()
                 .Include(usuario => usuario.Rol)
                 .FirstOrDefaultAsync(usuario => usuario.IdUsuario == idUsuario);
@@ -187,12 +187,12 @@ namespace CapaNegocio
         /// Mensaje en español específico del duplicado cuando el código ya
         /// existe; <c>null</c> cuando está disponible.
         /// </returns>
-        private async Task<string?> ValidarUnicidadCodigoAsync(string codigoRecortado)
+        private async Task<string?> ValidarUnicidadCodigoAsync(AppDbContext db, string codigoRecortado)
         {
             // El catálogo es pequeño: se comparan en memoria con
             // OrdinalIgnoreCase (idéntico en SQL Server e InMemory, sin
             // depender de la colación del proveedor).
-            var existentes = await _db.Productos
+            var existentes = await db.Productos
                 .AsNoTracking()
                 .Select(producto => new { producto.Codigo, producto.Estado })
                 .ToListAsync();
@@ -250,6 +250,7 @@ namespace CapaNegocio
         public async Task<RespuestaCreacionProducto> CrearProductoAsync(
             CrearProductoDto entradaProducto)
         {
+            await using var db = await _contextFactory.CreateDbContextAsync();
             // RF-2/RF-4/RF-5: el Recorte se aplica siempre antes de validar y guardar.
             string? codigoRecortado = entradaProducto.Codigo?.Trim();
             string? nombreRecortado = entradaProducto.Nombre?.Trim();
@@ -312,7 +313,7 @@ namespace CapaNegocio
                 };
             }
 
-            Usuario? usuario = await ObtenerUsuarioConRolAsync(entradaProducto.IdUsuario);
+            Usuario? usuario = await ObtenerUsuarioConRolAsync(db, entradaProducto.IdUsuario);
 
             if (usuario is null)
             {
@@ -335,7 +336,7 @@ namespace CapaNegocio
             }
 
             // RF-6/D-5: la categoría debe existir y estar activa.
-            Categoria? categoria = await _db.Categorias
+            Categoria? categoria = await db.Categorias
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.IdCategoria == entradaProducto.IdCategoria);
 
@@ -360,7 +361,7 @@ namespace CapaNegocio
             // RF-3/D-1: el Código debe ser único en todo el catálogo, también
             // contra un producto inactivo (se avisa cómo reactivarlo, sin
             // reactivarlo automáticamente).
-            string? mensajeCodigoDuplicado = await ValidarUnicidadCodigoAsync(codigoRecortado!);
+            string? mensajeCodigoDuplicado = await ValidarUnicidadCodigoAsync(db, codigoRecortado!);
 
             if (mensajeCodigoDuplicado is not null)
             {
@@ -390,8 +391,8 @@ namespace CapaNegocio
                 MotivoAjusteStock = null
             };
 
-            _db.Productos.Add(nuevoProducto);
-            await _db.SaveChangesAsync();
+            db.Productos.Add(nuevoProducto);
+            await db.SaveChangesAsync();
 
             return new RespuestaCreacionProducto
             {
@@ -426,6 +427,7 @@ namespace CapaNegocio
         public async Task<RespuestaModificacionProducto> ModificarProductoAsync(
             ModificarProductoDto entradaProducto)
         {
+            await using var db = await _contextFactory.CreateDbContextAsync();
             if (entradaProducto.IdProducto <= 0)
             {
                 return new RespuestaModificacionProducto
@@ -484,7 +486,7 @@ namespace CapaNegocio
                 };
             }
 
-            Usuario? usuario = await ObtenerUsuarioConRolAsync(entradaProducto.IdUsuario);
+            Usuario? usuario = await ObtenerUsuarioConRolAsync(db, entradaProducto.IdUsuario);
 
             if (usuario is null)
             {
@@ -506,7 +508,7 @@ namespace CapaNegocio
                 };
             }
 
-            Producto? producto = await _db.Productos
+            Producto? producto = await db.Productos
                 .FirstOrDefaultAsync(p => p.IdProducto == entradaProducto.IdProducto);
 
             if (producto is null)
@@ -519,7 +521,7 @@ namespace CapaNegocio
             }
 
             // RF-6/D-5: la categoría debe existir y estar activa (también al editar).
-            Categoria? categoria = await _db.Categorias
+            Categoria? categoria = await db.Categorias
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.IdCategoria == entradaProducto.IdCategoria);
 
@@ -553,7 +555,7 @@ namespace CapaNegocio
             producto.PrecioVenta = entradaProducto.PrecioVenta;
             producto.IdUsuarioModifica = entradaProducto.IdUsuario;
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
 
             return new RespuestaModificacionProducto
             {
@@ -593,6 +595,7 @@ namespace CapaNegocio
         public async Task<ConfirmacionCambioEstadoProducto> ObtenerConfirmacionCambioEstadoAsync(
             int idProducto)
         {
+            await using var db = await _contextFactory.CreateDbContextAsync();
             if (idProducto <= 0)
             {
                 return new ConfirmacionCambioEstadoProducto
@@ -605,7 +608,7 @@ namespace CapaNegocio
 
             // RF-24: una sola consulta de lectura, con proyección mínima: el
             // estado actual de la base es el que decide la acción aplicable.
-            var producto = await _db.Productos
+            var producto = await db.Productos
                 .AsNoTracking()
                 .Where(p => p.IdProducto == idProducto)
                 .Select(p => new { p.IdProducto, p.Nombre, p.Estado })
@@ -664,6 +667,7 @@ namespace CapaNegocio
         /// <returns>Una respuesta con el resultado y el producto afectado si hubo cambio.</returns>
         public async Task<RespuestaBajaProducto> DarBajaProductoAsync(int idProducto, int idUsuario)
         {
+            await using var db = await _contextFactory.CreateDbContextAsync();
             if (idProducto <= 0)
             {
                 return new RespuestaBajaProducto
@@ -683,7 +687,7 @@ namespace CapaNegocio
                 };
             }
 
-            Usuario? usuario = await ObtenerUsuarioConRolAsync(idUsuario);
+            Usuario? usuario = await ObtenerUsuarioConRolAsync(db, idUsuario);
 
             if (usuario is null)
             {
@@ -705,7 +709,7 @@ namespace CapaNegocio
                 };
             }
 
-            Producto? producto = await _db.Productos
+            Producto? producto = await db.Productos
                 .FirstOrDefaultAsync(p => p.IdProducto == idProducto);
 
             if (producto is null)
@@ -731,9 +735,9 @@ namespace CapaNegocio
             // registra quién lo hizo. No se toca FechaModificacion (D-23).
             producto.Estado = false;
             producto.IdUsuarioModifica = idUsuario;
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
 
-            string? nombreCategoria = await ObtenerNombreCategoriaAsync(producto.IdCategoria);
+            string? nombreCategoria = await ObtenerNombreCategoriaAsync(db, producto.IdCategoria);
 
             return new RespuestaBajaProducto
             {
@@ -764,6 +768,7 @@ namespace CapaNegocio
         public async Task<RespuestaReactivacionProducto> ReactivarProductoAsync(
             int idProducto, int idUsuario)
         {
+            await using var db = await _contextFactory.CreateDbContextAsync();
             if (idProducto <= 0)
             {
                 return new RespuestaReactivacionProducto
@@ -783,7 +788,7 @@ namespace CapaNegocio
                 };
             }
 
-            Usuario? usuario = await ObtenerUsuarioConRolAsync(idUsuario);
+            Usuario? usuario = await ObtenerUsuarioConRolAsync(db, idUsuario);
 
             if (usuario is null)
             {
@@ -805,7 +810,7 @@ namespace CapaNegocio
                 };
             }
 
-            Producto? producto = await _db.Productos
+            Producto? producto = await db.Productos
                 .FirstOrDefaultAsync(p => p.IdProducto == idProducto);
 
             if (producto is null)
@@ -829,7 +834,7 @@ namespace CapaNegocio
 
             // D-12/RF-13: ninguna reactivación deja un producto activo colgando de
             // una categoría inactiva (o inexistente, caso defensivo).
-            Categoria? categoria = await _db.Categorias
+            Categoria? categoria = await db.Categorias
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.IdCategoria == producto.IdCategoria);
 
@@ -857,7 +862,7 @@ namespace CapaNegocio
             // registra quién lo hizo. No se toca FechaModificacion (D-23).
             producto.Estado = true;
             producto.IdUsuarioModifica = idUsuario;
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
 
             return new RespuestaReactivacionProducto
             {
@@ -884,6 +889,7 @@ namespace CapaNegocio
         /// <returns>Una respuesta con el resultado y el producto ajustado si hubo cambio.</returns>
         public async Task<RespuestaAjusteStock> AjustarStockAsync(AjustarStockDto entradaAjuste)
         {
+            await using var db = await _contextFactory.CreateDbContextAsync();
             if (entradaAjuste.IdProducto <= 0)
             {
                 return new RespuestaAjusteStock
@@ -937,7 +943,7 @@ namespace CapaNegocio
 
             // RF-11/D-18-bis: el permiso se valida en CapaNegocio resolviendo el
             // rol del usuario (join con ROL), nunca con un rol enviado por la UI.
-            Usuario? usuario = await _db.Usuarios
+            Usuario? usuario = await db.Usuarios
                 .AsNoTracking()
                 .Include(u => u.Rol)
                 .FirstOrDefaultAsync(u => u.IdUsuario == entradaAjuste.IdUsuario);
@@ -961,7 +967,7 @@ namespace CapaNegocio
                 };
             }
 
-            Producto? producto = await _db.Productos
+            Producto? producto = await db.Productos
                 .FirstOrDefaultAsync(p => p.IdProducto == entradaAjuste.IdProducto);
 
             if (producto is null)
@@ -978,9 +984,9 @@ namespace CapaNegocio
             producto.Stock = entradaAjuste.NuevoStock;
             producto.MotivoAjusteStock = motivoRecortado;
             producto.IdUsuarioModifica = entradaAjuste.IdUsuario;
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
 
-            string? nombreCategoria = await ObtenerNombreCategoriaAsync(producto.IdCategoria);
+            string? nombreCategoria = await ObtenerNombreCategoriaAsync(db, producto.IdCategoria);
 
             return new RespuestaAjusteStock
             {
@@ -1016,8 +1022,9 @@ namespace CapaNegocio
         public async Task<List<ProductoRespuestaDto>> ListarProductosAsync(
             FiltroProductosDto filtro, int? umbralStock = null)
         {
+            await using var db = await _contextFactory.CreateDbContextAsync();
             // Consulta de solo lectura (RF-15/RNF-3).
-            IQueryable<Producto> consulta = _db.Productos.AsNoTracking();
+            IQueryable<Producto> consulta = db.Productos.AsNoTracking();
 
             string? texto = filtro.Texto?.Trim();
             if (!string.IsNullOrEmpty(texto))
@@ -1173,7 +1180,8 @@ namespace CapaNegocio
         /// <returns>Cantidad total de productos, activos e inactivos.</returns>
         public async Task<int> ContarProductosAsync()
         {
-            return await _db.Productos
+            await using var db = await _contextFactory.CreateDbContextAsync();
+            return await db.Productos
                 .AsNoTracking()
                 .CountAsync();
         }

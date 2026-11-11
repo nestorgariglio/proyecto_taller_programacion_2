@@ -34,7 +34,7 @@ public partial class ProductoNegocioTests
         await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario,
             stock: stock);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto(), umbralStock);
@@ -58,7 +58,7 @@ public partial class ProductoNegocioTests
         await SembrarProductoParaEdicionAsync(
             db, "7790001000035", "ConStock", bebidas.IdCategoria, creador.IdUsuario,
             stock: 1);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto(), 0);
@@ -93,7 +93,7 @@ public partial class ProductoNegocioTests
         await SembrarProductoParaEdicionAsync(
             db, "7790001000042", "Holgado", bebidas.IdCategoria, creador.IdUsuario,
             stock: 10);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         // Sin umbral (modo degradado de RF-10) el listado sigue siendo el de
         // siempre y se obtiene con la llamada de un solo argumento.
@@ -116,7 +116,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         CatalogoDeStock catalogo = await SembrarCatalogoDeStockAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { SoloCriticos = true }, 5);
@@ -139,7 +139,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         CatalogoDeStock catalogo = await SembrarCatalogoDeStockAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         // Modo degradado (RF-10): sin umbral solo el stock agotado (0 o negativo)
         // es crítico, aunque el catálogo tenga productos con stock positivo 1-4.
@@ -164,7 +164,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCatalogoDeStockAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { SoloCriticos = soloCriticos }, 5);
@@ -178,7 +178,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         CatalogoDeStock catalogo = await SembrarCatalogoDeStockAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Texto = "7790001", SoloCriticos = true },
@@ -208,7 +208,7 @@ public partial class ProductoNegocioTests
         await SembrarProductoParaEdicionAsync(
             db, "7790001000035", "Holgado en bebidas", bebidas.IdCategoria,
             creador.IdUsuario, stock: 10);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto
@@ -238,7 +238,7 @@ public partial class ProductoNegocioTests
         await SembrarProductoParaEdicionAsync(
             db, "7790001000035", "Holgado activo", bebidas.IdCategoria,
             creador.IdUsuario, stock: 10);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Estado = true, SoloCriticos = true },
@@ -254,7 +254,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCatalogoDeStockAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Texto = "inexistente-xyz", SoloCriticos = true },
@@ -281,7 +281,7 @@ public partial class ProductoNegocioTests
             db, "12345678", "Zeta", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
         await SembrarProductoParaEdicionAsync(
             db, "9912345678000", "Alfa", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Texto = texto }, 5);
@@ -301,7 +301,7 @@ public partial class ProductoNegocioTests
             db, "12345678", "Zeta", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
         await SembrarProductoParaEdicionAsync(
             db, "9912345678000", "Alfa", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         // "1234" coincide con los dos códigos pero no es idéntico a ninguno:
         // no hay priorización y se respeta el orden por Nombre.
@@ -327,7 +327,7 @@ public partial class ProductoNegocioTests
             db, "1234567891", "Alfa", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
         await SembrarProductoParaEdicionAsync(
             db, "7790001000035", "Beta", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Texto = "123456789" }, 5);
@@ -354,7 +354,7 @@ public partial class ProductoNegocioTests
             db, "12345678", "Zeta Dos", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
         await SembrarProductoParaEdicionAsync(
             db, "9912345678000", "Alfa", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Texto = "12345678" }, 5);
@@ -376,7 +376,7 @@ public partial class ProductoNegocioTests
             db, "12345678", "Zeta", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
         Producto agotado = await SembrarProductoParaEdicionAsync(
             db, "9912345678000", "Alfa", bebidas.IdCategoria, creador.IdUsuario, stock: 0);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto { Texto = "12345678", SoloCriticos = true },
@@ -402,7 +402,7 @@ public partial class ProductoNegocioTests
             db, "7790001000011", "Yerba", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
         await SembrarProductoParaEdicionAsync(
             db, "7790001000035", "Aceite", bebidas.IdCategoria, creador.IdUsuario, stock: 10);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         List<ProductoRespuestaDto> listado = await negocio.ListarProductosAsync(
             new FiltroProductosDto(), 5);
@@ -420,7 +420,7 @@ public partial class ProductoNegocioTests
     public async Task ContarProductosAsync_CatalogoVacio_DevuelveCero()
     {
         await using var db = await CrearContextoVacioAsync();
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         int total = await negocio.ContarProductosAsync();
 
@@ -442,7 +442,7 @@ public partial class ProductoNegocioTests
         await SembrarProductoParaEdicionAsync(
             db, "7790001000042", "Inactivo", bebidas.IdCategoria, creador.IdUsuario,
             estado: false);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         int total = await negocio.ContarProductosAsync();
 
@@ -457,7 +457,7 @@ public partial class ProductoNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCatalogoDeStockAsync(db);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         var antes = await db.Productos
             .AsNoTracking()
