@@ -23,7 +23,7 @@ namespace CapaPresentacion
     /// </summary>
     public partial class inicio : MaterialForm
     {
-        private readonly AppDbContext _db;
+        private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly GestionUsuariosControl _gestionUsuariosControl;
         private readonly ProductosForm _productosForm;
         private readonly ClientesForm _clientesForm;
@@ -42,7 +42,7 @@ namespace CapaPresentacion
         /// Inicializa el formulario principal.
         /// </summary>
         public inicio(
-            AppDbContext db,
+            IDbContextFactory<AppDbContext> dbFactory,
             GestionUsuariosControl gestionUsuariosControl,
             ProductosForm productosForm,
             ClientesForm clientesForm,
@@ -54,7 +54,7 @@ namespace CapaPresentacion
             //LA CONEXIÓN DEL EVENTO
             this.Load += inicio_Load;
 
-            _db = db;
+            _dbFactory = dbFactory;
             _gestionUsuariosControl = gestionUsuariosControl;
             _gestionUsuariosControl.Dock = DockStyle.Fill;
             _gestionUsuariosControl.BackColor = TemaAplicacion.FondoPrincipal;
@@ -462,8 +462,9 @@ namespace CapaPresentacion
 
             try
             {
-                await _db.Database.OpenConnectionAsync();
-                await _db.Database.CloseConnectionAsync();
+                await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+                await db.Database.OpenConnectionAsync();
+                await db.Database.CloseConnectionAsync();
             }
             catch (Exception ex)
             {

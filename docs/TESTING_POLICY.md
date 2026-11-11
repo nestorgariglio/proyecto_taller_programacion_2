@@ -113,9 +113,13 @@ El agente devuelve el código de salida, un resumen breve y la ruta del log. El 
 
 - Dos niveles de pruebas: (1) `CapaNegocio.Tests`, unitarias con InMemory, sin motor real, ejecutables de forma rutinaria; (2) `CapaNegocio.IntegrationTests`, contra SQL Server real, solo de forma explícita y dirigida.
 - El proyecto `CapaNegocio.IntegrationTests` queda fuera de `SistemaVentaStock.slnx`: `dotnet build/test SistemaVentaStock.slnx` no lo compila ni lo ejecuta.
-- Activación explícita: se ejecuta con `dotnet test CapaNegocio.IntegrationTests --settings integracion.runsettings`. Sin `--settings integracion.runsettings` todas las pruebas se omiten (no fallan ni tocan ninguna base).
+- Activación explícita: se ejecuta con `dotnet test CapaNegocio.IntegrationTests --settings integracion.runsettings`. Sin `--settings integracion.runsettings` las pruebas de Compras se omiten. Las pruebas de Categorías utilizan una activación diferente, detallada en §11.
 - Guardas obligatorias antes de cualquier operación: el servidor debe ser exactamente `localhost\SQLEXPRESS` y la base exactamente `DB_SISTEMA_VENTA_TEST`; el nombre de la base se confirma por SQL con `DB_NAME()` y no solo por la cadena de conexión. Si alguna guarda falla, la prueba se aborta sin operar.
 - Prohibido en estas pruebas: `EnsureCreated`, `EnsureDeleted` y `Migrate`. El esquema de la base de pruebas se administra fuera de las pruebas.
 - `DB_SISTEMA_VENTA` (base real) está protegida: ninguna prueba automatizada la usa. `DB_SISTEMA_VENTA_PERF` queda fuera de alcance de estas pruebas.
 - Los comandos de la conexión y de las pruebas usan timeouts de 30 segundos.
 - Advertencia: la identidad Windows actual tiene permisos sysadmin en la instancia. Las guardas de aplicación previenen errores accidentales pero NO constituyen una frontera de seguridad.
+
+## 11. Pruebas de Categorías (`G70_TEST_CONNECTION`)
+
+Las pruebas incorporadas desde Categorías utilizan la variable de entorno `G70_TEST_CONNECTION`, exclusivamente para `DB_SISTEMA_VENTA_TEST`. No imprimir ni versionar su valor. Sin esa configuración quedan omitidas, no aprobadas. Las pruebas transaccionales revierten sus cambios; las de unicidad pueden dejar filas `ITEST-%`. Estas pruebas no heredan las guardas de instancia ni la activación de Compras. No ejecutar el proyecto de integración completo sin revisar ambas configuraciones y obtener autorización explícita.

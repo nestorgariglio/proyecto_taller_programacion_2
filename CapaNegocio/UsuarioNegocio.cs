@@ -17,15 +17,15 @@ namespace CapaNegocio
     /// </summary>
     public class UsuarioNegocio
     {
-        private readonly AppDbContext _db;
+        private readonly IDbContextFactory<AppDbContext> _dbFactory;
 
         /// <summary>
-        /// Inicializa una instancia con el contexto de datos utilizado para consultar usuarios.
+        /// Inicializa una instancia con la fábrica de contextos de datos.
         /// </summary>
-        /// <param name="db">Contexto de persistencia de la aplicación.</param>
-        public UsuarioNegocio(AppDbContext db)
+        /// <param name="dbFactory">Fábrica de contextos; cada operación usa uno propio.</param>
+        public UsuarioNegocio(IDbContextFactory<AppDbContext> dbFactory)
         {
-            _db = db;
+            _dbFactory = dbFactory;
         }
 
         private static UsuarioRespuestaDto MapearUsuario(
@@ -110,7 +110,9 @@ namespace CapaNegocio
                 };
             }
 
-            var usuario = await _db.Usuarios
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            var usuario = await db.Usuarios
                 .Include(u => u.Rol)
                 .FirstOrDefaultAsync(u => u.Dni == dni);
 
@@ -162,7 +164,7 @@ namespace CapaNegocio
             if (!claveValida)
             {
                 usuario.IntentosFallidos++;
-                await _db.SaveChangesAsync();
+                await db.SaveChangesAsync();
 
                 if (usuario.IntentosFallidos >= 3)
                 {
@@ -184,7 +186,7 @@ namespace CapaNegocio
             if (usuario.IntentosFallidos > 0)
             {
                 usuario.IntentosFallidos = 0;
-                await _db.SaveChangesAsync();
+                await db.SaveChangesAsync();
             }
 
             return new RespuestaAutenticacion
@@ -206,7 +208,9 @@ namespace CapaNegocio
         public async Task<IReadOnlyList<UsuarioRespuestaDto>> ListarUsuariosAsync(
             bool incluirInactivos = true)
         {
-            IQueryable<Usuario> consulta = _db.Usuarios
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            IQueryable<Usuario> consulta = db.Usuarios
                 .AsNoTracking();
 
             if (!incluirInactivos)
@@ -242,7 +246,9 @@ namespace CapaNegocio
         /// </returns>
         public async Task<IReadOnlyList<RolRespuestaDto>> ListarRolesAsync()
         {
-            return await _db.Roles
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            return await db.Roles
                 .AsNoTracking()
                 .Where(rol => rol.Descripcion != null)
                 .OrderBy(rol => rol.Descripcion)
@@ -290,7 +296,9 @@ namespace CapaNegocio
                 correo = null;
             }
 
-            Rol? rol = await _db.Roles
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            Rol? rol = await db.Roles
                 .AsNoTracking()
                 .FirstOrDefaultAsync(rol => rol.IdRol == entradaUsuario.IdRol);
 
@@ -303,7 +311,7 @@ namespace CapaNegocio
                 };
             }
 
-            var datosDuplicados = await _db.Usuarios
+            var datosDuplicados = await db.Usuarios
                 .AsNoTracking()
                 .Where(u =>
                     u.Dni == entradaUsuario.Dni ||
@@ -345,8 +353,8 @@ namespace CapaNegocio
                 Estado = true
             };
 
-            _db.Usuarios.Add(nuevoUsuario);
-            await _db.SaveChangesAsync();
+            db.Usuarios.Add(nuevoUsuario);
+            await db.SaveChangesAsync();
 
             return new RespuestaCreacion
             {
@@ -397,7 +405,9 @@ namespace CapaNegocio
                 };
             }
 
-            Usuario? usuario = await _db.Usuarios
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            Usuario? usuario = await db.Usuarios
                 .FirstOrDefaultAsync(u => u.IdUsuario == entradaUsuario.IdUsuario);
 
             if (usuario is null)
@@ -416,7 +426,7 @@ namespace CapaNegocio
                 correo = null;
             }
 
-            Rol? rol = await _db.Roles
+            Rol? rol = await db.Roles
                 .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.IdRol == entradaUsuario.IdRol);
 
@@ -429,7 +439,7 @@ namespace CapaNegocio
                 };
             }
 
-            var datosDuplicados = await _db.Usuarios
+            var datosDuplicados = await db.Usuarios
                 .AsNoTracking()
                 .Where(u =>
                     u.IdUsuario != entradaUsuario.IdUsuario &&
@@ -472,7 +482,7 @@ namespace CapaNegocio
                 usuario.Clave = BC.HashPassword(entradaUsuario.Clave);
             }
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
 
             return new RespuestaModificacion
             {
@@ -501,7 +511,9 @@ namespace CapaNegocio
                 };
             }
 
-            Usuario? usuario = await _db.Usuarios
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            Usuario? usuario = await db.Usuarios
                 .Include(u => u.Rol)
                 .FirstOrDefaultAsync(u => u.IdUsuario == idUsuario);
 
@@ -525,7 +537,7 @@ namespace CapaNegocio
             }
 
             usuario.Estado = false;
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
 
             return new RespuestaBaja
             {
@@ -553,7 +565,9 @@ namespace CapaNegocio
                 };
             }
 
-            Usuario? usuario = await _db.Usuarios
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            Usuario? usuario = await db.Usuarios
                 .Include(u => u.Rol)
                 .FirstOrDefaultAsync(u => u.IdUsuario == idUsuario);
 
@@ -578,7 +592,7 @@ namespace CapaNegocio
 
             usuario.Estado = true;
             usuario.IntentosFallidos = 0;
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
 
             return new RespuestaActivacion
             {
