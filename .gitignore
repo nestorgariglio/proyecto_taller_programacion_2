@@ -229,3 +229,51 @@ $RECYCLE.BIN/
 # Registros
 log.txt
 *.log
+
+# OpenCode y archivos temporales de agentes
+build_output.txt
+test_output.txt
+orig_appdb.txt
+.opencode/
+
+# Logs y outputs locales
+test_result.txt
+test_result2.txt
+.claude/
+
+# AI Agent harness and configurations
+AGENTS.md
+CLAUDE.md
+MEMORY.md
+opencode.json
+.opencode/
+.claude/
+.agents/
+docs/constitution.md
+
+# Arnés de IA y archivos temporales de sesión
+*.jsonl
+CONTEXT_HANDOVER.md
+skills-lock.json
+test_result*.txt
+docs/continuidad/
+docs/CAMBIOS-PENDIENTES-DE-SUBIR.md
+specs/
+
+# Harness y documentación de trabajo
+/AGENTS.md
+/MEMORY.md
+/.agents/
+/.claude/
+/.opencode/
+/opencode.json
+/skills-lock.json
+/specs/
+/CONTEXT_HANDOVER
+
+# Archivos locales y temporales
+/.vs/
+/build
+/test
+/test_result
+/test_result2
