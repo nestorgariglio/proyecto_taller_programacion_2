@@ -56,12 +56,25 @@ internal static class GuardaConexion
     {
         await using var conexion = new SqlConnection(cadena);
         await conexion.OpenAsync(ct);
-        await using var comando = new SqlCommand("SELECT DB_NAME();", conexion) { CommandTimeout = 30 };
-        string? baseActual = (await comando.ExecuteScalarAsync(ct)) as string;
+        await using var comando = new SqlCommand("SELECT DB_NAME(), @@SERVERNAME;", conexion) { CommandTimeout = 30 };
+        string? baseActual, servidorActual;
+        await using (SqlDataReader lector = await comando.ExecuteReaderAsync(ct))
+        {
+            await lector.ReadAsync(ct);
+            baseActual = lector.GetString(0);
+            servidorActual = lector.GetString(1);
+        }
 
         if (!string.Equals(baseActual, BasePermitida, StringComparison.Ordinal))
         {
             throw new InvalidOperationException($"Destino rechazado: DB_NAME() no es exactamente {BasePermitida}.");
+        }
+
+        // @@SERVERNAME devuelve el nombre real de la máquina (no el alias "localhost").
+        string esperado = Environment.MachineName + @"\SQLEXPRESS";
+        if (!string.Equals(servidorActual, esperado, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(@"Destino rechazado: @@SERVERNAME no corresponde a la instancia local SQLEXPRESS.");
         }
     }
 }

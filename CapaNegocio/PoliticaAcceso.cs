@@ -1,7 +1,7 @@
 namespace CapaNegocio;
 
 /// <summary>
-/// Define los módulos disponibles para cada rol del sistema.
+/// Define las reglas de acceso a los módulos y operaciones según el rol del usuario.
 /// </summary>
 public static class PoliticaAcceso
 {
@@ -23,11 +23,11 @@ public static class PoliticaAcceso
         };
 
     /// <summary>
-    /// Indica si un rol puede acceder al módulo solicitado.
+    /// Determina si un rol tiene permiso para acceder a un módulo determinado.
     /// </summary>
-    /// <param name="rol">Descripción del rol del usuario.</param>
-    /// <param name="modulo">Nombre del módulo que se desea consultar.</param>
-    /// <returns><see langword="true"/> si el rol tiene acceso; de lo contrario, <see langword="false"/>.</returns>
+    /// <param name="rol">Rol del usuario.</param>
+    /// <param name="modulo">Nombre del módulo a consultar.</param>
+    /// <returns>True si tiene acceso; en caso contrario, false.</returns>
     public static bool TieneAcceso(string? rol, string? modulo)
     {
         return !string.IsNullOrWhiteSpace(rol)
@@ -37,14 +37,10 @@ public static class PoliticaAcceso
     }
 
     /// <summary>
-    /// Indica si un rol puede administrar el padrón de clientes, es decir, darlos
-    /// de baja lógica y reactivarlos (RF-27, D-5 y D-8).
+    /// Determina si un rol tiene autorización para administrar clientes.
     /// </summary>
-    /// <param name="rol">Descripción del rol del usuario.</param>
-    /// <returns>
-    /// <see langword="true"/> solo para Administrador y Encargado; de lo contrario,
-    /// <see langword="false"/> (incluidos Vendedor, rol desconocido, nulo o vacío).
-    /// </returns>
+    /// <param name="rol">Rol del usuario.</param>
+    /// <returns>True si el rol es Administrador o Encargado; en caso contrario, false.</returns>
     public static bool PuedeAdministrarClientes(string? rol)
     {
         return !string.IsNullOrWhiteSpace(rol)
@@ -53,43 +49,45 @@ public static class PoliticaAcceso
     }
 
     /// <summary>
-    /// Indica si un rol puede gestionar (escribir) productos: alta, edición,
-    /// baja, reactivación y ajuste de stock (RF-11/RF-18/D-18-bis). Solo
-    /// Administrador y Encargado; el Vendedor no ve el módulo y su lectura del
-    /// catálogo llega desde Ventas (spec 005). La regla se reutiliza de
-    /// <see cref="TieneAcceso"/> para no duplicar la lista de módulos.
+    /// Determina si un rol tiene autorización para gestionar productos.
     /// </summary>
-    /// <param name="rol">Descripción del rol del usuario.</param>
-    /// <returns><see langword="true"/> si el rol puede gestionar productos; de lo contrario, <see langword="false"/>.</returns>
+    /// <param name="rol">Rol del usuario.</param>
+    /// <returns>True si tiene acceso; en caso contrario, false.</returns>
     public static bool PuedeGestionarProductos(string? rol)
     {
         return TieneAcceso(rol, "Productos");
     }
 
     /// <summary>
-    /// Indica si un rol puede operar el módulo de compras, es decir, registrar
-    /// compras y consultar el historial y el detalle (RF-59, RF-60 y RF-61). Se
-    /// reutiliza de <see cref="TieneAcceso"/> para no duplicar la lista de
-    /// módulos: Administrador y Encargado.
+    /// Determina si un rol tiene autorización para operar el módulo de compras.
     /// </summary>
-    /// <param name="rol">Descripción del rol del usuario.</param>
-    /// <returns>
-    /// <see langword="true"/> si el rol puede operar compras; de lo contrario,
-    /// <see langword="false"/> (incluidos Vendedor, rol desconocido, nulo o vacío).
-    /// </returns>
+    /// <param name="rol">Rol del usuario.</param>
+    /// <returns>True si tiene acceso; en caso contrario, false.</returns>
     public static bool PuedeOperarCompras(string? rol)
     {
         return TieneAcceso(rol, "Compras");
     }
 
     /// <summary>
-    /// Indica si un rol puede administrar el padrón de proveedores (alta, edición,
-    /// baja y reactivación) (D-8, D-10).
+    /// Determina si un rol tiene autorización para administrar proveedores.
     /// </summary>
+    /// <param name="rol">Rol del usuario.</param>
+    /// <returns>True si el rol es Administrador o Encargado; en caso contrario, false.</returns>
     public static bool PuedeAdministrarProveedores(string? rol)
     {
         return !string.IsNullOrWhiteSpace(rol)
             && (string.Equals(rol.Trim(), "administrador", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(rol.Trim(), "encargado", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Determina si un rol de usuario tiene autorización para gestionar respaldos.
+    /// </summary>
+    /// <param name="rol">Descripción del rol a verificar.</param>
+    /// <returns>True si el rol es Administrador; en caso contrario, false.</returns>
+    public static bool PuedeGestionarRespaldos(string? rol)
+    {
+        return !string.IsNullOrWhiteSpace(rol)
+            && string.Equals(rol.Trim(), "administrador", StringComparison.OrdinalIgnoreCase);
     }
 }
