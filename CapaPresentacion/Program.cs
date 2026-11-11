@@ -9,6 +9,7 @@ using CapaPresentacion.Clientes;
 using CapaPresentacion.Compras;
 using CapaPresentacion.Productos;
 using CapaPresentacion.Proveedores;
+using CapaPresentacion.Respaldos;
 
 namespace CapaPresentacion
 {
@@ -40,6 +41,29 @@ namespace CapaPresentacion
                     services.AddTransient<ProductoNegocio>();
                     services.AddTransient<ProveedorNegocio>();
                     services.AddTransient<CompraNegocio>();
+
+                    // Indicadores de Home: umbral de stock crítico igual al de Productos.
+                    services.AddTransient<HomeResumenNegocio>(sp => new HomeResumenNegocio(
+                        sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
+                        CapaNegocio.Stock.ResolucionUmbralStock.Resolver(
+                            sp.GetRequiredService<IConfiguration>()["StockCritico:UmbralMinimo"])));
+
+                    // Respaldo y restauración: Singleton para compartir la exclusión
+                    // dentro del proceso. El repositorio recibe la cadena configurada
+                    // solo para derivar la base objetivo y el catálogo master.
+                    services.AddSingleton<CapaDatos.Respaldo.IProveedorRutaRespaldo, CapaDatos.Respaldo.ProveedorRutaRespaldo>(
+                        _ => new CapaDatos.Respaldo.ProveedorRutaRespaldo());
+                    services.AddSingleton<CapaDatos.Respaldo.IRespaldoRepositorio>(
+                        _ => new CapaDatos.Respaldo.RespaldoRepositorio(connectionString));
+                    services.AddSingleton<CapaNegocio.Respaldo.IExclusionRespaldo, CapaNegocio.Respaldo.ExclusionRespaldo>();
+                    services.AddSingleton<RespaldoNegocio>(sp => new RespaldoNegocio(
+                        sp.GetRequiredService<CapaDatos.Respaldo.IRespaldoRepositorio>(),
+                        sp.GetRequiredService<CapaDatos.Respaldo.IProveedorRutaRespaldo>(),
+                        sp.GetRequiredService<CapaNegocio.Respaldo.IExclusionRespaldo>()));
+                    services.AddTransient<GenerarBackupForm>();
+                    services.AddTransient<RestaurarBackupForm>();
+                    services.AddTransient<Func<GenerarBackupForm>>(sp => () => sp.GetRequiredService<GenerarBackupForm>());
+                    services.AddTransient<Func<RestaurarBackupForm>>(sp => () => sp.GetRequiredService<RestaurarBackupForm>());
 
                     services.AddTransient<GestionUsuariosControl>();
                     services.AddTransient<GestionCategoriasControl>();

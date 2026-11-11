@@ -1,5 +1,6 @@
 using CapaDatos;
 using CapaNegocio;
+using CapaNegocio.DTOs.Home;
 using CapaNegocio.DTOs.Usuarios;
 using CapaPresentacion.Clientes;
 using CapaPresentacion.Compras;
@@ -7,6 +8,7 @@ using CapaPresentacion.Info;
 using CapaPresentacion.Productos;
 using CapaPresentacion.Proveedores;
 using CapaPresentacion.Reportes;
+using CapaPresentacion.Respaldos;
 using CapaPresentacion.Tema;
 using CapaPresentacion.Ventas;
 using MaterialSkin;
@@ -14,6 +16,9 @@ using MaterialSkin.Controls;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Drawing;
+using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace CapaPresentacion
@@ -29,6 +34,16 @@ namespace CapaPresentacion
         private readonly ClientesForm _clientesForm;
         private readonly ProveedoresForm _proveedoresForm;
         private readonly ComprasForm _comprasForm;
+        private readonly Func<GenerarBackupForm> _generarBackupFactory;
+        private readonly Func<RestaurarBackupForm> _restaurarBackupFactory;
+        private readonly HomeResumenNegocio _homeResumenNegocio;
+        private Panel? _contenedorBackup;
+        private MaterialLabel? _lblMontoVentas;
+        private MaterialLabel? _lblCantStock;
+        private MaterialLabel? _lblCantClientes;
+        private System.Windows.Forms.Timer? _timerCambioDia;
+        private CancellationTokenSource? _ctsResumen;
+        private DateTime _fechaUltimaConsulta = DateTime.MinValue;
         private TabPage? _pestañaAnterior;
         private UsuarioRespuestaDto? _usuarioActual;
         private bool _reconstruyendoNavegacion;
@@ -47,8 +62,15 @@ namespace CapaPresentacion
             ProductosForm productosForm,
             ClientesForm clientesForm,
             ProveedoresForm proveedoresForm,
-            ComprasForm comprasForm)
+            ComprasForm comprasForm,
+            Func<GenerarBackupForm> generarBackupFactory,
+            Func<RestaurarBackupForm> restaurarBackupFactory,
+            HomeResumenNegocio homeResumenNegocio)
         {
+            _homeResumenNegocio = homeResumenNegocio;
+            _generarBackupFactory = generarBackupFactory;
+            _restaurarBackupFactory = restaurarBackupFactory;
+
             InitializeComponent();
 
             //LA CONEXIÓN DEL EVENTO
@@ -104,6 +126,7 @@ namespace CapaPresentacion
         {
             // A. Construir visualmente el Dashboard en tab_inicio
             ArmarDashboardInicio();
+            IniciarActualizacionResumen();
 
             // B. Incrustar los subformularios en sus correspondientes TabPages
             AbrirVistaEnTab(_productosForm, tab_productos);
@@ -155,6 +178,7 @@ namespace CapaPresentacion
             MaterialCard cardVentas = new MaterialCard { Dock = DockStyle.Fill, Margin = new Padding(5) };
             MaterialLabel lblTituloVentas = new MaterialLabel { Text = "💳 VENTAS DEL DÍA", FontType = MaterialSkinManager.fontType.Subtitle2, Location = new Point(15, 15), AutoSize = true };
             MaterialLabel lblMontoVentas = new MaterialLabel { Text = "$ 185.400,00", FontType = MaterialSkinManager.fontType.H5, Location = new Point(15, 45), AutoSize = true, UseAccent = true };
+            _lblMontoVentas = lblMontoVentas;
             cardVentas.Controls.Add(lblTituloVentas);
             cardVentas.Controls.Add(lblMontoVentas);
 
@@ -162,6 +186,7 @@ namespace CapaPresentacion
             MaterialCard cardStock = new MaterialCard { Dock = DockStyle.Fill, Margin = new Padding(5) };
             MaterialLabel lblTituloStock = new MaterialLabel { Text = "⚠️ ALERTA DE STOCK", FontType = MaterialSkinManager.fontType.Subtitle2, Location = new Point(15, 15), AutoSize = true };
             MaterialLabel lblCantStock = new MaterialLabel { Text = "3 Prod. Críticos", FontType = MaterialSkinManager.fontType.H5, Location = new Point(15, 45), AutoSize = true };
+            _lblCantStock = lblCantStock;
             cardStock.Controls.Add(lblTituloStock);
             cardStock.Controls.Add(lblCantStock);
 
@@ -169,6 +194,7 @@ namespace CapaPresentacion
             MaterialCard cardClientes = new MaterialCard { Dock = DockStyle.Fill, Margin = new Padding(5) };
             MaterialLabel lblTituloClientes = new MaterialLabel { Text = "👥 CLIENTES ATENDIDOS", FontType = MaterialSkinManager.fontType.Subtitle2, Location = new Point(15, 15), AutoSize = true };
             MaterialLabel lblCantClientes = new MaterialLabel { Text = "14 Atendidos", FontType = MaterialSkinManager.fontType.H5, Location = new Point(15, 45), AutoSize = true };
+            _lblCantClientes = lblCantClientes;
             cardClientes.Controls.Add(lblTituloClientes);
             cardClientes.Controls.Add(lblCantClientes);
 
@@ -229,7 +255,88 @@ namespace CapaPresentacion
             panelContenedor.Controls.Add(tableKpis);
             panelContenedor.Controls.Add(cardAccesos);
 
+            // --- 3. TARJETA «GESTIÓN DE BACKUP» ---
+            // Dentro del mismo panel con scroll, inmediatamente debajo de los accesos
+            // rápidos (sin Dock inferior): no se solapa y se desplaza con el contenido.
+            _contenedorBackup = ConstruirContenedorBackup();
+            _contenedorBackup.Location = new Point(15, cardAccesos.Bottom + 10);
+            _contenedorBackup.Width = panelContenedor.ClientSize.Width - 30;
+            _contenedorBackup.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            panelContenedor.Controls.Add(_contenedorBackup);
+
             tab_inicio.Controls.Add(panelContenedor);
+            ActualizarVisibilidadBackup();
+        }
+
+        private Panel ConstruirContenedorBackup()
+        {
+            Panel contenedor = new Panel
+            {
+                Height = 155,
+                BackColor = TemaAplicacion.FondoPrincipal,
+                Padding = new Padding(0),
+                Visible = false
+            };
+
+            MaterialCard cardBackup = new MaterialCard { Dock = DockStyle.Fill, Padding = new Padding(15) };
+
+            TableLayoutPanel tabla = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 2
+            };
+            tabla.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tabla.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tabla.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            tabla.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            MaterialLabel lblTitulo = new MaterialLabel
+            {
+                Text = "💾 GESTIÓN DE BACKUP",
+                FontType = MaterialSkinManager.fontType.H6,
+                AutoSize = true
+            };
+            tabla.Controls.Add(lblTitulo, 0, 0);
+            tabla.SetColumnSpan(lblTitulo, 2);
+
+            MaterialButton btnGenerar = new MaterialButton { Text = "Generar backup", Dock = DockStyle.Fill, Margin = new Padding(5), Type = MaterialButton.MaterialButtonType.Contained };
+            btnGenerar.Click += (s, e) => AbrirModalBackup(generar: true);
+
+            MaterialButton btnRestaurar = new MaterialButton { Text = "Restaurar backup", Dock = DockStyle.Fill, Margin = new Padding(5), Type = MaterialButton.MaterialButtonType.Contained };
+            btnRestaurar.Click += (s, e) => AbrirModalBackup(generar: false);
+
+            tabla.Controls.Add(btnGenerar, 0, 1);
+            tabla.Controls.Add(btnRestaurar, 1, 1);
+
+            cardBackup.Controls.Add(tabla);
+            contenedor.Controls.Add(cardBackup);
+            return contenedor;
+        }
+
+        private void ActualizarVisibilidadBackup()
+        {
+            if (_contenedorBackup != null)
+                _contenedorBackup.Visible = PoliticaAcceso.PuedeGestionarRespaldos(_usuarioActual?.RolDescripcion);
+        }
+
+        private void AbrirModalBackup(bool generar)
+        {
+            string? rol = _usuarioActual?.RolDescripcion;
+            if (!PoliticaAcceso.PuedeGestionarRespaldos(rol)) return;
+
+            if (generar)
+            {
+                using GenerarBackupForm modal = _generarBackupFactory();
+                modal.AplicarSesion(rol);
+                modal.ShowDialog(this);
+            }
+            else
+            {
+                using RestaurarBackupForm modal = _restaurarBackupFactory();
+                modal.AplicarSesion(rol);
+                modal.ShowDialog(this);
+            }
         }
 
         // =========================================================================
@@ -267,6 +374,9 @@ namespace CapaPresentacion
                 OcultarSiNoAutorizada("tab_clientes", "Clientes", rol);
                 OcultarSiNoAutorizada("tab_proveedores", "Proveedores", rol);
                 OcultarSiNoAutorizada("tab_reportes", "Reportes", rol);
+
+                // Gestión de backup: solo Administrador y Encargado.
+                ActualizarVisibilidadBackup();
 
                 // RF-12: el botón "Gestionar categorías" de la vista de productos
                 // se muestra solo a quien puede acceder al módulo "Categorías"
@@ -416,6 +526,67 @@ namespace CapaPresentacion
             else
             {
                 ActualizarReferenciaPestañaAnterior();
+
+                // Al volver a mostrar Home se refrescan los indicadores (ventas/stock pudieron cambiar).
+                if (materialTabControl1.SelectedTab == tab_inicio)
+                    _ = ActualizarResumenAsync();
+            }
+        }
+
+        // =========================================================================
+        // INDICADORES (KPIs) DE HOME
+        // =========================================================================
+
+        private void IniciarActualizacionResumen()
+        {
+            _ = ActualizarResumenAsync();
+
+            // Timer lento: solo consulta si cambió el día con la aplicación abierta.
+            _timerCambioDia = new System.Windows.Forms.Timer { Interval = 60_000 };
+            _timerCambioDia.Tick += (s, e) =>
+            {
+                if (DateTime.Today != _fechaUltimaConsulta)
+                    _ = ActualizarResumenAsync();
+            };
+            _timerCambioDia.Start();
+        }
+
+        private async Task ActualizarResumenAsync()
+        {
+            if (_lblMontoVentas == null || _lblCantStock == null || _lblCantClientes == null)
+                return;
+
+            _ctsResumen?.Cancel();
+            _ctsResumen?.Dispose();
+            CancellationTokenSource cts = new CancellationTokenSource();
+            _ctsResumen = cts;
+
+            try
+            {
+                DateTime dia = DateTime.Today;
+                ResumenHomeDto resumen = await _homeResumenNegocio.ObtenerResumenAsync(cts.Token);
+                if (cts.IsCancellationRequested || IsDisposed)
+                    return;
+
+                if (resumen.Disponible)
+                {
+                    _fechaUltimaConsulta = dia;
+                    _lblMontoVentas.Text = "$ " + resumen.VentasDelDia.ToString("N2", CultureInfo.CurrentCulture);
+                    _lblCantStock.Text = $"{resumen.ProductosStockCritico} Prod. Críticos";
+                    _lblCantClientes.Text = $"{resumen.ClientesAtendidos} Atendidos";
+                }
+                else
+                {
+                    // Error de lectura: sin texto técnico y sin romper Home; reintenta en el próximo refresco.
+                    _fechaUltimaConsulta = DateTime.MinValue;
+                    _lblMontoVentas.Text = "$ --";
+                    _lblCantStock.Text = "-- Prod. Críticos";
+                    _lblCantClientes.Text = "-- Atendidos";
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Reemplazada por una consulta más reciente o cierre del formulario.
             }
         }
 
@@ -473,6 +644,8 @@ namespace CapaPresentacion
 
         private void inicio_FormClosed(object sender, FormClosedEventArgs e)
         {
+            _timerCambioDia?.Stop();
+            _ctsResumen?.Cancel();
             Application.Exit();
         }
     }

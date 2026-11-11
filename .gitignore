@@ -40,6 +40,9 @@ UpgradeLog*.XML
 UpgradeLog*.htm
 UpgradeLog*.html
 
+# Respaldos nativos de SQL Server (backup_restore/)
+*.bak
+
 # Archivos de caché de Visual Studio
 *.[Cc]ache
 *.aps
@@ -258,3 +261,7 @@ skills-lock.json
 test_result*.txt
 docs/continuidad/
 docs/CAMBIOS-PENDIENTES-DE-SUBIR.md
+
+# Mantener la carpeta de backups del proyecto
+!backup_restore/
+!backup_restore/.gitkeep
