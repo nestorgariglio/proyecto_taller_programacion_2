@@ -52,7 +52,8 @@ namespace CapaPresentacion
                     // dentro del proceso. El repositorio recibe la cadena configurada
                     // solo para derivar la base objetivo y el catálogo master.
                     services.AddSingleton<CapaDatos.Respaldo.IProveedorRutaRespaldo, CapaDatos.Respaldo.ProveedorRutaRespaldo>(
-                        _ => new CapaDatos.Respaldo.ProveedorRutaRespaldo());
+                        sp => new CapaDatos.Respaldo.ProveedorRutaRespaldo(
+                            rutaConfigurada: sp.GetRequiredService<IConfiguration>()["Respaldos:RutaCarpeta"]));
                     services.AddSingleton<CapaDatos.Respaldo.IRespaldoRepositorio>(
                         _ => new CapaDatos.Respaldo.RespaldoRepositorio(connectionString));
                     services.AddSingleton<CapaNegocio.Respaldo.IExclusionRespaldo, CapaNegocio.Respaldo.ExclusionRespaldo>();

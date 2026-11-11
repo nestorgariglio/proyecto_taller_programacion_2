@@ -473,6 +473,33 @@ public sealed class RespaldoNegocioTests : IDisposable
         Assert.Equal(ProveedorRutaRespaldo.MensajeSinRaiz, r.Mensaje);
     }
 
+    [Fact]
+    public void ProveedorRuta_ConRutaConfiguradaValida_CreaCarpetaYDevuelveRutaAbsoluta()
+    {
+        string rutaConfig = Path.Combine(_carpeta, "respaldos_personalizados");
+
+        ResultadoRutaRespaldo r = new ProveedorRutaRespaldo(rutaConfigurada: rutaConfig).ObtenerCarpeta();
+
+        Assert.True(r.Disponible);
+        Assert.Equal(Path.GetFullPath(rutaConfig), r.Carpeta);
+        Assert.True(Directory.Exists(r.Carpeta));
+    }
+
+    [Fact]
+    public void ProveedorRuta_ConRutaConfiguradaVacia_UsaFallbackAscendente()
+    {
+        string raiz = Path.Combine(_carpeta, "raiz_fallback");
+        string profundo = Path.Combine(raiz, "bin", "Debug");
+        Directory.CreateDirectory(profundo);
+        File.WriteAllText(Path.Combine(raiz, ProveedorRutaRespaldo.ArchivoRaiz), "");
+
+        ResultadoRutaRespaldo r = new ProveedorRutaRespaldo(directorioInicio: profundo, rutaConfigurada: "   ").ObtenerCarpeta();
+
+        Assert.True(r.Disponible);
+        Assert.Equal(Path.Combine(raiz, "backup_restore"), r.Carpeta);
+        Assert.True(Directory.Exists(r.Carpeta));
+    }
+
     // ---------- ayudas ----------
 
     private async Task<ValidacionRespaldoDto> ValidarElegido()

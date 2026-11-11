@@ -2,10 +2,7 @@ using CapaNegocio.Enums;
 
 namespace CapaNegocio.DTOs.Respaldos;
 
-/// <summary>
-/// Huella que identifica un respaldo validado: se compara al revalidar dentro
-/// de la sección crítica para detectar que el archivo cambió tras la confirmación.
-/// </summary>
+/// <summary>Identificación y estado de un archivo de respaldo.</summary>
 public sealed record HuellaRespaldo(
     Guid BackupSetGuid,
     DateTime FechaBackup,

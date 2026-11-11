@@ -94,20 +94,13 @@ public static class PoliticaAcceso
     }
 
     /// <summary>
-    /// Indica si un rol puede gestionar los respaldos de la base de datos
-    /// (generar y restaurar): solo Administrador y Encargado. Es una regla de la
-    /// aplicación; NO otorga permisos SQL (la cuenta de Windows que ejecuta G70
-    /// debe tenerlos por su cuenta).
+    /// Determina si un rol de usuario tiene autorización para gestionar respaldos.
     /// </summary>
-    /// <param name="rol">Descripción del rol del usuario.</param>
-    /// <returns>
-    /// <see langword="true"/> para Administrador y Encargado; <see langword="false"/>
-    /// para Vendedor, rol desconocido, nulo o vacío.
-    /// </returns>
+    /// <param name="rol">Descripción del rol a verificar.</param>
+    /// <returns>True si el rol es Administrador; en caso contrario, false.</returns>
     public static bool PuedeGestionarRespaldos(string? rol)
     {
         return !string.IsNullOrWhiteSpace(rol)
-            && (string.Equals(rol.Trim(), "administrador", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(rol.Trim(), "encargado", StringComparison.OrdinalIgnoreCase));
+            && string.Equals(rol.Trim(), "administrador", StringComparison.OrdinalIgnoreCase);
     }
 }

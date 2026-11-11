@@ -7,33 +7,16 @@ using CapaNegocio.Respaldo;
 namespace CapaNegocio;
 
 /// <summary>
-/// Reglas del respaldo y la restauración de la base de datos configurada.
+/// Lógica de negocio para la generación, validación y restauración de respaldos.
 /// </summary>
-/// <remarks>
-/// Autorización: todas las operaciones públicas validan el rol con
-/// <see cref="PoliticaAcceso.PuedeGestionarRespaldos"/>. Esa regla es de la
-/// aplicación y NO otorga permisos SQL: con autenticación integrada, el usuario de
-/// Windows que ejecuta G70 debe tener permisos SQL propios (BACKUP DATABASE, ALTER
-/// sobre la base, CREATE DATABASE / dbcreator para RESTORE WITH REPLACE y acceso a
-/// master).
-/// Excepción al principio 5 de la constitución: BACKUP y RESTORE no admiten
-/// transacción de usuario, así que no se usan transacciones explícitas; la
-/// seguridad se obtiene con backup previo verificado, revalidación por huella y
-/// recuperación de MULTI_USER.
-/// Concurrencia: el semáforo (<see cref="IExclusionRespaldo"/>) protege dentro del
-/// proceso y <c>sp_getapplock</c> entre instancias de G70; SINGLE_USER no sustituye
-/// esa coordinación. El semáforo nunca se mantiene durante el diálogo de
-/// confirmación de la UI.
-/// </remarks>
 public class RespaldoNegocio
 {
-    /// <summary>Máximo de respaldos listados.</summary>
     public const int MaximoRespaldosListados = 5;
 
     public const string MensajeSinRespaldos = "No hay ningún backup disponible";
 
     public const string MensajeSinPermisoRol =
-        "No tiene permiso para gestionar respaldos. Esta función solo está disponible para Administrador o Encargado.";
+        "No tiene permiso para gestionar respaldos. Esta función solo está disponible para Administrador.";
 
     public const string MensajeEstadisticasAsincronas =
         "No se puede restaurar mientras la actualización asíncrona de estadísticas esté activa en la base de datos, porque puede impedir el modo de usuario único. Pida a un administrador de la base de datos que la desactive y vuelva a intentar.";
@@ -66,9 +49,7 @@ public class RespaldoNegocio
         _reloj = reloj ?? TimeProvider.System;
     }
 
-    // ---------------------------------------------------------------- textos y nombres
-
-    /// <summary>Nombre de archivo: <c>&lt;DB&gt;_yyyyMMdd_HHmmss_MANUAL.bak</c> o <c>..._AUTO-PRE-RESTAURACION.bak</c>.</summary>
+    /// <summary>Genera el nombre estandarizado del archivo de respaldo.</summary>
     public static string ConstruirNombreArchivo(string baseDatos, DateTime fecha, bool automatico)
     {
         string seguro = string.Concat(baseDatos.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
@@ -76,7 +57,7 @@ public class RespaldoNegocio
             + (automatico ? SufijoAutomatico : SufijoManual);
     }
 
-    /// <summary>Texto de confirmación mostrado antes de restaurar (con fecha/hora exactas del backup).</summary>
+    /// <summary>Genera el texto de confirmación para la restauración.</summary>
     public static string ConstruirTextoConfirmacion(RespaldoDisponibleDto respaldo)
     {
         ArgumentNullException.ThrowIfNull(respaldo);
@@ -87,13 +68,7 @@ public class RespaldoNegocio
             + "Los cambios posteriores a esa fecha y hora se perderán. ¿Está seguro de que desea continuar?";
     }
 
-    // ---------------------------------------------------------------- listado
-
-    /// <summary>
-    /// Lista hasta 5 respaldos válidos (manuales y automáticos), ordenados por la
-    /// fecha real del backup (BackupFinishDate) descendente. Lee el encabezado de
-    /// TODOS los .bak sin pre-ordenar por fecha de archivo.
-    /// </summary>
+    /// <summary>Obtiene los respaldos disponibles ordenados por fecha descendente.</summary>
     public async Task<RespuestaListadoRespaldos> ListarRespaldosAsync(
         string? rol, IProgress<string>? progreso = null, CancellationToken ct = default)
     {
@@ -173,12 +148,8 @@ public class RespaldoNegocio
         }
     }
 
-    // ---------------------------------------------------------------- generación
-
     /// <summary>
-    /// Genera un backup manual: <c>BACKUP ... WITH CHECKSUM, INIT</c> y
-    /// <c>RESTORE VERIFYONLY ... WITH CHECKSUM</c> dentro del semáforo y del lock de
-    /// aplicación. Nunca sobrescribe ni borra archivos; éxito solo si ambos pasos pasan.
+    /// Genera un nuevo respaldo de la base de datos y verifica su integridad.
     /// </summary>
     public async Task<RespuestaGeneracionRespaldo> GenerarBackupAsync(string? rol, CancellationToken ct = default)
     {
@@ -261,11 +232,8 @@ public class RespaldoNegocio
         }
     }
 
-    // ---------------------------------------------------------------- restauración
-
     /// <summary>
-    /// Paso 1 de la restauración: valida el archivo elegido SIN tomar lock y devuelve su
-    /// huella. La UI usa el resultado para pedir la confirmación.
+    /// Valida el archivo de respaldo antes de solicitar la confirmación de restauración.
     /// </summary>
     public async Task<ValidacionRespaldoDto> ValidarParaRestauracionAsync(
         string? rol, string rutaArchivo, CancellationToken ct = default)
@@ -315,10 +283,7 @@ public class RespaldoNegocio
         "El archivo seleccionado no es un respaldo completo y válido de la base de datos del sistema.";
 
     /// <summary>
-    /// Pasos 3 a 8 de la restauración (tras la confirmación del usuario): semáforo, lock
-    /// de aplicación, revalidación por huella, control de estadísticas asíncronas, backup
-    /// automático de seguridad, SINGLE_USER + RESTORE y recuperación de MULTI_USER. Éxito
-    /// solo con evidencia de ONLINE + MULTI_USER; no hay RESTORE automático adicional.
+    /// Ejecuta el proceso completo de restauración sobre la base de datos.
     /// </summary>
     public async Task<RespuestaRestauracion> EjecutarRestauracionAsync(
         string? rol, ValidacionRespaldoDto validacion, IProgress<string>? progreso = null, CancellationToken ct = default,
@@ -389,7 +354,6 @@ public class RespaldoNegocio
 
             await using ISesionRespaldo sesion = apertura.Sesion;
 
-            // (4) Revalidar con la huella.
             IReadOnlyList<FilaArchivoBackup> actuales = await sesion.LeerArchivosActualesAsync(ct);
             ArchivoValidado? validado;
             try
@@ -436,7 +400,6 @@ public class RespaldoNegocio
                     actuales.First(c => string.Equals(c.LogicalName, a.LogicalName, StringComparison.OrdinalIgnoreCase)).PhysicalName))
                 .ToList();
 
-            // (5) Backup automático de seguridad verificado.
             DateTime ahora = _reloj.GetLocalNow().DateTime;
             string archivoSeguridad = Path.Combine(carpeta, ConstruirNombreArchivo(_repositorio.NombreBaseDatos, ahora, automatico: true));
             try
@@ -463,11 +426,9 @@ public class RespaldoNegocio
                 };
             }
 
-            // (6) Informar la ruta de seguridad.
             rutaSeguridad = archivoSeguridad;
             progreso?.Report($"Backup de seguridad creado: {rutaSeguridad}");
 
-            // Último punto de cancelación: antes de SINGLE_USER no se ha modificado la base.
             if (ct.IsCancellationRequested)
             {
                 return new RespuestaRestauracion
@@ -478,15 +439,13 @@ public class RespaldoNegocio
                 };
             }
 
-            // (7) SINGLE_USER + RESTORE; en toda salida se intenta volver a MULTI_USER.
-            // Desde aquí la secuencia NO es cancelable: se usa CancellationToken.None.
             alIniciarFaseDestructiva?.Invoke();
             bool singleAplicado = false;
             Exception? falloRestauracion = null;
             try
             {
                 progreso?.Report("Restaurando la base de datos...");
-                singleAplicado = true; // se marca antes: si el ALTER falla a medias, igual se intenta recuperar.
+                singleAplicado = true;
                 await sesion.EstablecerUsuarioUnicoAsync(CancellationToken.None);
                 await sesion.RestaurarAsync(respaldo.RutaArchivo, mapeo, CancellationToken.None);
             }
@@ -525,7 +484,6 @@ public class RespaldoNegocio
                 };
             }
 
-            // (8) Éxito comprobado.
             return new RespuestaRestauracion
             {
                 Resultado = ResultadoRespaldo.Exito,
@@ -552,8 +510,6 @@ public class RespaldoNegocio
         { EstaOperativa: true } => "La base de datos quedó ONLINE y MULTI_USER.",
         _ => $"Estado final de la base de datos: {estado.Estado} / {estado.AccesoUsuarios}; se requiere intervención de un administrador."
     };
-
-    // ---------------------------------------------------------------- validación interna
 
     private sealed record ArchivoValidado(RespaldoDisponibleDto Dto, IReadOnlyList<FilaArchivoBackup> Archivos);
 
@@ -633,11 +589,9 @@ public class RespaldoNegocio
         }
     }
 
-    // ---------------------------------------------------------------- errores
-
     private static bool EsErrorDeAcceso(int numero) => numero is 262 or 15247 or 4060 or 916 or 18456 or 229 or 230;
 
-    /// <summary>Traduce excepciones a resultado y mensaje en español; nunca expone texto crudo de SQL.</summary>
+    /// <summary>Traduce excepciones de base de datos a mensajes descriptivos para el usuario.</summary>
     private static (ResultadoRespaldo Resultado, string Mensaje) Mapear(Exception ex, ResultadoRespaldo porDefecto, string accion)
     {
         switch (ex)

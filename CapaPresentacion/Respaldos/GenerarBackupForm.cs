@@ -7,9 +7,7 @@ using MaterialSkin.Controls;
 namespace CapaPresentacion.Respaldos;
 
 /// <summary>
-/// Modal «Generar backup». Solo usa <see cref="RespaldoNegocio"/> y sus DTOs; la
-/// operación es asíncrona, no bloquea la interfaz y se puede cancelar (Cancelar, X o
-/// Escape): el cierre espera a que SQL Server termine realmente el comando.
+/// Formulario modal para la generación de respaldos de la base de datos.
 /// </summary>
 public sealed class GenerarBackupForm : MaterialForm
 {
@@ -68,7 +66,6 @@ public sealed class GenerarBackupForm : MaterialForm
         {
             if (_ocupado)
             {
-                // X = Cancelar: se pide la cancelación y se cierra cuando el comando termine realmente.
                 e.Cancel = true;
                 _cerrarAlTerminar = true;
                 SolicitarCancelacion();
@@ -78,10 +75,8 @@ public sealed class GenerarBackupForm : MaterialForm
         MaterialSkinManager.Instance.AddFormToManage(this);
     }
 
-    /// <summary>Establece el rol de la sesión con el que el negocio evalúa el permiso.</summary>
     public void AplicarSesion(string? rol) => _rol = rol;
 
-    /// <summary>Escape equivale a Cancelar.</summary>
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         if (keyData == Keys.Escape)

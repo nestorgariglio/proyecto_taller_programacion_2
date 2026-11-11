@@ -4,33 +4,16 @@ using Microsoft.EntityFrameworkCore;
 namespace CapaDatos.Respaldo;
 
 /// <summary>
-/// Implementación de <see cref="IRespaldoRepositorio"/> sobre <see cref="AppDbContext"/>
-/// con opciones propias contra <c>master</c> (solo cambia el Initial Catalog de la
-/// cadena configurada). No usa SqlConnection/SqlCommand directos.
+/// Implementación de operaciones de respaldo y restauración en SQL Server.
 /// </summary>
-/// <remarks>
-/// Tiempo de espera: cada sesión crea su propio contexto con un
-/// <c>CommandTimeout</c> de 2 horas (<see cref="TiempoEsperaOperacion"/>), porque
-/// BACKUP/RESTORE y sus verificaciones pueden tardar mucho más que el valor por
-/// defecto de 30 s. El valor aplica solo a estos contextos; no modifica la
-/// configuración global de <c>UseSqlServer</c> de la aplicación.
-/// Autenticación integrada: el usuario de Windows debe tener permisos SQL
-/// (BACKUP DATABASE, ALTER sobre la base, dbcreator para RESTORE WITH REPLACE,
-/// acceso a master); los perfiles de G70 no otorgan permisos SQL.
-/// Excepción al principio 5: BACKUP/RESTORE no admiten transacción de usuario.
-/// El semáforo del negocio protege dentro del proceso y sp_getapplock entre
-/// instancias; SINGLE_USER no sustituye esa coordinación.
-/// </remarks>
 public sealed class RespaldoRepositorio : IRespaldoRepositorio
 {
-    /// <summary>Tiempo de espera de los comandos de respaldo (documentado arriba).</summary>
     public static readonly TimeSpan TiempoEsperaOperacion = TimeSpan.FromHours(2);
 
     private const string PrefijoRecursoLock = "G70_RESPALDO_";
 
     private readonly string _cadenaMaster;
 
-    /// <param name="cadenaConexion">Cadena configurada (<c>CadenaSQL</c>); se usa su catálogo como base objetivo.</param>
     public RespaldoRepositorio(string cadenaConexion)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cadenaConexion);
@@ -105,7 +88,6 @@ public sealed class RespaldoRepositorio : IRespaldoRepositorio
             AppDbContext db = CrearContexto(cadenaMaster);
             try
             {
-                // Una sola conexión abierta durante toda la sesión.
                 await Traducir(() => db.Database.OpenConnectionAsync(ct), ct);
                 return new SesionRespaldo(cadenaMaster, baseDatos, db);
             }
@@ -190,7 +172,6 @@ public sealed class RespaldoRepositorio : IRespaldoRepositorio
             }
             finally
             {
-                // Las conexiones agrupadas pudieron quedar apuntando a una base reemplazada.
                 SqlConnection.ClearAllPools();
             }
         }
@@ -206,7 +187,6 @@ public sealed class RespaldoRepositorio : IRespaldoRepositorio
             }
             catch (Exception)
             {
-                // La sesión pudo romperse: se reintenta con una conexión nueva.
             }
 
             try
@@ -229,13 +209,11 @@ public sealed class RespaldoRepositorio : IRespaldoRepositorio
                 _recursoLock = null;
                 try
                 {
-                    // Liberación explícita antes de cerrar la conexión.
                     await _db.Database.ExecuteSqlRawAsync(
                         "EXEC sys.sp_releaseapplock @Resource = {0}, @LockOwner = 'Session'", recurso);
                 }
                 catch (Exception)
                 {
-                    // Si la sesión está rota, el lock se libera al cerrarse la conexión.
                 }
             }
 
@@ -245,7 +223,6 @@ public sealed class RespaldoRepositorio : IRespaldoRepositorio
             }
             catch (Exception)
             {
-                // Sin acción: se descarta el contexto igualmente.
             }
 
             await _db.DisposeAsync();
@@ -259,7 +236,6 @@ public sealed class RespaldoRepositorio : IRespaldoRepositorio
             }
             catch (SqlException ex)
             {
-                // Cancelación solicitada: el comando ya terminó en el servidor (abortado).
                 if (ct.IsCancellationRequested)
                 {
                     throw new OperationCanceledException(ct);
@@ -277,7 +253,6 @@ public sealed class RespaldoRepositorio : IRespaldoRepositorio
             }
             catch (SqlException ex)
             {
-                // Cancelación solicitada: el comando ya terminó en el servidor (abortado).
                 if (ct.IsCancellationRequested)
                 {
                     throw new OperationCanceledException(ct);

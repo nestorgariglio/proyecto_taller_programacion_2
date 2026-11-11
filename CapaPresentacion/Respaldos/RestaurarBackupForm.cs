@@ -7,10 +7,7 @@ using MaterialSkin.Controls;
 namespace CapaPresentacion.Respaldos;
 
 /// <summary>
-/// Modal «Restaurar backup». Lista hasta 5 respaldos válidos (carga asíncrona y
-/// cancelable), exige selección explícita y pide confirmación (con fecha/hora
-/// exactas) antes de restaurar. Solo usa <see cref="RespaldoNegocio"/> y DTOs. Tras
-/// una restauración exitosa avisa y reinicia la aplicación.
+/// Formulario modal para la selección y restauración de respaldos de la base de datos.
 /// </summary>
 public sealed class RestaurarBackupForm : MaterialForm
 {
@@ -266,8 +263,15 @@ public sealed class RestaurarBackupForm : MaterialForm
         {
             _cts?.Dispose();
             _cts = null;
-            _ocupado = false;
             _faseIrreversible = false;
+            if (!reiniciar && !IsDisposed)
+            {
+                EstablecerOcupado(false);
+            }
+            else
+            {
+                _ocupado = false;
+            }
         }
 
         if (reiniciar)
@@ -278,7 +282,6 @@ public sealed class RestaurarBackupForm : MaterialForm
 
         if (!IsDisposed)
         {
-            EstablecerOcupado(false);
             if (_cerrarAlTerminar)
             {
                 Close();
