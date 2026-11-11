@@ -6,8 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CapaNegocio;
 
 /// <summary>
-/// Calcula los tres indicadores de la pantalla de inicio con consultas agregadas
-/// (sin contadores persistentes) y un contexto por operación.
+/// Provee indicadores agregados de ventas, clientes y stock crítico para la vista de inicio.
 /// </summary>
 public class HomeResumenNegocio
 {
@@ -23,32 +22,29 @@ public class HomeResumenNegocio
 		ArgumentNullException.ThrowIfNull(fabrica);
 		_fabrica = fabrica;
 		_umbral = umbral;
-		// Venta.FechaRegistro se guarda con DateTime.Now (hora local).
 		_ahora = ahora ?? (() => DateTime.Now);
 	}
 
 	/// <summary>
-	/// Obtiene el resumen. Un fallo de lectura devuelve <c>Disponible = false</c>
-	/// sin propagar el detalle técnico; la cancelación sí se propaga.
+	/// Obtiene los indicadores del día para la pantalla principal.
 	/// </summary>
+	/// <param name="ct">Token de cancelación.</param>
+	/// <returns>Datos del resumen de inicio.</returns>
 	public async Task<ResumenHomeDto> ObtenerResumenAsync(CancellationToken ct = default)
 	{
 		try
 		{
-			// Día local: [hoy 00:00, mañana 00:00).
 			DateTime desde = _ahora().Date;
 			DateTime hasta = desde.AddDays(1);
 
 			await using AppDbContext db = await _fabrica.CreateDbContextAsync(ct);
 
-			// Venta válida = Estado activo (anulada/no concretada = Estado false).
 			IQueryable<CapaEntidad.Venta> validas = db.Ventas.AsNoTracking()
 				.Where(v => v.Estado && v.FechaRegistro >= desde && v.FechaRegistro < hasta);
 
 			decimal total = await validas.SumAsync(v => (decimal?)v.MontoTotal, ct) ?? 0m;
 			int atenciones = await validas.CountAsync(ct);
 
-			// Misma regla que ProductoNegocio (SoloCriticos), sin filtro de estado.
 			IQueryable<CapaEntidad.Producto> productos = db.Productos.AsNoTracking();
 			int criticos;
 			if (_umbral.Valor.HasValue)
