@@ -24,6 +24,9 @@ public class CompraNegocio
     private const string MensajeCantidadInvalida = "La cantidad debe ser un número entero mayor que cero escrito solo con dígitos.";
     private const string MensajeCantidadAcumuladaSuperaMaximo = "La cantidad acumulada supera el máximo permitido.";
 
+    // Mensaje interno (nunca llega a la UI: el catch existente lo transforma en MensajeErrorPersistencia).
+    private const string MensajeFalloEfectoProducto = "No se pudo aplicar el efecto de la compra sobre el producto.";
+
     private const string MensajePrecioCompraSuperaMaximo = "El precio de compra supera el máximo permitido.";
     private const string MensajePrecioVentaSuperaMaximo = "El precio de venta supera el máximo permitido.";
     private const string MensajeFormatoPrecioCompra = "El precio de compra admite solo números, con coma o punto decimal y hasta dos decimales.";
@@ -757,6 +760,16 @@ public class CompraNegocio
                     ResultadoRegistroCompra.CantidadInvalida, mensajeCantidad, i, linea.IdProducto);
             }
 
+            // HU-10: el stock resultante no puede superar int.MaxValue (rechazo previo, sin escribir).
+            if ((long)producto.Stock + linea.Cantidad > int.MaxValue)
+            {
+                return RechazoRegistro(
+                    ResultadoRegistroCompra.CantidadInvalida,
+                    MensajeCantidadAcumuladaSuperaMaximo,
+                    i,
+                    linea.IdProducto);
+            }
+
             string? mensajePrecioCompra = ValidarPrecioRecibido(
                 linea.PrecioCompra, CampoPrecio.PrecioCompra, out MotivoPrecioInvalido? motivoCompra);
             if (mensajePrecioCompra is not null)
@@ -880,6 +893,11 @@ public class CompraNegocio
     /// compra está confirmada, suma la cantidad de cada línea a <c>Stock</c> y
     /// sobrescribe <c>PrecioCompra</c> y <c>PrecioVenta</c> del producto con los de
     /// la línea. Si no está confirmada no modifica <c>Producto</c>.
+    /// En proveedor relacional cada producto se actualiza con un único UPDATE atómico
+    /// (<c>Stock = Stock + cantidad</c> y ambos precios en la misma sentencia), en orden
+    /// ascendente de <c>IdProducto</c>, con protección contra desborde de <c>int</c>.
+    /// Si algún producto esperado no se actualiza exactamente una vez se lanza
+    /// <see cref="InvalidOperationException"/>, que el llamador convierte en rollback.
     /// </summary>
     private async Task AplicarEfectosSecundariosAsync(
         Compra cabecera, IReadOnlyList<LineaCompraDto> lineas, CancellationToken ct = default)
@@ -889,23 +907,91 @@ public class CompraNegocio
             return;
         }
 
-        // Defensivo: líneas repetidas se agrupan sumando cantidad, con los precios de la última.
-        var porProducto = new Dictionary<int, (int Cantidad, decimal PrecioCompra, decimal PrecioVenta)>();
+        // Defensivo: líneas repetidas se agrupan sumando cantidad (long), con los precios de la última.
+        // SortedDictionary fija el orden ascendente de IdProducto (orden de bloqueo determinista).
+        var porProducto = new SortedDictionary<int, (long Cantidad, decimal PrecioCompra, decimal PrecioVenta)>();
         foreach (LineaCompraDto linea in lineas)
         {
-            int cantidadPrevia = porProducto.TryGetValue(linea.IdProducto, out var previo) ? previo.Cantidad : 0;
+            long cantidadPrevia = porProducto.TryGetValue(linea.IdProducto, out var previo) ? previo.Cantidad : 0L;
             porProducto[linea.IdProducto] = (cantidadPrevia + linea.Cantidad, linea.PrecioCompra, linea.PrecioVenta);
         }
 
         List<int> ids = porProducto.Keys.ToList();
+
+        if (_context.Database.IsRelational())
+        {
+            try
+            {
+                foreach (KeyValuePair<int, (long Cantidad, decimal PrecioCompra, decimal PrecioVenta)> par in porProducto)
+                {
+                    if (par.Value.Cantidad < 1 || par.Value.Cantidad > int.MaxValue)
+                    {
+                        throw new InvalidOperationException(MensajeFalloEfectoProducto);
+                    }
+
+                    int idProducto = par.Key;
+                    int cantidad = (int)par.Value.Cantidad;
+                    decimal precioCompra = par.Value.PrecioCompra;
+                    decimal precioVenta = par.Value.PrecioVenta;
+
+                    // Un único UPDATE por producto: suma de stock y precios de la misma compra.
+                    // El filtro Stock <= int.MaxValue - cantidad impide el desborde en el motor.
+                    // NOTA: "filas != 1" supone que el trigger TR_PRODUCTO_FECHA_MODIFICACION tiene
+                    // SET NOCOUNT ON (confirmado en el texto de la migración AddProductConstraints,
+                    // no en el trigger vivo); sin él el conteo de filas podría ser distinto de 1.
+                    int filas = await _context.Productos
+                        .Where(p => p.IdProducto == idProducto
+                            && p.Estado
+                            && p.Stock <= int.MaxValue - cantidad)
+                        .ExecuteUpdateAsync(
+                            s => s
+                                .SetProperty(p => p.Stock, p => p.Stock + cantidad)
+                                .SetProperty(p => p.PrecioCompra, precioCompra)
+                                .SetProperty(p => p.PrecioVenta, precioVenta),
+                            ct);
+
+                    if (filas != 1)
+                    {
+                        // Producto inexistente, inactivo o con stock que desbordaría: rollback total.
+                        throw new InvalidOperationException(MensajeFalloEfectoProducto);
+                    }
+                }
+            }
+            finally
+            {
+                // ExecuteUpdate no sincroniza el tracker: se desadjuntan los Producto rastreados
+                // de estos ids para que no queden con valores obsoletos.
+                foreach (var entrada in _context.ChangeTracker.Entries<Producto>()
+                             .Where(e => ids.Contains(e.Entity.IdProducto))
+                             .ToList())
+                {
+                    entrada.State = EntityState.Detached;
+                }
+            }
+
+            return;
+        }
+
+        // Proveedor no relacional (InMemory): tracking + SaveChanges con las mismas comprobaciones.
         List<Producto> productos = await _context.Productos
             .Where(p => ids.Contains(p.IdProducto))
             .ToListAsync(ct);
 
+        if (productos.Count != porProducto.Count)
+        {
+            throw new InvalidOperationException(MensajeFalloEfectoProducto);
+        }
+
         foreach (Producto producto in productos)
         {
             var efecto = porProducto[producto.IdProducto];
-            producto.Stock += efecto.Cantidad;
+            long nuevoStock = (long)producto.Stock + efecto.Cantidad;
+            if (!producto.Estado || efecto.Cantidad < 1 || nuevoStock > int.MaxValue)
+            {
+                throw new InvalidOperationException(MensajeFalloEfectoProducto);
+            }
+
+            producto.Stock = (int)nuevoStock;
             producto.PrecioCompra = efecto.PrecioCompra;
             producto.PrecioVenta = efecto.PrecioVenta;
         }
@@ -1925,7 +2011,8 @@ public class CompraNegocio
                 IdProducto = p.IdProducto,
                 Codigo = p.Codigo ?? string.Empty,
                 Nombre = p.Nombre ?? string.Empty,
-                Estado = p.Estado
+                Estado = p.Estado,
+                Stock = p.Stock
             })
             .ToListAsync();
 
@@ -2143,5 +2230,7 @@ public class CompraNegocio
         public string Nombre { get; set; } = string.Empty;
 
         public bool Estado { get; set; }
+
+        public int Stock { get; set; }
     }
 }

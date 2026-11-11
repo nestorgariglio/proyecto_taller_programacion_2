@@ -30,3 +30,13 @@ Actualizar docs/comentarios RF-47/RF-48 del metodo y el test existente `Registra
 - InMemory no simula rollback real: atomicidad solo con FalloDbContext (falla antes de escribir).
 - Desbordamiento de `int` en Stock: no hay tope definido; no se agrega regla.
 - Producto inactivo ya rechazado antes; PrecioVenta de compra sobrescribe aunque baje el precio (pedido).
+
+## Endurecimiento relacional y verificación en motor (HU-10, complemento)
+
+- Efectos atómicos relacionales: en proveedor relacional `AplicarEfectosSecundariosAsync` aplica un único UPDATE por producto (`Stock = Stock + cantidad`, `PrecioCompra` y `PrecioVenta` en la misma sentencia), dentro de la transacción de la compra, en orden ascendente de `IdProducto`. En InMemory se conserva el comportamiento por tracking con las mismas comprobaciones.
+- Desborde de stock: el stock resultante no puede superar `int.MaxValue`. Se rechaza antes de escribir con `ResultadoRegistroCompra.CantidadInvalida` y el mensaje "La cantidad acumulada supera el máximo permitido.", indicando línea y producto. Además el UPDATE incluye el filtro `Stock <= int.MaxValue - cantidad` como protección frente a concurrencia.
+- Integridad de conteo: cada producto esperado debe actualizarse exactamente una vez (`filas == 1`). Si un producto no existe, está inactivo o su stock desbordaría, se lanza `InvalidOperationException` y la transacción completa se revierte (cabecera, detalle y productos no persisten), devolviendo el mensaje único de error de persistencia. Esta comprobación depende de que el trigger `TR_PRODUCTO_FECHA_MODIFICACION` tenga `SET NOCOUNT ON`.
+- Precios concurrentes: ante compras simultáneas del mismo producto prevalece la última compra confirmada; el par (PrecioCompra, PrecioVenta) proviene siempre de una misma compra, porque se escribe en un solo UPDATE. El stock se suma sin pérdida de incrementos.
+- Se permite un precio de venta menor que el de compra (no se agrega regla).
+- Edición y anulación de compras confirmadas siguen fuera de alcance (no hay reversión ni diferencia de stock/precios).
+- Verificación: las pruebas contra SQL Server real (`DB_SISTEMA_VENTA_TEST`, filas sintéticas `IT_G70_`) viven en `CapaNegocio.IntegrationTests` y se ejecutan según `docs/TESTING_POLICY.md` §10. Las pruebas InMemory de `CapaNegocio.Tests` siguen cubriendo la rama no relacional.
