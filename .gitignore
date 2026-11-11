@@ -250,3 +250,11 @@ opencode.json
 .claude/
 .agents/
 docs/constitution.md
+
+# Arnés de IA y archivos temporales de sesión
+*.jsonl
+CONTEXT_HANDOVER.md
+skills-lock.json
+test_result*.txt
+docs/continuidad/
+docs/CAMBIOS-PENDIENTES-DE-SUBIR.md
