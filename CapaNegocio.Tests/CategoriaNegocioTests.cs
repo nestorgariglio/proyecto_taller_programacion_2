@@ -14,7 +14,7 @@ public class CategoriaNegocioTests
     public async Task CrearCategoria_DescripcionValida_PersisteActivaYRecortada()
     {
         await using var db = await CrearContextoVacioAsync();
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaCreacionCategoria respuesta = await negocio.CrearCategoriaAsync(
             new CrearCategoriaDto { Descripcion = "  Bebidas  " });
@@ -37,7 +37,7 @@ public class CategoriaNegocioTests
     public async Task CrearCategoria_ConTildesYEnie_SeAceptaLaDescripcion()
     {
         await using var db = await CrearContextoVacioAsync();
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaCreacionCategoria respuesta = await negocio.CrearCategoriaAsync(
             new CrearCategoriaDto { Descripcion = "\t Ñandú Ácido \n" });
@@ -57,7 +57,7 @@ public class CategoriaNegocioTests
         string descripcion, string mensajeEsperado)
     {
         await using var db = await CrearContextoVacioAsync();
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaCreacionCategoria respuesta = await negocio.CrearCategoriaAsync(
             new CrearCategoriaDto { Descripcion = descripcion });
@@ -72,7 +72,7 @@ public class CategoriaNegocioTests
     public async Task CrearCategoria_DescripcionDeMasDe100Caracteres_RechazaConMensajeEnEspanol()
     {
         await using var db = await CrearContextoVacioAsync();
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaCreacionCategoria respuesta = await negocio.CrearCategoriaAsync(
             new CrearCategoriaDto { Descripcion = $"  {new string('x', 101)}  " });
@@ -90,7 +90,7 @@ public class CategoriaNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCategoriaAsync(db, "Bebidas", estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaCreacionCategoria respuesta = await negocio.CrearCategoriaAsync(
             new CrearCategoriaDto { Descripcion = "Bebidas" });
@@ -102,14 +102,14 @@ public class CategoriaNegocioTests
     }
 
     [Fact]
-    public async Task CrearCategoria_DuplicadoDeActivaDistintaCaja_RechazaDescripcionDuplicada()
+    public async Task CrearCategoria_DuplicadoDeActivaConEspaciosLaterales_RechazaDescripcionDuplicada()
     {
         await using var db = await CrearContextoVacioAsync();
         await SembrarCategoriaAsync(db, "Bebidas", estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaCreacionCategoria respuesta = await negocio.CrearCategoriaAsync(
-            new CrearCategoriaDto { Descripcion = "bEbIdAs" });
+            new CrearCategoriaDto { Descripcion = "  Bebidas  " });
 
         Assert.Equal(ResultadoCreacionCategoria.DescripcionDuplicada, respuesta.Resultado);
         Assert.Null(respuesta.Categoria);
@@ -121,10 +121,10 @@ public class CategoriaNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         Categoria kiosco = await SembrarCategoriaAsync(db, "Kiosco", estado: false);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaCreacionCategoria respuesta = await negocio.CrearCategoriaAsync(
-            new CrearCategoriaDto { Descripcion = "KIOSCO" });
+            new CrearCategoriaDto { Descripcion = "Kiosco" });
 
         // D-1: se rechaza con mensaje específico que indica que está inactiva
         // y sugiere reactivarla desde el listado.
@@ -151,7 +151,7 @@ public class CategoriaNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionCategoria respuesta = await negocio.ModificarCategoriaAsync(
             new ModificarCategoriaDto { IdCategoria = bebidas.IdCategoria, Descripcion = "Bebidas" });
@@ -168,7 +168,7 @@ public class CategoriaNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionCategoria respuesta = await negocio.ModificarCategoriaAsync(
             new ModificarCategoriaDto { IdCategoria = bebidas.IdCategoria, Descripcion = "\t Bebidas con Gas \n" });
@@ -187,7 +187,7 @@ public class CategoriaNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         Categoria bebibas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionCategoria respuesta = await negocio.ModificarCategoriaAsync(
             new ModificarCategoriaDto { IdCategoria = bebibas.IdCategoria, Descripcion = "  ab  " });
@@ -207,10 +207,10 @@ public class CategoriaNegocioTests
         await using var db = await CrearContextoVacioAsync();
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
         Categoria lacteos = await SembrarCategoriaAsync(db, "Lácteos", estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionCategoria respuesta = await negocio.ModificarCategoriaAsync(
-            new ModificarCategoriaDto { IdCategoria = lacteos.IdCategoria, Descripcion = "BEBIDAS" });
+            new ModificarCategoriaDto { IdCategoria = lacteos.IdCategoria, Descripcion = "Bebidas" });
 
         Assert.Equal(ResultadoModificacionCategoria.DescripcionDuplicada, respuesta.Resultado);
         Assert.Null(respuesta.Categoria);
@@ -229,10 +229,10 @@ public class CategoriaNegocioTests
         await using var db = await CrearContextoVacioAsync();
         Categoria bebibas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
         Categoria kiosco = await SembrarCategoriaAsync(db, "Kiosco", estado: false);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionCategoria respuesta = await negocio.ModificarCategoriaAsync(
-            new ModificarCategoriaDto { IdCategoria = bebibas.IdCategoria, Descripcion = "kiosco" });
+            new ModificarCategoriaDto { IdCategoria = bebibas.IdCategoria, Descripcion = "Kiosco" });
 
         Assert.Equal(ResultadoModificacionCategoria.DescripcionDuplicada, respuesta.Resultado);
         Assert.Contains("inactiva", respuesta.Mensaje, StringComparison.OrdinalIgnoreCase);
@@ -254,7 +254,7 @@ public class CategoriaNegocioTests
     public async Task ModificarCategoria_IdInexistente_RetornaCategoriaNoEncontrada()
     {
         await using var db = await CrearContextoVacioAsync();
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionCategoria respuesta = await negocio.ModificarCategoriaAsync(
             new ModificarCategoriaDto { IdCategoria = 999, Descripcion = "Cualquier Cosa" });
@@ -279,7 +279,7 @@ public class CategoriaNegocioTests
         };
         db.Productos.Add(producto);
         await db.SaveChangesAsync();
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionCategoria respuesta = await negocio.ModificarCategoriaAsync(
             new ModificarCategoriaDto { IdCategoria = bebidas.IdCategoria, Descripcion = "Bebidas Variadas" });
@@ -317,7 +317,7 @@ public class CategoriaNegocioTests
         await SembrarCategoriaAsync(db, "Golosinas", estado: true);
         await SembrarCategoriaAsync(db, "Limpieza", estado: true);
         await SembrarCategoriaAsync(db, "Kiosco", estado: false);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         IReadOnlyList<CategoriaRespuestaDto> listado = await negocio.ListarCategoriasAsync();
 
@@ -340,7 +340,7 @@ public class CategoriaNegocioTests
         await SembrarCategoriaAsync(db, "Golosinas", estado: true);
         await SembrarCategoriaAsync(db, "Limpieza", estado: true);
         await SembrarCategoriaAsync(db, "Kiosco", estado: false);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         IReadOnlyList<CategoriaRespuestaDto> listado = await negocio.ListarCategoriasActivasAsync();
 
@@ -361,7 +361,7 @@ public class CategoriaNegocioTests
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         int conteo = await negocio.ContarProductosActivosAsync(bebidas.IdCategoria);
 
@@ -378,7 +378,7 @@ public class CategoriaNegocioTests
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         int conteo = await negocio.ContarProductosActivosAsync(bebidas.IdCategoria);
 
@@ -394,7 +394,7 @@ public class CategoriaNegocioTests
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
         await SembrarProductoAsync(db, lacteos.IdCategoria, estado: true);
         await SembrarProductoAsync(db, lacteos.IdCategoria, estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         int conteo = await negocio.ContarProductosActivosAsync(bebidas.IdCategoria);
 
@@ -410,10 +410,10 @@ public class CategoriaNegocioTests
         await using var db = await CrearContextoVacioAsync();
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaBajaCategoria respuesta = await negocio.DarBajaCategoriaAsync(
-            bebidas.IdCategoria);
+            bebidas.IdCategoria, productosActivosConfirmados: 1);
 
         Assert.Equal(ResultadoBajaCategoria.Exito, respuesta.Resultado);
         Assert.NotNull(respuesta.Categoria);
@@ -430,15 +430,58 @@ public class CategoriaNegocioTests
     }
 
     [Fact]
+    public async Task DarBajaCategoria_ConProductosActivosSinConfirmar_RequiereConfirmacionSinEscribir()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
+
+        RespuestaBajaCategoria respuesta = await negocio.DarBajaCategoriaAsync(
+            bebidas.IdCategoria, productosActivosConfirmados: 0);
+
+        Assert.Equal(ResultadoBajaCategoria.ConfirmacionRequerida, respuesta.Resultado);
+        Assert.Equal(2, respuesta.ProductosActivosAfectados);
+        Assert.Null(respuesta.Categoria);
+        Assert.Contains("2 producto(s) activo(s)", respuesta.Mensaje);
+
+        // Sin escritura: la categoría sigue activa.
+        Categoria persistida = await db.Categorias
+            .AsNoTracking()
+            .SingleAsync(c => c.IdCategoria == bebidas.IdCategoria);
+        Assert.True(persistida.Estado);
+    }
+
+    [Fact]
+    public async Task DarBajaCategoria_SinProductosActivosYSinConfirmar_DaDeBajaDirectamente()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
+
+        RespuestaBajaCategoria respuesta = await negocio.DarBajaCategoriaAsync(
+            bebidas.IdCategoria, productosActivosConfirmados: 0);
+
+        Assert.Equal(ResultadoBajaCategoria.Exito, respuesta.Resultado);
+        Categoria persistida = await db.Categorias
+            .AsNoTracking()
+            .SingleAsync(c => c.IdCategoria == bebidas.IdCategoria);
+        Assert.False(persistida.Estado);
+    }
+
+    [Fact]
     public async Task DarBajaCategoria_YaInactiva_RetornaCategoriaYaInactivaSinCambios()
     {
         await using var db = await CrearContextoVacioAsync();
         Categoria kiosco = await SembrarCategoriaAsync(db, "Kiosco", estado: false);
         await SembrarProductoAsync(db, kiosco.IdCategoria, estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaBajaCategoria respuesta = await negocio.DarBajaCategoriaAsync(
-            kiosco.IdCategoria);
+            kiosco.IdCategoria, productosActivosConfirmados: 0);
 
         // Caso límite: la operación sobre una categoría ya inactiva no produce cambios.
         Assert.Equal(ResultadoBajaCategoria.CategoriaYaInactiva, respuesta.Resultado);
@@ -456,12 +499,141 @@ public class CategoriaNegocioTests
     public async Task DarBajaCategoria_IdInexistente_RetornaCategoriaNoEncontrada()
     {
         await using var db = await CrearContextoVacioAsync();
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
-        RespuestaBajaCategoria respuesta = await negocio.DarBajaCategoriaAsync(999);
+        RespuestaBajaCategoria respuesta = await negocio.DarBajaCategoriaAsync(999, productosActivosConfirmados: 0);
 
         Assert.Equal(ResultadoBajaCategoria.CategoriaNoEncontrada, respuesta.Resultado);
         Assert.Empty(await db.Categorias.AsNoTracking().ToListAsync());
+    }
+
+    // ---------- D-3: previsualización de la baja + confirmación con conteo ----------
+
+    [Fact]
+    public async Task PrevisualizarBaja_SinProductosActivos_DisponibleConConfirmacionSimple()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
+
+        PrevisualizacionBajaCategoria previa = await negocio.PrevisualizarBajaCategoriaAsync(bebidas.IdCategoria);
+
+        Assert.Equal(ResultadoPrevisualizacionBaja.Disponible, previa.Resultado);
+        Assert.Equal(0, previa.ProductosActivos);
+        Assert.Contains("¿Confirma que desea dar de baja la categoría Bebidas?", previa.Mensaje);
+        Assert.DoesNotContain("producto(s)", previa.Mensaje);
+    }
+
+    [Fact]
+    public async Task PrevisualizarBaja_ConProductosActivos_IncluyeAdvertenciaYCantidad()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
+
+        PrevisualizacionBajaCategoria previa = await negocio.PrevisualizarBajaCategoriaAsync(bebidas.IdCategoria);
+
+        Assert.Equal(ResultadoPrevisualizacionBaja.Disponible, previa.Resultado);
+        Assert.Equal(2, previa.ProductosActivos);
+        Assert.Contains("2 producto(s) activo(s)", previa.Mensaje);
+    }
+
+    [Fact]
+    public async Task PrevisualizarBaja_YaInactiva_NoEncontradaOIdInvalido_NoDisponible()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria kiosco = await SembrarCategoriaAsync(db, "Kiosco", estado: false);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
+
+        Assert.Equal(ResultadoPrevisualizacionBaja.CategoriaYaInactiva,
+            (await negocio.PrevisualizarBajaCategoriaAsync(kiosco.IdCategoria)).Resultado);
+        Assert.Equal(ResultadoPrevisualizacionBaja.CategoriaNoEncontrada,
+            (await negocio.PrevisualizarBajaCategoriaAsync(999)).Resultado);
+        Assert.Equal(ResultadoPrevisualizacionBaja.DatosInvalidos,
+            (await negocio.PrevisualizarBajaCategoriaAsync(0)).Resultado);
+    }
+
+    [Fact]
+    public async Task DarBaja_ProductoAgregadoEntrePrevisualizacionYBaja_RequiereNuevaConfirmacionSinEscribir()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
+        PrevisualizacionBajaCategoria previa = await negocio.PrevisualizarBajaCategoriaAsync(bebidas.IdCategoria);
+        Assert.Equal(0, previa.ProductosActivos);
+
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
+
+        RespuestaBajaCategoria respuesta = await negocio.DarBajaCategoriaAsync(
+            bebidas.IdCategoria, previa.ProductosActivos);
+
+        Assert.Equal(ResultadoBajaCategoria.ConfirmacionRequerida, respuesta.Resultado);
+        Assert.Equal(1, respuesta.ProductosActivosAfectados);
+        Assert.Contains("1 producto(s) activo(s)", respuesta.Mensaje);
+        Assert.Contains("cambió", respuesta.Mensaje);
+        Assert.True((await db.Categorias.AsNoTracking().SingleAsync()).Estado);
+
+        // Con la nueva confirmación (cantidad actual) la baja se aplica.
+        RespuestaBajaCategoria confirmada = await negocio.DarBajaCategoriaAsync(
+            bebidas.IdCategoria, respuesta.ProductosActivosAfectados);
+        Assert.Equal(ResultadoBajaCategoria.Exito, confirmada.Resultado);
+    }
+
+    [Fact]
+    public async Task DarBaja_ProductoDesactivadoEntrePrevisualizacionYBaja_RequiereNuevaConfirmacionSinEscribir()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        Producto producto = await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
+        PrevisualizacionBajaCategoria previa = await negocio.PrevisualizarBajaCategoriaAsync(bebidas.IdCategoria);
+        Assert.Equal(1, previa.ProductosActivos);
+
+        producto.Estado = false;
+        await db.SaveChangesAsync();
+
+        RespuestaBajaCategoria respuesta = await negocio.DarBajaCategoriaAsync(
+            bebidas.IdCategoria, previa.ProductosActivos);
+
+        Assert.Equal(ResultadoBajaCategoria.ConfirmacionRequerida, respuesta.Resultado);
+        Assert.Equal(0, respuesta.ProductosActivosAfectados);
+        Assert.True((await db.Categorias.AsNoTracking().SingleAsync()).Estado);
+    }
+
+    [Fact]
+    public async Task DarBaja_CategoriaInactivadaEntrePrevisualizacionYBaja_RetornaYaInactiva()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
+        PrevisualizacionBajaCategoria previa = await negocio.PrevisualizarBajaCategoriaAsync(bebidas.IdCategoria);
+
+        bebidas.Estado = false;
+        await db.SaveChangesAsync();
+
+        RespuestaBajaCategoria respuesta = await negocio.DarBajaCategoriaAsync(
+            bebidas.IdCategoria, previa.ProductosActivos);
+
+        Assert.Equal(ResultadoBajaCategoria.CategoriaYaInactiva, respuesta.Resultado);
+    }
+
+    [Fact]
+    public async Task PrevisualizarBaja_NoEscribeNada()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
+
+        await negocio.PrevisualizarBajaCategoriaAsync(bebidas.IdCategoria);
+
+        Assert.True((await db.Categorias.AsNoTracking().SingleAsync()).Estado);
+        Assert.Equal(1, await db.Categorias.AsNoTracking().CountAsync());
+        Assert.Equal(1, await db.Productos.AsNoTracking().CountAsync());
     }
 
     // ---------- RF-9: reactivación (misma fila, sin duplicado) ----------
@@ -472,7 +644,7 @@ public class CategoriaNegocioTests
         await using var db = await CrearContextoVacioAsync();
         Categoria kiosco = await SembrarCategoriaAsync(db, "Kiosco", estado: false);
         await SembrarProductoAsync(db, kiosco.IdCategoria, estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaActivacionCategoria respuesta = await negocio.ReactivarCategoriaAsync(
             kiosco.IdCategoria);
@@ -496,7 +668,7 @@ public class CategoriaNegocioTests
     {
         await using var db = await CrearContextoVacioAsync();
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaActivacionCategoria respuesta = await negocio.ReactivarCategoriaAsync(
             bebidas.IdCategoria);
@@ -517,7 +689,7 @@ public class CategoriaNegocioTests
     public async Task ReactivarCategoria_IdInexistente_RetornaCategoriaNoEncontrada()
     {
         await using var db = await CrearContextoVacioAsync();
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaActivacionCategoria respuesta = await negocio.ReactivarCategoriaAsync(999);
 
@@ -528,23 +700,22 @@ public class CategoriaNegocioTests
     // ---------- RF-13/RF-14: confirmación de baja compuesta en Negocio ----------
 
     [Fact]
-    public async Task ObtenerConfirmacionBaja_ConProductosActivos_ComponeMensajeConCantidad()
+    public async Task PrevisualizarBaja_ConProductosActivos_ComponeMensajeConCantidad()
     {
         await using var db = await CrearContextoVacioAsync();
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: true);
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
-        ConfirmacionBajaCategoria confirmacion =
-            await negocio.ObtenerConfirmacionBajaAsync(bebidas.IdCategoria);
+        PrevisualizacionBajaCategoria confirmacion =
+            await negocio.PrevisualizarBajaCategoriaAsync(bebidas.IdCategoria);
 
         // RF-13: el mensaje ya compuesto informa solo la cantidad de productos ACTIVOS.
-        Assert.Equal(ResultadoBajaCategoria.Exito, confirmacion.Resultado);
-        Assert.Equal("Bebidas", confirmacion.Descripcion);
-        Assert.Equal(2, confirmacion.CantidadProductosActivos);
-        Assert.True(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal(ResultadoPrevisualizacionBaja.Disponible, confirmacion.Resultado);
+        Assert.Equal(2, confirmacion.ProductosActivos);
+        Assert.Equal(ResultadoPrevisualizacionBaja.Disponible, confirmacion.Resultado);
         Assert.Equal(
             "La categoría Bebidas tiene 2 producto(s) activo(s) vinculados. ¿Desea desactivarla igualmente?",
             confirmacion.Mensaje);
@@ -559,20 +730,19 @@ public class CategoriaNegocioTests
     }
 
     [Fact]
-    public async Task ObtenerConfirmacionBaja_SinProductosActivos_ComponeConfirmacionSimple()
+    public async Task PrevisualizarBaja_SinProductosActivos_ComponeConfirmacionSimple()
     {
         await using var db = await CrearContextoVacioAsync();
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
-        ConfirmacionBajaCategoria confirmacion =
-            await negocio.ObtenerConfirmacionBajaAsync(bebidas.IdCategoria);
+        PrevisualizacionBajaCategoria confirmacion =
+            await negocio.PrevisualizarBajaCategoriaAsync(bebidas.IdCategoria);
 
         // RF-8 vigente: sin productos activos la confirmación es simple.
-        Assert.Equal(ResultadoBajaCategoria.Exito, confirmacion.Resultado);
-        Assert.Equal("Bebidas", confirmacion.Descripcion);
-        Assert.Equal(0, confirmacion.CantidadProductosActivos);
-        Assert.True(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal(ResultadoPrevisualizacionBaja.Disponible, confirmacion.Resultado);
+        Assert.Equal(0, confirmacion.ProductosActivos);
+        Assert.Equal(ResultadoPrevisualizacionBaja.Disponible, confirmacion.Resultado);
         Assert.Equal(
             "¿Confirma que desea dar de baja la categoría Bebidas?",
             confirmacion.Mensaje);
@@ -585,21 +755,21 @@ public class CategoriaNegocioTests
     }
 
     [Fact]
-    public async Task ObtenerConfirmacionBaja_SoloProductosInactivos_ComponeConfirmacionSimple()
+    public async Task PrevisualizarBaja_SoloProductosInactivos_ComponeConfirmacionSimple()
     {
         // Caso límite: los productos inactivos no disparan la advertencia.
         await using var db = await CrearContextoVacioAsync();
         Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
         await SembrarProductoAsync(db, bebidas.IdCategoria, estado: false);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
-        ConfirmacionBajaCategoria confirmacion =
-            await negocio.ObtenerConfirmacionBajaAsync(bebidas.IdCategoria);
+        PrevisualizacionBajaCategoria confirmacion =
+            await negocio.PrevisualizarBajaCategoriaAsync(bebidas.IdCategoria);
 
-        Assert.Equal(ResultadoBajaCategoria.Exito, confirmacion.Resultado);
-        Assert.Equal(0, confirmacion.CantidadProductosActivos);
-        Assert.True(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal(ResultadoPrevisualizacionBaja.Disponible, confirmacion.Resultado);
+        Assert.Equal(0, confirmacion.ProductosActivos);
+        Assert.Equal(ResultadoPrevisualizacionBaja.Disponible, confirmacion.Resultado);
         Assert.Equal(
             "¿Confirma que desea dar de baja la categoría Bebidas?",
             confirmacion.Mensaje);
@@ -612,39 +782,37 @@ public class CategoriaNegocioTests
     }
 
     [Fact]
-    public async Task ObtenerConfirmacionBaja_IdInexistente_RetornaCategoriaNoEncontrada()
+    public async Task PrevisualizarBaja_IdInexistente_RetornaCategoriaNoEncontrada()
     {
         await using var db = await CrearContextoVacioAsync();
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
-        ConfirmacionBajaCategoria confirmacion =
-            await negocio.ObtenerConfirmacionBajaAsync(999);
+        PrevisualizacionBajaCategoria confirmacion =
+            await negocio.PrevisualizarBajaCategoriaAsync(999);
 
         // RF-14: se informa el motivo y no se modifica ningún registro.
-        Assert.Equal(ResultadoBajaCategoria.CategoriaNoEncontrada, confirmacion.Resultado);
-        Assert.Null(confirmacion.Descripcion);
-        Assert.Equal(0, confirmacion.CantidadProductosActivos);
-        Assert.False(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal(ResultadoPrevisualizacionBaja.CategoriaNoEncontrada, confirmacion.Resultado);
+        Assert.Equal(0, confirmacion.ProductosActivos);
+        Assert.NotEqual(ResultadoPrevisualizacionBaja.Disponible, confirmacion.Resultado);
         Assert.Equal("La categoría indicada no existe.", confirmacion.Mensaje);
         Assert.Empty(await db.Categorias.AsNoTracking().ToListAsync());
     }
 
     [Fact]
-    public async Task ObtenerConfirmacionBaja_CategoriaYaInactiva_RetornaCategoriaYaInactiva()
+    public async Task PrevisualizarBaja_CategoriaYaInactiva_RetornaCategoriaYaInactiva()
     {
         await using var db = await CrearContextoVacioAsync();
         Categoria kiosco = await SembrarCategoriaAsync(db, "Kiosco", estado: false);
         await SembrarProductoAsync(db, kiosco.IdCategoria, estado: true);
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
-        ConfirmacionBajaCategoria confirmacion =
-            await negocio.ObtenerConfirmacionBajaAsync(kiosco.IdCategoria);
+        PrevisualizacionBajaCategoria confirmacion =
+            await negocio.PrevisualizarBajaCategoriaAsync(kiosco.IdCategoria);
 
         // RF-14: una categoría ya inactiva no puede darse de baja; nada se escribe.
-        Assert.Equal(ResultadoBajaCategoria.CategoriaYaInactiva, confirmacion.Resultado);
-        Assert.Equal("Kiosco", confirmacion.Descripcion);
-        Assert.Equal(0, confirmacion.CantidadProductosActivos);
-        Assert.False(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal(ResultadoPrevisualizacionBaja.CategoriaYaInactiva, confirmacion.Resultado);
+        Assert.Equal(0, confirmacion.ProductosActivos);
+        Assert.NotEqual(ResultadoPrevisualizacionBaja.Disponible, confirmacion.Resultado);
         Assert.Equal("La categoría Kiosco ya está inactiva.", confirmacion.Mensaje);
 
         Categoria? persistida = await db.Categorias
@@ -658,18 +826,17 @@ public class CategoriaNegocioTests
     [Theory]
     [InlineData(0)]
     [InlineData(-5)]
-    public async Task ObtenerConfirmacionBaja_IdInvalido_RetornaDatosInvalidos(int idCategoria)
+    public async Task PrevisualizarBaja_IdInvalido_RetornaDatosInvalidos(int idCategoria)
     {
         await using var db = await CrearContextoVacioAsync();
-        var negocio = new CategoriaNegocio(db);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
 
-        ConfirmacionBajaCategoria confirmacion =
-            await negocio.ObtenerConfirmacionBajaAsync(idCategoria);
+        PrevisualizacionBajaCategoria confirmacion =
+            await negocio.PrevisualizarBajaCategoriaAsync(idCategoria);
 
-        Assert.Equal(ResultadoBajaCategoria.DatosInvalidos, confirmacion.Resultado);
-        Assert.Null(confirmacion.Descripcion);
-        Assert.Equal(0, confirmacion.CantidadProductosActivos);
-        Assert.False(confirmacion.PuedeDarseDeBaja);
+        Assert.Equal(ResultadoPrevisualizacionBaja.DatosInvalidos, confirmacion.Resultado);
+        Assert.Equal(0, confirmacion.ProductosActivos);
+        Assert.NotEqual(ResultadoPrevisualizacionBaja.Disponible, confirmacion.Resultado);
         Assert.Equal("Debe indicar una categoría válida.", confirmacion.Mensaje);
         Assert.Empty(await db.Categorias.AsNoTracking().ToListAsync());
     }
@@ -697,6 +864,53 @@ public class CategoriaNegocioTests
         db.Productos.Add(producto);
         await db.SaveChangesAsync();
         return producto;
+    }
+
+    [Fact]
+    public async Task CrearCategoria_FalloDeIndiceUnicoPorCarrera_DevuelveDescripcionDuplicada()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        var fabrica = new FabricaContextosQueFallanAlGuardar(
+            FabricaContextosPruebas.Desde(db),
+            antesDeFallar: async otro => await SembrarCategoriaAsync(otro, "Almacén", estado: true));
+        var negocio = new CategoriaNegocio(fabrica);
+
+        RespuestaCreacionCategoria respuesta = await negocio.CrearCategoriaAsync(
+            new CrearCategoriaDto { Descripcion = "Almacén" });
+
+        Assert.Equal(ResultadoCreacionCategoria.DescripcionDuplicada, respuesta.Resultado);
+        Assert.Null(respuesta.Categoria);
+        Assert.Single(await db.Categorias.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task CrearCategoria_FalloDeGuardadoSinDuplicado_PropagaLaExcepcion()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        var fabrica = new FabricaContextosQueFallanAlGuardar(
+            FabricaContextosPruebas.Desde(db), antesDeFallar: null);
+        var negocio = new CategoriaNegocio(fabrica);
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => negocio.CrearCategoriaAsync(
+            new CrearCategoriaDto { Descripcion = "Almacén" }));
+    }
+
+    [Fact]
+    public async Task DarBajaCategoria_TrasReactivacionExterna_AplicaLaBajaConDatosActuales()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        Categoria bebidas = await SembrarCategoriaAsync(db, "Bebidas", estado: true);
+        var negocio = new CategoriaNegocio(FabricaContextosPruebas.Desde(db));
+
+        Assert.Equal(ResultadoBajaCategoria.Exito,
+            (await negocio.DarBajaCategoriaAsync(bebidas.IdCategoria, productosActivosConfirmados: 0)).Resultado);
+
+        // Otra sesión la reactiva; cada operación usa un contexto nuevo (sin datos obsoletos).
+        Assert.Equal(ResultadoActivacionCategoria.Exito,
+            (await negocio.ReactivarCategoriaAsync(bebidas.IdCategoria)).Resultado);
+
+        Assert.Equal(ResultadoBajaCategoria.Exito,
+            (await negocio.DarBajaCategoriaAsync(bebidas.IdCategoria, productosActivosConfirmados: 0)).Resultado);
     }
 
     private static async Task<AppDbContext> CrearContextoVacioAsync()

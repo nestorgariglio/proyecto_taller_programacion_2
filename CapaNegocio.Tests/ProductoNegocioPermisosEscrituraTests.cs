@@ -30,7 +30,7 @@ public partial class ProductoNegocioTests
         Rol rolVendedor = await SembrarRolAsync(db, "Vendedor");
         Usuario vendedor = await SembrarUsuarioConRolAsync(
             db, 90000030, "valeria.alta@example.com", "Valeria", rolVendedor.IdRol);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaCreacionProducto respuesta = await negocio.CrearProductoAsync(
             new CrearProductoDto
@@ -64,7 +64,7 @@ public partial class ProductoNegocioTests
             db, 90000031, "valeria.edicion@example.com", "Valeria", rolVendedor.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacionProducto respuesta = await negocio.ModificarProductoAsync(
             new ModificarProductoDto
@@ -103,7 +103,7 @@ public partial class ProductoNegocioTests
             db, 90000032, "valeria.baja@example.com", "Valeria", rolVendedor.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaBajaProducto respuesta = await negocio.DarBajaProductoAsync(
             producto.IdProducto, vendedor.IdUsuario);
@@ -132,7 +132,7 @@ public partial class ProductoNegocioTests
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario,
             estado: false);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaReactivacionProducto respuesta = await negocio.ReactivarProductoAsync(
             producto.IdProducto, vendedor.IdUsuario);

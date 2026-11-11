@@ -10,6 +10,7 @@ using CapaPresentacion.Compras;
 using CapaPresentacion.Productos;
 using CapaPresentacion.Proveedores;
 using CapaPresentacion.Respaldos;
+using CapaPresentacion.Ventas;
 
 namespace CapaPresentacion
 {
@@ -41,16 +42,14 @@ namespace CapaPresentacion
                     services.AddTransient<ProductoNegocio>();
                     services.AddTransient<ProveedorNegocio>();
                     services.AddTransient<CompraNegocio>();
+                    services.AddTransient<ConsultaProductosVentaDatos>();
+                    services.AddTransient<CarritoVentaNegocio>();
 
-                    // Indicadores de Home: umbral de stock crítico igual al de Productos.
                     services.AddTransient<HomeResumenNegocio>(sp => new HomeResumenNegocio(
                         sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
                         CapaNegocio.Stock.ResolucionUmbralStock.Resolver(
                             sp.GetRequiredService<IConfiguration>()["StockCritico:UmbralMinimo"])));
 
-                    // Respaldo y restauración: Singleton para compartir la exclusión
-                    // dentro del proceso. El repositorio recibe la cadena configurada
-                    // solo para derivar la base objetivo y el catálogo master.
                     services.AddSingleton<CapaDatos.Respaldo.IProveedorRutaRespaldo, CapaDatos.Respaldo.ProveedorRutaRespaldo>(
                         sp => new CapaDatos.Respaldo.ProveedorRutaRespaldo(
                             rutaConfigurada: sp.GetRequiredService<IConfiguration>()["Respaldos:RutaCarpeta"]));
@@ -72,6 +71,7 @@ namespace CapaPresentacion
                     services.AddTransient<ClientesForm>();
                     services.AddTransient<ProveedoresForm>();
                     services.AddTransient<ComprasForm>();
+                    services.AddTransient<VentasForm>();
                     services.AddTransient<login>();
                     services.AddTransient<inicio>();
 

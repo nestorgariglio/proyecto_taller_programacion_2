@@ -30,7 +30,7 @@ public partial class ProductoNegocioTests
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario,
             estado: true);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         ConfirmacionCambioEstadoProducto confirmacion =
             await negocio.ObtenerConfirmacionCambioEstadoAsync(producto.IdProducto);
@@ -59,7 +59,7 @@ public partial class ProductoNegocioTests
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario,
             estado: false);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         ConfirmacionCambioEstadoProducto confirmacion =
             await negocio.ObtenerConfirmacionCambioEstadoAsync(producto.IdProducto);
@@ -86,7 +86,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         ConfirmacionCambioEstadoProducto confirmacion =
             await negocio.ObtenerConfirmacionCambioEstadoAsync(999);
@@ -120,7 +120,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         ConfirmacionCambioEstadoProducto confirmacion =
             await negocio.ObtenerConfirmacionCambioEstadoAsync(idProducto);
@@ -173,7 +173,7 @@ public partial class ProductoNegocioTests
             .SingleAsync(p => p.IdProducto == inactivo.IdProducto);
         int filasAntes = await db.Productos.AsNoTracking().CountAsync();
 
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         // RF-24: pedir la confirmación varias veces (para ambos productos) no
         // escribe ni modifica la fila: cancelar deja todo como estaba.

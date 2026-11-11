@@ -13,15 +13,15 @@ namespace CapaNegocio
     /// </summary>
     public class CategoriaNegocio
     {
-        private readonly AppDbContext _db;
+        private readonly IDbContextFactory<AppDbContext> _dbFactory;
 
         /// <summary>
-        /// Inicializa una instancia con el contexto de datos utilizado para consultar categorías.
+        /// Inicializa una instancia con la fábrica de contextos de datos.
         /// </summary>
-        /// <param name="db">Contexto de persistencia de la aplicación.</param>
-        public CategoriaNegocio(AppDbContext db)
+        /// <param name="dbFactory">Fábrica de contextos; cada operación usa uno propio.</param>
+        public CategoriaNegocio(IDbContextFactory<AppDbContext> dbFactory)
         {
-            _db = db;
+            _dbFactory = dbFactory;
         }
 
         private static CategoriaRespuestaDto MapearCategoria(Categoria categoria)
@@ -61,8 +61,9 @@ namespace CapaNegocio
         }
 
         /// <summary>
-        /// Valida la unicidad de una descripción ya recortada (RF-3), ignorando
-        /// mayúsculas y minúsculas, entre todas las categorías existentes —activas
+        /// Valida la unicidad de una descripción ya recortada (RF-3) mediante una
+        /// consulta filtrada en la BD (la insensibilidad a mayúsculas depende de la
+        /// colación de la BD), entre todas las categorías —activas
         /// e inactivas— y excluyendo opcionalmente a la categoría que se está
         /// editando (autoexclusión, RF-4).
         /// </summary>
@@ -75,23 +76,16 @@ namespace CapaNegocio
         /// categoría existente está inactiva y sugiere reactivarla, D-1);
         /// <c>null</c> cuando la descripción está disponible.
         /// </returns>
-        private async Task<string?> ValidarUnicidadDescripcionAsync(
-            string descripcion, int? idCategoriaAExcluir)
+        private static async Task<string?> ValidarUnicidadDescripcionAsync(
+            AppDbContext db, string descripcion, int? idCategoriaAExcluir)
         {
-            // O-2 (RF-16, RNF-6): la comparación se resuelve en la base con una
-            // única consulta que devuelve como máximo una fila y solo dos
-            // columnas; no se materializa la tabla ni se filtra la colección en
-            // el cliente. El parámetro se normaliza una sola vez en memoria para
-            // que UPPER(columna) = @p funcione igual en SQL Server y en el
-            // proveedor InMemory de las pruebas (ToUpperInvariant es determinista
-            // y no depende de la cultura del hilo).
-            string descripcionNormalizada = descripcion.ToUpperInvariant();
-
-            var duplicada = await _db.Categorias
+            // D-6 (reabierta): la comparación se resuelve en la BD con la colación
+            // de la columna (insensible a mayúsculas en la BD del sistema) y el
+            // índice único IX_CATEGORIA_descripcion; no se carga la tabla.
+            var duplicada = await db.Categorias
                 .AsNoTracking()
-                .Where(c => (!idCategoriaAExcluir.HasValue || c.IdCategoria != idCategoriaAExcluir.Value)
-                    && c.Descripcion != null
-                    && c.Descripcion.ToUpper() == descripcionNormalizada)
+                .Where(c => c.Descripcion == descripcion
+                    && (idCategoriaAExcluir == null || c.IdCategoria != idCategoriaAExcluir))
                 .Select(c => new { c.Descripcion, c.Estado })
                 .FirstOrDefaultAsync();
 
@@ -101,6 +95,19 @@ namespace CapaNegocio
             }
 
             return ConstruirMensajeDuplicado(duplicada.Descripcion, duplicada.Estado);
+        }
+
+        /// <summary>
+        /// Tras un <see cref="DbUpdateException"/> al guardar, confirma con un contexto
+        /// nuevo (el anterior quedó inconsistente) si la causa fue una descripción
+        /// duplicada por concurrencia (violación del índice único).
+        /// </summary>
+        /// <returns>Mensaje de duplicado, o <c>null</c> si la causa fue otra.</returns>
+        private async Task<string?> ConfirmarDuplicadoTrasFalloAsync(
+            string descripcion, int? idCategoriaAExcluir)
+        {
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+            return await ValidarUnicidadDescripcionAsync(db, descripcion, idCategoriaAExcluir);
         }
 
         /// <summary>
@@ -150,10 +157,12 @@ namespace CapaNegocio
                 };
             }
 
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
             // RF-3: la descripción no puede repetirse, ni siquiera contra una
             // categoría inactiva (el mensaje lo distingue, sin reactivar nada).
             string? mensajeDuplicado = await ValidarUnicidadDescripcionAsync(
-                descripcionRecortada!, idCategoriaAExcluir: null);
+                db, descripcionRecortada!, idCategoriaAExcluir: null);
 
             if (mensajeDuplicado is not null)
             {
@@ -170,8 +179,30 @@ namespace CapaNegocio
                 Estado = true
             };
 
-            _db.Categorias.Add(nuevaCategoria);
-            await _db.SaveChangesAsync();
+            db.Categorias.Add(nuevaCategoria);
+
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Carrera: otra sesión creó la misma descripción entre la
+                // validación y el guardado (índice único). Se informa como duplicado.
+                string? duplicadoPorCarrera = await ConfirmarDuplicadoTrasFalloAsync(
+                    descripcionRecortada!, idCategoriaAExcluir: null);
+
+                if (duplicadoPorCarrera is null)
+                {
+                    throw;
+                }
+
+                return new RespuestaCreacionCategoria
+                {
+                    Resultado = ResultadoCreacionCategoria.DescripcionDuplicada,
+                    Mensaje = duplicadoPorCarrera
+                };
+            }
 
             return new RespuestaCreacionCategoria
             {
@@ -219,7 +250,9 @@ namespace CapaNegocio
                 };
             }
 
-            Categoria? categoria = await _db.Categorias
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            Categoria? categoria = await db.Categorias
                 .FirstOrDefaultAsync(c => c.IdCategoria == entradaCategoria.IdCategoria);
 
             if (categoria is null)
@@ -234,7 +267,7 @@ namespace CapaNegocio
             // RF-4: se compara contra las demás categorías, nunca contra la que
             // se está editando (autoexclusión).
             string? mensajeDuplicado = await ValidarUnicidadDescripcionAsync(
-                descripcionRecortada!, entradaCategoria.IdCategoria);
+                db, descripcionRecortada!, entradaCategoria.IdCategoria);
 
             if (mensajeDuplicado is not null)
             {
@@ -246,7 +279,27 @@ namespace CapaNegocio
             }
 
             categoria.Descripcion = descripcionRecortada;
-            await _db.SaveChangesAsync();
+
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                string? duplicadoPorCarrera = await ConfirmarDuplicadoTrasFalloAsync(
+                    descripcionRecortada!, entradaCategoria.IdCategoria);
+
+                if (duplicadoPorCarrera is null)
+                {
+                    throw;
+                }
+
+                return new RespuestaModificacionCategoria
+                {
+                    Resultado = ResultadoModificacionCategoria.DescripcionDuplicada,
+                    Mensaje = duplicadoPorCarrera
+                };
+            }
 
             return new RespuestaModificacionCategoria
             {
@@ -259,96 +312,101 @@ namespace CapaNegocio
         /// <summary>
         /// Cuenta los productos <b>activos</b> (<c>Estado = true</c>) vinculados
         /// a una categoría (RF-6, RF-7). Solo los productos activos disparan la
-        /// advertencia de la baja: los inactivos no se contabilizan. Se conserva
-        /// como <b>colaborador interno</b> de <see cref="ObtenerConfirmacionBajaAsync"/>,
-        /// que compone el mensaje de confirmación en la lógica de negocio (O-1,
-        /// que sustituye a D-3); la vista ya no lo consume. Los tests de RF-6
-        /// siguen usándolo para verificar el conteo. Este método solo consulta,
-        /// sin modificar nada.
+        /// advertencia de la baja: los inactivos no se contabilizan. Solo consulta,
+        /// sin modificar nada; la regla de la baja vive en
+        /// <see cref="DarBajaCategoriaAsync(int, int)"/> (D-3: previsualización y
+        /// confirmación con conteo).
         /// </summary>
         /// <param name="idCategoria">Identificador de la categoría a consultar.</param>
         /// <returns>Cantidad de productos activos vinculados a la categoría.</returns>
         public async Task<int> ContarProductosActivosAsync(int idCategoria)
         {
-            return await _db.Productos
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            return await ContarProductosActivosAsync(db, idCategoria);
+        }
+
+        private static Task<int> ContarProductosActivosAsync(AppDbContext db, int idCategoria)
+        {
+            return db.Productos
                 .AsNoTracking()
                 .CountAsync(producto =>
                     producto.IdCategoria == idCategoria && producto.Estado);
         }
 
         /// <summary>
-        /// Obtiene la confirmación de baja de una categoría con el mensaje en español
-        /// ya compuesto en la lógica de negocio (RF-13, RF-14, RF-15): informa solo
-        /// la cantidad de productos activos vinculados —sin listarlos—, distingue si
-        /// hay productos activos o no e indica si la baja es posible. La interfaz se
-        /// limita a presentar ese mensaje y a ejecutar la baja confirmada.
-        /// Pedir la confirmación nunca escribe: no llama a <c>SaveChangesAsync</c> ni
-        /// a <see cref="DarBajaCategoriaAsync"/> (si el usuario cancela, todo queda
-        /// como estaba).
+        /// Previsualiza la baja de una categoría (RF-6, RF-7, RF-8) sin escribir
+        /// nada: informa si la baja es posible, cuántos productos <b>activos</b>
+        /// tiene vinculados y el texto único de confirmación que debe mostrarse
+        /// al usuario (con o sin productos activos). La cantidad devuelta debe
+        /// reenviarse a <see cref="DarBajaCategoriaAsync(int, int)"/> como la
+        /// cantidad confirmada.
         /// </summary>
-        /// <param name="idCategoria">Identificador de la categoría que se desea dar de baja.</param>
-        /// <returns>
-        /// Una confirmación con el resultado, la descripción de la categoría, la
-        /// cantidad de productos activos, el mensaje a mostrar y si la baja puede
-        /// ejecutarse.
-        /// </returns>
-        public async Task<ConfirmacionBajaCategoria> ObtenerConfirmacionBajaAsync(int idCategoria)
+        /// <param name="idCategoria">Identificador de la categoría a dar de baja.</param>
+        /// <returns>Resultado de la previsualización con cantidad y mensaje.</returns>
+        public async Task<PrevisualizacionBajaCategoria> PrevisualizarBajaCategoriaAsync(int idCategoria)
         {
             if (idCategoria <= 0)
             {
-                return new ConfirmacionBajaCategoria
+                return new PrevisualizacionBajaCategoria
                 {
-                    Resultado = ResultadoBajaCategoria.DatosInvalidos,
-                    Mensaje = "Debe indicar una categoría válida.",
-                    PuedeDarseDeBaja = false
+                    Resultado = ResultadoPrevisualizacionBaja.DatosInvalidos,
+                    Mensaje = "Debe indicar una categoría válida."
                 };
             }
 
-            // RF-14: una sola consulta de lectura a la categoría (descripción y estado).
-            var categoria = await _db.Categorias
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            Categoria? categoria = await db.Categorias
                 .AsNoTracking()
-                .Where(c => c.IdCategoria == idCategoria)
-                .Select(c => new { c.Descripcion, c.Estado })
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(c => c.IdCategoria == idCategoria);
 
             if (categoria is null)
             {
-                return new ConfirmacionBajaCategoria
+                return new PrevisualizacionBajaCategoria
                 {
-                    Resultado = ResultadoBajaCategoria.CategoriaNoEncontrada,
-                    Mensaje = "La categoría indicada no existe.",
-                    PuedeDarseDeBaja = false
+                    Resultado = ResultadoPrevisualizacionBaja.CategoriaNoEncontrada,
+                    Mensaje = "La categoría indicada no existe."
                 };
             }
 
             if (!categoria.Estado)
             {
-                // Caso límite: la operación no produce cambios (sin escritura).
-                return new ConfirmacionBajaCategoria
+                return new PrevisualizacionBajaCategoria
                 {
-                    Resultado = ResultadoBajaCategoria.CategoriaYaInactiva,
-                    Descripcion = categoria.Descripcion,
-                    Mensaje = $"La categoría {categoria.Descripcion} ya está inactiva.",
-                    PuedeDarseDeBaja = false
+                    Resultado = ResultadoPrevisualizacionBaja.CategoriaYaInactiva,
+                    Mensaje = $"La categoría {categoria.Descripcion} ya está inactiva."
                 };
             }
 
-            // RF-6/RF-7: se reutiliza el conteo verificado de productos activos; los
-            // inactivos no disparan la advertencia.
-            int cantidadProductosActivos = await ContarProductosActivosAsync(idCategoria);
+            int productosActivos = await ContarProductosActivosAsync(db, idCategoria);
 
-            string mensaje = cantidadProductosActivos > 0
-                ? $"La categoría {categoria.Descripcion} tiene {cantidadProductosActivos} producto(s) activo(s) vinculados. ¿Desea desactivarla igualmente?"
-                : $"¿Confirma que desea dar de baja la categoría {categoria.Descripcion}?";
-
-            return new ConfirmacionBajaCategoria
+            return new PrevisualizacionBajaCategoria
             {
-                Resultado = ResultadoBajaCategoria.Exito,
-                Descripcion = categoria.Descripcion,
-                CantidadProductosActivos = cantidadProductosActivos,
-                Mensaje = mensaje,
-                PuedeDarseDeBaja = true
+                Resultado = ResultadoPrevisualizacionBaja.Disponible,
+                ProductosActivos = productosActivos,
+                Mensaje = ConstruirMensajeBaja(categoria.Descripcion, productosActivos, cantidadActualizada: false)
             };
+        }
+
+        /// <summary>
+        /// Construye el texto del diálogo único de baja: confirmación simple sin
+        /// productos activos; con productos activos incluye la advertencia y la
+        /// cantidad (RF-7, solo cantidad, sin listado).
+        /// </summary>
+        private static string ConstruirMensajeBaja(
+            string? descripcion, int productosActivos, bool cantidadActualizada)
+        {
+            string prefijo = cantidadActualizada
+                ? "La cantidad de productos activos cambió desde la consulta anterior. "
+                : string.Empty;
+
+            if (productosActivos == 0)
+            {
+                return $"{prefijo}¿Confirma que desea dar de baja la categoría {descripcion}?";
+            }
+
+            return $"{prefijo}La categoría {descripcion} tiene {productosActivos} producto(s) activo(s) vinculados. ¿Desea desactivarla igualmente?";
         }
 
         /// <summary>
@@ -357,10 +415,21 @@ namespace CapaNegocio
         /// uno nuevo. Si la categoría ya está inactiva no produce ningún cambio
         /// (caso límite de la spec) y responde <see cref="ResultadoBajaCategoria.CategoriaYaInactiva"/>.
         /// Los vínculos con productos quedan intactos.
+        /// El conteo definitivo de productos activos y la escritura se hacen en el
+        /// mismo contexto y bajo una transacción <c>Serializable</c> (D-3): ningún
+        /// producto activo puede insertarse ni reactivarse en la categoría entre el
+        /// recuento y el UPDATE. Si el recuento difiere de
+        /// <paramref name="productosActivosConfirmados"/>, no escribe nada y responde
+        /// <see cref="ResultadoBajaCategoria.ConfirmacionRequerida"/> con la cantidad
+        /// actual y el mensaje actualizado para una nueva confirmación (RF-6, RF-7).
         /// </summary>
         /// <param name="idCategoria">Identificador de la categoría a dar de baja.</param>
+        /// <param name="productosActivosConfirmados">
+        /// Cantidad de productos activos que el usuario vio y confirmó en la previsualización.
+        /// </param>
         /// <returns>Una respuesta con el resultado y la categoría afectada si hubo cambio.</returns>
-        public async Task<RespuestaBajaCategoria> DarBajaCategoriaAsync(int idCategoria)
+        public async Task<RespuestaBajaCategoria> DarBajaCategoriaAsync(
+            int idCategoria, int productosActivosConfirmados)
         {
             if (idCategoria <= 0)
             {
@@ -371,7 +440,40 @@ namespace CapaNegocio
                 };
             }
 
-            Categoria? categoria = await _db.Categorias
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            // Proveedores no relacionales (InMemory de pruebas unitarias) no admiten
+            // transacciones; con una transacción ambiente (p. ej. compartida por las
+            // pruebas de integración) se participa en ella sin abrir otra.
+            if (!db.Database.IsRelational() || db.Database.CurrentTransaction is not null)
+            {
+                return await EjecutarBajaAsync(db, idCategoria, productosActivosConfirmados);
+            }
+
+            // Serializable: el recuento y el UPDATE quedan protegidos por bloqueos de
+            // rango sobre IX_PRODUCTO_id_categoria. La estrategia de ejecución de EF
+            // reintenta la unidad completa si hubiera reintentos configurados.
+            var estrategia = db.Database.CreateExecutionStrategy();
+
+            return await estrategia.ExecuteAsync(async () =>
+            {
+                db.ChangeTracker.Clear();
+
+                await using var transaccion = await db.Database
+                    .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+                RespuestaBajaCategoria respuesta = await EjecutarBajaAsync(
+                    db, idCategoria, productosActivosConfirmados);
+
+                await transaccion.CommitAsync();
+                return respuesta;
+            });
+        }
+
+        private static async Task<RespuestaBajaCategoria> EjecutarBajaAsync(
+            AppDbContext db, int idCategoria, int productosActivosConfirmados)
+        {
+            Categoria? categoria = await db.Categorias
                 .FirstOrDefaultAsync(c => c.IdCategoria == idCategoria);
 
             if (categoria is null)
@@ -393,9 +495,22 @@ namespace CapaNegocio
                 };
             }
 
+            // Recuento definitivo en el mismo contexto/transacción que la baja.
+            int productosActivos = await ContarProductosActivosAsync(db, idCategoria);
+
+            if (productosActivos != productosActivosConfirmados)
+            {
+                return new RespuestaBajaCategoria
+                {
+                    Resultado = ResultadoBajaCategoria.ConfirmacionRequerida,
+                    ProductosActivosAfectados = productosActivos,
+                    Mensaje = ConstruirMensajeBaja(categoria.Descripcion, productosActivos, cantidadActualizada: true)
+                };
+            }
+
             // Baja lógica sobre la misma fila: solo se invierte el Estado.
             categoria.Estado = false;
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
 
             return new RespuestaBajaCategoria
             {
@@ -424,7 +539,9 @@ namespace CapaNegocio
                 };
             }
 
-            Categoria? categoria = await _db.Categorias
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            Categoria? categoria = await db.Categorias
                 .FirstOrDefaultAsync(c => c.IdCategoria == idCategoria);
 
             if (categoria is null)
@@ -448,7 +565,7 @@ namespace CapaNegocio
 
             // Reactivación sobre la misma fila: solo se invierte el Estado.
             categoria.Estado = true;
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
 
             return new RespuestaActivacionCategoria
             {
@@ -466,7 +583,9 @@ namespace CapaNegocio
         /// <returns>Colección de categorías mapeadas a su DTO de lectura.</returns>
         public async Task<IReadOnlyList<CategoriaRespuestaDto>> ListarCategoriasAsync()
         {
-            return await _db.Categorias
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            return await db.Categorias
                 .AsNoTracking()
                 .OrderBy(categoria => categoria.Descripcion)
                 .Select(categoria => new CategoriaRespuestaDto
@@ -486,7 +605,9 @@ namespace CapaNegocio
         /// <returns>Colección de categorías activas mapeadas a su DTO de lectura.</returns>
         public async Task<IReadOnlyList<CategoriaRespuestaDto>> ListarCategoriasActivasAsync()
         {
-            return await _db.Categorias
+            await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+
+            return await db.Categorias
                 .AsNoTracking()
                 .Where(categoria => categoria.Estado)
                 .OrderBy(categoria => categoria.Descripcion)

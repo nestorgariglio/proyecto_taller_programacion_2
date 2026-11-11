@@ -15,7 +15,7 @@ public class ProveedorNegocioTests
     private const string MensajeCuitObligatorio = "El CUIT es obligatorio.";
     private const string MensajeRazonSocialObligatoria = "La Razón Social es obligatoria.";
     private const string MensajeCuitFormato = "El CUIT debe ser solo números (solo dígitos 0-9).";
-    private const string MensajeRazonSocialFormato = "La Razón Social debe admitir letras, espacios internos, apóstrofo y guion.";
+    private const string MensajeRazonSocialFormato = "La Razón Social solo admite letras, números, espacios y los signos . , ' - & / ( ) + (2 a 200 caracteres).";
     private const string MensajeCorreoFormato = "El correo no tiene un formato válido (ejemplo: nombre@dominio.com).";
     private const string MensajeTelefonoFormato = "El teléfono solo admite dígitos.";
     private const string MensajeCuitDuplicado = "Ya existe un proveedor con el CUIT";
@@ -128,7 +128,9 @@ public class ProveedorNegocioTests
     // RF-5: razon social formato / vacío
     [Theory]
     [InlineData("", MensajeRazonSocialObligatoria)]
-    [InlineData("Logitech1", MensajeRazonSocialFormato)]
+    [InlineData("Logitech@", MensajeRazonSocialFormato)]
+    [InlineData("Logi\u0007tech", MensajeRazonSocialFormato)]
+    [InlineData("A", MensajeRazonSocialFormato)]
     public async Task CrearProveedor_RazonSocialInvalida_Rechaza(string razon, string mensaje)
     {
         await using var db = await CrearContextoVacioAsync();
@@ -136,6 +138,41 @@ public class ProveedorNegocioTests
         var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30123456789", RazonSocial = razon });
         Assert.Equal(ResultadoCreacionProveedor.DatosInvalidos, resp.Resultado);
         Assert.Contains(mensaje, resp.Mensaje);
+    }
+
+    [Fact]
+    public async Task CrearProveedor_RazonSocialDe201Caracteres_Rechaza()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30123456789", RazonSocial = new string('A', 201) });
+        Assert.Equal(ResultadoCreacionProveedor.DatosInvalidos, resp.Resultado);
+        Assert.Equal(MensajeRazonSocialFormato, resp.Mensaje);
+    }
+
+    [Theory]
+    [InlineData("Logitech Argentina S.A.")]
+    [InlineData("Logitech1")]
+    [InlineData("3M Argentina S.A.")]
+    [InlineData("Pérez & Hnos. (Sur)")]
+    public async Task CrearProveedor_RazonSocialConPuntosYDigitos_AceptaTextoExacto(string razon)
+    {
+        await using var db = await CrearContextoVacioAsync();
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30123456789", RazonSocial = razon });
+        Assert.Equal(ResultadoCreacionProveedor.Exito, resp.Resultado);
+        Assert.Equal(razon, resp.Proveedor!.RazonSocial);
+    }
+
+    [Fact]
+    public async Task ModificarProveedor_RazonSocialConPuntos_AceptaTextoExacto()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        var p = await SembrarProveedorAsync(db, "30123456789", "Logitech");
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.ModificarProveedorAsync(new ModificarProveedorDto { IdProveedor = p.IdProveedor, Cuit = "30123456789", RazonSocial = "Logitech Argentina S.A." });
+        Assert.Equal(ResultadoModificacionProveedor.Exito, resp.Resultado);
+        Assert.Equal("Logitech Argentina S.A.", resp.Proveedor!.RazonSocial);
     }
 
     [Fact]
@@ -530,5 +567,218 @@ public class ProveedorNegocioTests
         var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30123456789", RazonSocial = "Logitech" });
         Assert.Equal(ResultadoCreacionProveedor.ErrorPersistencia, resp.Resultado);
         Assert.Equal(MensajeErrorPersistencia, resp.Mensaje);
+    }
+
+    // Contexto que, al guardar, siembra otro proveedor (contexto aparte, mismas opciones) y lanza la excepcion indicada.
+    private class ConflictoConcurrenteDbContext : AppDbContext
+    {
+        private readonly DbContextOptions<AppDbContext> _options;
+        private readonly Proveedor? _concurrente;
+        private readonly Exception _excepcion;
+
+        public ConflictoConcurrenteDbContext(DbContextOptions<AppDbContext> options, Proveedor? concurrente, Exception excepcion) : base(options)
+        {
+            _options = options;
+            _concurrente = concurrente;
+            _excepcion = excepcion;
+        }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            if (_concurrente is not null)
+            {
+                await using var otro = new AppDbContext(_options);
+                otro.Proveedores.Add(_concurrente);
+                await otro.SaveChangesAsync(cancellationToken);
+            }
+            throw _excepcion;
+        }
+    }
+
+    private static DbContextOptions<AppDbContext> NuevasOpciones() =>
+        new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase($"Concurrente-{Guid.NewGuid()}").Options;
+
+    private static Proveedor NuevoConcurrente(string cuit, string? correo = null) =>
+        new() { Cuit = cuit, RazonSocial = "Concurrente", Correo = correo, Estado = true, FechaRegistro = DateTime.UtcNow };
+
+    [Fact]
+    public async Task CrearProveedor_CuitDuplicadoConcurrente_DevuelveCuitDuplicado()
+    {
+        var options = NuevasOpciones();
+        await using var db = new ConflictoConcurrenteDbContext(options, NuevoConcurrente("30123456789"), new DbUpdateException("Simulado"));
+        await db.Database.EnsureCreatedAsync();
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30123456789", RazonSocial = "Nuevo" });
+        Assert.Equal(ResultadoCreacionProveedor.CuitDuplicado, resp.Resultado);
+        Assert.Contains(MensajeCuitDuplicado, resp.Mensaje);
+    }
+
+    [Fact]
+    public async Task ModificarProveedor_CuitDuplicadoConcurrente_DevuelveCuitDuplicado()
+    {
+        var options = NuevasOpciones();
+        await using var db = new ConflictoConcurrenteDbContext(options, NuevoConcurrente("30123456789"), new DbUpdateException("Simulado"));
+        await db.Database.EnsureCreatedAsync();
+        Proveedor propio;
+        await using (var semilla = new AppDbContext(options))
+        {
+            propio = await SembrarProveedorAsync(semilla, "99999999999", "Propio");
+        }
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.ModificarProveedorAsync(new ModificarProveedorDto { IdProveedor = propio.IdProveedor, Cuit = "30123456789", RazonSocial = "Propio" });
+        Assert.Equal(ResultadoModificacionProveedor.CuitDuplicado, resp.Resultado);
+        Assert.Contains(MensajeCuitDuplicado, resp.Mensaje);
+    }
+
+    [Fact]
+    public async Task CrearProveedor_InvalidOperationEnGuardado_DevuelveErrorPersistencia()
+    {
+        var options = NuevasOpciones();
+        await using var db = new ConflictoConcurrenteDbContext(options, null, new InvalidOperationException("Simulado"));
+        await db.Database.EnsureCreatedAsync();
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30123456789", RazonSocial = "Nuevo" });
+        Assert.Equal(ResultadoCreacionProveedor.ErrorPersistencia, resp.Resultado);
+        Assert.Equal(MensajeErrorPersistencia, resp.Mensaje);
+    }
+
+    [Fact]
+    public async Task CrearProveedor_ConflictoConcurrenteDeCorreo_DevuelveErrorPersistenciaNoCuitDuplicado()
+    {
+        var options = NuevasOpciones();
+        await using var db = new ConflictoConcurrenteDbContext(options, NuevoConcurrente("20000000000", "dup@mail.com"), new DbUpdateException("Simulado"));
+        await db.Database.EnsureCreatedAsync();
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30123456789", RazonSocial = "Nuevo", Correo = "dup@mail.com" });
+        Assert.Equal(ResultadoCreacionProveedor.ErrorPersistencia, resp.Resultado);
+        Assert.Equal(MensajeErrorPersistencia, resp.Mensaje);
+    }
+
+    // ---- Advertencia de Razón Social posiblemente duplicada ----
+
+    [Fact]
+    public async Task CrearProveedor_RazonSocialCoincidente_AdviertePeroNoGuarda()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        var existente = await SembrarProveedorAsync(db, "30111111111", "Logitech Argentina S.A.");
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30222222222", RazonSocial = "Logitech Argentina SA" });
+        Assert.Equal(ResultadoCreacionProveedor.RazonSocialPosiblementeDuplicada, resp.Resultado);
+        Assert.NotNull(resp.Coincidencia);
+        Assert.Equal(existente.IdProveedor, resp.Coincidencia.IdProveedor);
+        Assert.Equal("Logitech Argentina S.A.", resp.Coincidencia.RazonSocial);
+        Assert.Equal("30111111111", resp.Coincidencia.Cuit);
+        Assert.True(resp.Coincidencia.Estado);
+        Assert.Contains("Logitech Argentina S.A.", resp.Mensaje);
+        Assert.Contains("30111111111", resp.Mensaje);
+        Assert.Contains("activo", resp.Mensaje);
+        Assert.Contains("continuar igualmente", resp.Mensaje);
+        Assert.Equal(1, await db.Proveedores.CountAsync());
+    }
+
+    [Fact]
+    public async Task CrearProveedor_SinCoincidencia_GuardaSinAdvertir()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        await SembrarProveedorAsync(db, "30111111111", "Logitech Argentina S.A.");
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30222222222", RazonSocial = "Logitech Argentina S.R.L." });
+        Assert.Equal(ResultadoCreacionProveedor.Exito, resp.Resultado);
+        Assert.Null(resp.Coincidencia);
+        Assert.Equal(2, await db.Proveedores.CountAsync());
+    }
+
+    [Fact]
+    public async Task CrearProveedor_ConfirmadaGuardaConTextoOriginal()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        await SembrarProveedorAsync(db, "30111111111", "Logitech Argentina S.A.");
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30222222222", RazonSocial = "  Logitech Argentina SA ", ConfirmarRazonSocialDuplicada = true });
+        Assert.Equal(ResultadoCreacionProveedor.Exito, resp.Resultado);
+        Assert.Equal(2, await db.Proveedores.CountAsync());
+        Assert.True(await db.Proveedores.AnyAsync(p => p.Cuit == "30222222222" && p.RazonSocial == "Logitech Argentina SA"));
+    }
+
+    [Fact]
+    public async Task CrearProveedor_CoincidenciaConInactivo_IdentificaEstadoInactivo()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        await SembrarProveedorAsync(db, "30111111111", "Logitech Argentina S.A.", estado: false);
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30222222222", RazonSocial = "LOGITECH ARGENTINA S.A." });
+        Assert.Equal(ResultadoCreacionProveedor.RazonSocialPosiblementeDuplicada, resp.Resultado);
+        Assert.NotNull(resp.Coincidencia);
+        Assert.False(resp.Coincidencia.Estado);
+        Assert.Contains("inactivo", resp.Mensaje);
+    }
+
+    [Fact]
+    public async Task CrearProveedor_CoincidenciaConActivoEInactivo_PriorizaActivo()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        await SembrarProveedorAsync(db, "30111111111", "Logitech Argentina S.A.", estado: false);
+        var activo = await SembrarProveedorAsync(db, "30333333333", "Logitech Argentina S.A.", estado: true);
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30222222222", RazonSocial = "Logitech Argentina SA" });
+        Assert.NotNull(resp.Coincidencia);
+        Assert.Equal(activo.IdProveedor, resp.Coincidencia.IdProveedor);
+    }
+
+    [Fact]
+    public async Task ModificarProveedor_ExcluyeAlPropioYDetectaAOtro()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        var propio = await SembrarProveedorAsync(db, "30111111111", "Propio SA");
+        var otro = await SembrarProveedorAsync(db, "30222222222", "Logitech Argentina S.A.");
+        var negocio = new ProveedorNegocio(db);
+
+        var sinOtro = await negocio.ModificarProveedorAsync(new ModificarProveedorDto { IdProveedor = propio.IdProveedor, Cuit = "30111111111", RazonSocial = "Propio S.A." });
+        Assert.Equal(ResultadoModificacionProveedor.Exito, sinOtro.Resultado);
+
+        var conOtro = await negocio.ModificarProveedorAsync(new ModificarProveedorDto { IdProveedor = propio.IdProveedor, Cuit = "30111111111", RazonSocial = "Logitech Argentina SA" });
+        Assert.Equal(ResultadoModificacionProveedor.RazonSocialPosiblementeDuplicada, conOtro.Resultado);
+        Assert.NotNull(conOtro.Coincidencia);
+        Assert.Equal(otro.IdProveedor, conOtro.Coincidencia.IdProveedor);
+        Assert.Equal("Propio S.A.", (await db.Proveedores.AsNoTracking().FirstAsync(p => p.IdProveedor == propio.IdProveedor)).RazonSocial);
+
+        var confirmada = await negocio.ModificarProveedorAsync(new ModificarProveedorDto { IdProveedor = propio.IdProveedor, Cuit = "30111111111", RazonSocial = "Logitech Argentina SA", ConfirmarRazonSocialDuplicada = true });
+        Assert.Equal(ResultadoModificacionProveedor.Exito, confirmada.Resultado);
+        Assert.Equal("Logitech Argentina SA", (await db.Proveedores.AsNoTracking().FirstAsync(p => p.IdProveedor == propio.IdProveedor)).RazonSocial);
+    }
+
+    [Fact]
+    public async Task ModificarProveedor_RazonSocialEquivalenteALaOriginal_NoAdvierteAunqueHayaOtroIgual()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        var propio = await SembrarProveedorAsync(db, "30111111111", "Logitech Argentina S.A.");
+        await SembrarProveedorAsync(db, "30222222222", "Logitech Argentina S.A.");
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.ModificarProveedorAsync(new ModificarProveedorDto { IdProveedor = propio.IdProveedor, Cuit = "30111111111", RazonSocial = "Logitech Argentina SA", Telefono = "3624112233" });
+        Assert.Equal(ResultadoModificacionProveedor.Exito, resp.Resultado);
+        Assert.Null(resp.Coincidencia);
+    }
+
+    [Fact]
+    public async Task CrearProveedor_CuitDuplicadoSigueRechazadoAunqueRazonSocialConfirmada()
+    {
+        await using var db = await CrearContextoVacioAsync();
+        await SembrarProveedorAsync(db, "30111111111", "Logitech Argentina S.A.");
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30111111111", RazonSocial = "Logitech Argentina SA", ConfirmarRazonSocialDuplicada = true });
+        Assert.Equal(ResultadoCreacionProveedor.CuitDuplicado, resp.Resultado);
+        Assert.Equal(1, await db.Proveedores.CountAsync());
+    }
+
+    [Fact]
+    public async Task CrearProveedor_CuitDuplicadoConcurrenteConRazonSocialConfirmada_DevuelveCuitDuplicado()
+    {
+        var options = NuevasOpciones();
+        await using var db = new ConflictoConcurrenteDbContext(options, NuevoConcurrente("30123456789"), new DbUpdateException("Simulado"));
+        await db.Database.EnsureCreatedAsync();
+        var negocio = new ProveedorNegocio(db);
+        var resp = await negocio.CrearProveedorAsync(new CrearProveedorDto { Cuit = "30123456789", RazonSocial = "Concurrente", ConfirmarRazonSocialDuplicada = true });
+        Assert.Equal(ResultadoCreacionProveedor.CuitDuplicado, resp.Resultado);
+        Assert.Contains(MensajeCuitDuplicado, resp.Mensaje);
     }
 }

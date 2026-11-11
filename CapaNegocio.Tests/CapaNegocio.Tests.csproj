@@ -14,5 +14,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CapaNegocio\CapaNegocio.csproj" />
+    <Compile Include="..\CapaPresentacion\Ventas\BusquedaProductosVenta.cs" Link="Presentacion\BusquedaProductosVenta.cs" />
+    <Compile Include="..\CapaPresentacion\Ventas\EstadoCarritoVenta.cs" Link="Presentacion\EstadoCarritoVenta.cs" />
   </ItemGroup>
 </Project>

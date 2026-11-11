@@ -261,7 +261,30 @@ skills-lock.json
 test_result*.txt
 docs/continuidad/
 docs/CAMBIOS-PENDIENTES-DE-SUBIR.md
-
 # Mantener la carpeta de backups del proyecto
 !backup_restore/
 !backup_restore/.gitkeep
+
+specs/
+
+# Harness y documentación de trabajo
+/AGENTS.md
+/MEMORY.md
+/.agents/
+/.claude/
+/.opencode/
+/opencode.json
+/skills-lock.json
+/specs/
+/CONTEXT_HANDOVER
+
+# Archivos locales y temporales
+/.vs/
+/build
+/test
+/test_result
+/test_result2
+
+/.atl/
+/odd/
+/.codegraph/

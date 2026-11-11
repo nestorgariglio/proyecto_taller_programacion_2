@@ -1,4 +1,4 @@
-using CapaDatos;
+﻿using CapaDatos;
 using CapaNegocio;
 using CapaNegocio.DTOs.Home;
 using CapaNegocio.DTOs.Usuarios;
@@ -28,12 +28,13 @@ namespace CapaPresentacion
     /// </summary>
     public partial class inicio : MaterialForm
     {
-        private readonly AppDbContext _db;
+        private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly GestionUsuariosControl _gestionUsuariosControl;
         private readonly ProductosForm _productosForm;
         private readonly ClientesForm _clientesForm;
         private readonly ProveedoresForm _proveedoresForm;
         private readonly ComprasForm _comprasForm;
+        private readonly VentasForm _ventasForm;
         private readonly Func<GenerarBackupForm> _generarBackupFactory;
         private readonly Func<RestaurarBackupForm> _restaurarBackupFactory;
         private readonly HomeResumenNegocio _homeResumenNegocio;
@@ -57,16 +58,18 @@ namespace CapaPresentacion
         /// Inicializa el formulario principal.
         /// </summary>
         public inicio(
-            AppDbContext db,
+            IDbContextFactory<AppDbContext> dbFactory,
             GestionUsuariosControl gestionUsuariosControl,
             ProductosForm productosForm,
             ClientesForm clientesForm,
             ProveedoresForm proveedoresForm,
             ComprasForm comprasForm,
+            VentasForm ventasForm,
             Func<GenerarBackupForm> generarBackupFactory,
             Func<RestaurarBackupForm> restaurarBackupFactory,
             HomeResumenNegocio homeResumenNegocio)
         {
+            _ventasForm = ventasForm;
             _homeResumenNegocio = homeResumenNegocio;
             _generarBackupFactory = generarBackupFactory;
             _restaurarBackupFactory = restaurarBackupFactory;
@@ -76,7 +79,7 @@ namespace CapaPresentacion
             //LA CONEXIÓN DEL EVENTO
             this.Load += inicio_Load;
 
-            _db = db;
+            _dbFactory = dbFactory;
             _gestionUsuariosControl = gestionUsuariosControl;
             _gestionUsuariosControl.Dock = DockStyle.Fill;
             _gestionUsuariosControl.BackColor = TemaAplicacion.FondoPrincipal;
@@ -100,6 +103,7 @@ namespace CapaPresentacion
             // recarga ningún historial al entrar: el historial se consulta dentro
             // del modal DetalleCompraForm, así que la pestaña no necesita manejador.
             _comprasForm = comprasForm;
+            _ventasForm = ventasForm;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -130,7 +134,7 @@ namespace CapaPresentacion
 
             // B. Incrustar los subformularios en sus correspondientes TabPages
             AbrirVistaEnTab(_productosForm, tab_productos);
-            AbrirVistaEnTab(new VentasForm(), tab_ventas);
+            AbrirVistaEnTab(_ventasForm, tab_ventas);
             AbrirVistaEnTab(_comprasForm, tab_compras);
             AbrirVistaEnTab(_clientesForm, tab_clientes);
             AbrirVistaEnTab(_proveedoresForm, tab_proveedores);
@@ -633,8 +637,9 @@ namespace CapaPresentacion
 
             try
             {
-                await _db.Database.OpenConnectionAsync();
-                await _db.Database.CloseConnectionAsync();
+                await using AppDbContext db = await _dbFactory.CreateDbContextAsync();
+                await db.Database.OpenConnectionAsync();
+                await db.Database.CloseConnectionAsync();
             }
             catch (Exception ex)
             {

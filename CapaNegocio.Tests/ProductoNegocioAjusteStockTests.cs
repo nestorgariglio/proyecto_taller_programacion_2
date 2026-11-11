@@ -32,7 +32,7 @@ public partial class ProductoNegocioTests
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
         DateTime fechaRegistroOriginal = producto.FechaRegistro;
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -80,7 +80,7 @@ public partial class ProductoNegocioTests
             db, 90000011, "enrique.encargado@example.com", "Enrique", rolEncargado.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -114,7 +114,7 @@ public partial class ProductoNegocioTests
             db, 90000012, "valeria.vendedor@example.com", "Valeria", rolVendedor.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -150,7 +150,7 @@ public partial class ProductoNegocioTests
             db, 90000013, "aurelio.auditor@example.com", "Aurelio", rolAjeno.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -185,7 +185,7 @@ public partial class ProductoNegocioTests
             db, 90000014, "andrea.absoluto@example.com", "Andrea", rolAdministrador.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario, stock: 5);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -214,7 +214,7 @@ public partial class ProductoNegocioTests
             db, 90000015, "enrique.cero@example.com", "Enrique", rolEncargado.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -246,7 +246,7 @@ public partial class ProductoNegocioTests
             db, 90000016, "andrea.negativo@example.com", "Andrea", rolAdministrador.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -284,7 +284,7 @@ public partial class ProductoNegocioTests
             db, 90000017, "andrea.motivo@example.com", "Andrea", rolAdministrador.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -315,7 +315,7 @@ public partial class ProductoNegocioTests
             db, 90000018, "andrea.motivo.largo@example.com", "Andrea", rolAdministrador.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -347,7 +347,7 @@ public partial class ProductoNegocioTests
         Rol rolAdministrador = await SembrarRolAsync(db, "Administrador");
         Usuario administrador = await SembrarUsuarioConRolAsync(
             db, 90000019, "andrea.inexistente@example.com", "Andrea", rolAdministrador.IdRol);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -371,7 +371,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -401,7 +401,7 @@ public partial class ProductoNegocioTests
         Usuario creador = await SembrarUsuarioAsync(db);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -429,7 +429,7 @@ public partial class ProductoNegocioTests
         Rol rolAdministrador = await SembrarRolAsync(db, "Administrador");
         Usuario administrador = await SembrarUsuarioConRolAsync(
             db, 90000020, "andrea.id.invalido@example.com", "Andrea", rolAdministrador.IdRol);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock respuesta = await negocio.AjustarStockAsync(new AjustarStockDto
         {
@@ -460,7 +460,7 @@ public partial class ProductoNegocioTests
             db, 90000022, "enrique.ultimo@example.com", "Enrique", rolEncargado.IdRol);
         Producto producto = await SembrarProductoParaEdicionAsync(
             db, "7790001000011", "Teclado", bebidas.IdCategoria, creador.IdUsuario);
-        var negocio = new ProductoNegocio(db);
+        var negocio = new ProductoNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAjusteStock primerAjuste = await negocio.AjustarStockAsync(new AjustarStockDto
         {

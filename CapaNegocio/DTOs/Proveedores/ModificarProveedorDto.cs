@@ -16,4 +16,7 @@ public class ModificarProveedorDto
 
 	/// <summary>Teléfono informado; vacío o solo espacios significa «no informado».</summary>
 	public string? Telefono { get; set; }
+
+	/// <summary>Verdadero cuando el usuario confirmó continuar pese a la advertencia de Razón Social posiblemente duplicada.</summary>
+	public bool ConfirmarRazonSocialDuplicada { get; set; } = false;
 }

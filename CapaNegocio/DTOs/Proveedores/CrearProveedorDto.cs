@@ -13,4 +13,7 @@ public class CrearProveedorDto
 
 	/// <summary>Teléfono informado por el usuario; puede venir vacío (dato no informado).</summary>
 	public string? Telefono { get; set; }
+
+	/// <summary>Verdadero cuando el usuario confirmó continuar pese a la advertencia de Razón Social posiblemente duplicada.</summary>
+	public bool ConfirmarRazonSocialDuplicada { get; set; } = false;
 }
