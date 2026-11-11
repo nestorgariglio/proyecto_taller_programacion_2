@@ -73,19 +73,40 @@ namespace CapaPresentacion.Proveedores
         private void ArmarInterfazMaterial()
         {
             Controls.Clear();
-            Panel panelPrincipal = new Panel
+            TableLayoutPanel panelPrincipal = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 BackColor = TemaAplicacion.FondoPrincipal,
-                Padding = new Padding(15)
+                Padding = new Padding(15),
+                ColumnCount = 1,
+                RowCount = 5
             };
+            panelPrincipal.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            panelPrincipal.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            panelPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
+            panelPrincipal.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            panelPrincipal.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            panelPrincipal.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+            TableLayoutPanel panelFiltros = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = Padding.Empty,
+                BackColor = TemaAplicacion.FondoPrincipal
+            };
+            panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            panelFiltros.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));
+            panelFiltros.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             MaterialLabel lblTitulo = new MaterialLabel
             {
                 Text = "GESTIÓN DE PROVEEDORES",
                 FontType = MaterialSkinManager.fontType.H6,
-                Location = new Point(20, 15),
+                Dock = DockStyle.Fill,
                 AutoSize = true,
+                Margin = new Padding(0, 0, 0, 12),
                 ForeColor = Color.White,
                 Depth = 0
             };
@@ -93,8 +114,8 @@ namespace CapaPresentacion.Proveedores
             _txtBuscar = new MaterialTextBox2
             {
                 Hint = "Buscar por Documento o Razón Social...",
-                Location = new Point(20, 55),
-                Width = 350,
+                Dock = DockStyle.Top,
+                Margin = new Padding(0, 0, 12, 8),
                 AnimateReadOnly = true,
                 Depth = 0
             };
@@ -102,8 +123,8 @@ namespace CapaPresentacion.Proveedores
             _cboEstado = new MaterialComboBox
             {
                 Hint = "Estado",
-                Location = new Point(385, 55),
-                Width = 150,
+                Dock = DockStyle.Top,
+                Margin = new Padding(0, 0, 0, 8),
                 StartIndex = 0,
                 Depth = 0
             };
@@ -112,9 +133,10 @@ namespace CapaPresentacion.Proveedores
 
             _lblEstadoListado = new MaterialLabel
             {
-                Location = new Point(560, 62),
+                Dock = DockStyle.Fill,
                 AutoSize = true,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                MinimumSize = new Size(0, 24),
+                Margin = new Padding(0, 4, 0, 8),
                 FontType = MaterialSkinManager.fontType.Body2,
                 ForeColor = Color.Gainsboro,
                 Depth = 0
@@ -122,13 +144,12 @@ namespace CapaPresentacion.Proveedores
 
             FlowLayoutPanel panelAcciones = new FlowLayoutPanel
             {
-                Location = new Point(20, 110),
-                Width = panelPrincipal.Width - 40,
-                Height = 55,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                AutoScroll = true,
+                WrapContents = true,
+                Margin = Padding.Empty,
                 Padding = new Padding(0, 2, 0, 2),
                 BackColor = TemaAplicacion.FondoPrincipal
             };
@@ -199,10 +220,9 @@ namespace CapaPresentacion.Proveedores
 
             _grid = new DataGridView
             {
-                Location = new Point(20, 180),
-                Width = panelPrincipal.Width - 40,
-                Height = 300,
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                Dock = DockStyle.Fill,
+                Margin = Padding.Empty,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
                 ReadOnly = true,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
@@ -288,12 +308,13 @@ namespace CapaPresentacion.Proveedores
                 DefaultCellStyle = new DataGridViewCellStyle { Format = "g" }
             });
 
-            panelPrincipal.Controls.Add(lblTitulo);
-            panelPrincipal.Controls.Add(_txtBuscar);
-            panelPrincipal.Controls.Add(_cboEstado);
-            panelPrincipal.Controls.Add(_lblEstadoListado);
-            panelPrincipal.Controls.Add(panelAcciones);
-            panelPrincipal.Controls.Add(_grid);
+            panelFiltros.Controls.Add(_txtBuscar, 0, 0);
+            panelFiltros.Controls.Add(_cboEstado, 1, 0);
+            panelPrincipal.Controls.Add(lblTitulo, 0, 0);
+            panelPrincipal.Controls.Add(panelFiltros, 0, 1);
+            panelPrincipal.Controls.Add(panelAcciones, 0, 2);
+            panelPrincipal.Controls.Add(_lblEstadoListado, 0, 3);
+            panelPrincipal.Controls.Add(_grid, 0, 4);
             Controls.Add(panelPrincipal);
 
             _txtBuscar.TextChanged += txtBuscar_TextChanged;
