@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using CapaNegocio;
@@ -18,6 +19,7 @@ namespace CapaPresentacion.Productos
         private readonly CategoriaNegocio _categoriaNegocio;
         private MaterialComboBox _cboCategoria = null!;
         private MaterialButton _btnGestionCategorias = null!;
+        private const int OpcionTodasId = 0;
         private bool _cargandoCategorias;
         private string? _rolActual;
 
@@ -56,30 +58,33 @@ namespace CapaPresentacion.Productos
                 IReadOnlyList<CategoriaRespuestaDto> categoriasActivas =
                     await _categoriaNegocio.ListarCategoriasActivasAsync();
 
-                _cboCategoria.Items.Clear();
+                // La opción "Todas" (IdCategoria = 0; los identity empiezan en 1)
+                // siempre queda presente, aun sin categorías activas: el combo no
+                // debe quedar vacío ni fallar (caso límite).
+                var opciones = new List<CategoriaRespuestaDto> { CrearOpcionTodas() };
+                opciones.AddRange(categoriasActivas.Where(
+                    categoria => !string.IsNullOrWhiteSpace(categoria.Descripcion)));
 
-                // La opción "Todas" siempre queda presente, aun sin categorías
-                // activas: el combo no debe quedar vacío ni fallar (caso límite).
-                _cboCategoria.Items.Add("Todas");
+                // Se conserva la selección previa si la categoría sigue activa.
+                int seleccionPrevia = _cboCategoria.SelectedValue is int idPrevio ? idPrevio : OpcionTodasId;
+                int seleccionNueva = opciones.Any(o => o.IdCategoria == seleccionPrevia)
+                    ? seleccionPrevia
+                    : OpcionTodasId;
 
-                foreach (CategoriaRespuestaDto categoria in categoriasActivas)
-                {
-                    if (!string.IsNullOrWhiteSpace(categoria.Descripcion))
-                    {
-                        _cboCategoria.Items.Add(categoria.Descripcion);
-                    }
-                }
-
-                _cboCategoria.SelectedIndex = 0;
+                // _cargandoCategorias suprime cualquier SelectedIndexChanged que
+                // dispare el rebind. Con DataSource no se usa Items.Clear():
+                // se asigna una lista nueva.
+                AsignarOpcionesCombo(opciones);
+                _cboCategoria.SelectedValue = seleccionNueva;
             }
             catch (Exception exception)
             {
                 // Caso límite: fallo o desconexión de la BD ⇒ se conserva al
                 // menos la opción "Todas" y se informa el detalle en español.
-                if (!_cboCategoria.Items.Contains("Todas"))
+                if (_cboCategoria.DataSource is null)
                 {
-                    _cboCategoria.Items.Add("Todas");
-                    _cboCategoria.SelectedIndex = 0;
+                    AsignarOpcionesCombo(new List<CategoriaRespuestaDto> { CrearOpcionTodas() });
+                    _cboCategoria.SelectedValue = OpcionTodasId;
                 }
 
                 MaterialMessageBox.Show(
@@ -91,6 +96,21 @@ namespace CapaPresentacion.Productos
             {
                 _cargandoCategorias = false;
             }
+        }
+
+        private static CategoriaRespuestaDto CrearOpcionTodas() => new()
+        {
+            IdCategoria = OpcionTodasId,
+            Descripcion = "Todas",
+            Estado = true
+        };
+
+        private void AsignarOpcionesCombo(List<CategoriaRespuestaDto> opciones)
+        {
+            _cboCategoria.DataSource = null;
+            _cboCategoria.DisplayMember = nameof(CategoriaRespuestaDto.Descripcion);
+            _cboCategoria.ValueMember = nameof(CategoriaRespuestaDto.IdCategoria);
+            _cboCategoria.DataSource = opciones;
         }
 
         /// <summary>

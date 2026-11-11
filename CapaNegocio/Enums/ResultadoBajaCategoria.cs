@@ -5,5 +5,6 @@ public enum ResultadoBajaCategoria
 	Exito,
 	DatosInvalidos,
 	CategoriaNoEncontrada,
-	CategoriaYaInactiva
+	CategoriaYaInactiva,
+	ConfirmacionRequerida
 }

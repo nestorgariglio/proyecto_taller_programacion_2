@@ -5,5 +5,6 @@ public class RespuestaBajaCategoria
 {
 	public ResultadoBajaCategoria Resultado { get; set; }
 	public CategoriaRespuestaDto? Categoria { get; set; }
+	public int ProductosActivosAfectados { get; set; }
 	public string Mensaje { get; set; } = string.Empty;
 }

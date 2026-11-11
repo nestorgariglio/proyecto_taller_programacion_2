@@ -26,7 +26,9 @@ namespace CapaPresentacion
                 {
                     string connectionString = context.Configuration.GetConnectionString("CadenaSQL");
 
-                    services.AddDbContext<AppDbContext>(options =>
+                    // Un contexto por operación (no es thread-safe ni reentrante): los
+                    // servicios de negocio crean y liberan el suyo por método.
+                    services.AddDbContextFactory<AppDbContext>(options =>
                         options.UseSqlServer(connectionString));
 
                     services.AddTransient<UsuarioNegocio>();

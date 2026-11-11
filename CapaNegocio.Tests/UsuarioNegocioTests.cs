@@ -27,7 +27,7 @@ public class UsuarioNegocioTests
         int dni, string clave, string descripcionRol)
     {
         await using var db = await CrearContextoConUsuarioAsync(dni, descripcionRol);
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAutenticacion respuesta =
             await negocio.ValidarIngresoAsync(dni.ToString(), clave);
@@ -41,7 +41,7 @@ public class UsuarioNegocioTests
     public async Task ListarUsuarios_DevuelveDatosSegurosOrdenadosYConRol()
     {
         await using var db = await CrearContextoConUsuariosParaListadoAsync();
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         IReadOnlyList<UsuarioRespuestaDto> usuarios =
             await negocio.ListarUsuariosAsync();
@@ -76,7 +76,7 @@ public class UsuarioNegocioTests
     public async Task ListarUsuarios_SinInactivos_ExcluyeUsuariosDesactivados()
     {
         await using var db = await CrearContextoConUsuariosParaListadoAsync();
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         IReadOnlyList<UsuarioRespuestaDto> usuariosActivos =
             await negocio.ListarUsuariosAsync(incluirInactivos: false);
@@ -90,7 +90,7 @@ public class UsuarioNegocioTests
     public async Task ListarRoles_DevuelveRolesOrdenados()
     {
         await using var db = await CrearContextoConRolesParaListadoAsync();
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         IReadOnlyList<RolRespuestaDto> roles = await negocio.ListarRolesAsync();
 
@@ -117,7 +117,7 @@ public class UsuarioNegocioTests
     public async Task ValidarIngreso_ClaveIncorrecta_IncrementaIntentos()
     {
         await using var db = await CrearContextoConUsuarioAsync(90000001, "Administrador");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAutenticacion respuesta =
             await negocio.ValidarIngresoAsync("90000001", "ClaveIncorrecta!");
@@ -131,7 +131,7 @@ public class UsuarioNegocioTests
     {
         await using var db = await CrearContextoConUsuarioAsync(
             90000001, "Administrador", "clave-plana-legada");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaAutenticacion respuesta =
             await negocio.ValidarIngresoAsync("90000001", "Admin123!");
@@ -144,7 +144,7 @@ public class UsuarioNegocioTests
     public async Task ValidarIngreso_TercerIntentoBloqueaUsuario()
     {
         await using var db = await CrearContextoConUsuarioAsync(90000001, "Administrador");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         for (int intento = 1; intento <= 3; intento++)
         {
@@ -168,7 +168,7 @@ public class UsuarioNegocioTests
     public async Task CrearUsuario_DatosValidos_CreaUsuarioYDevuelveRespuestaSegura()
     {
         await using var db = await CrearContextoConRolAsync();
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         var entrada = CrearEntradaValida();
 
         RespuestaCreacion respuesta = await negocio.CrearUsuarioAsync(entrada);
@@ -183,7 +183,7 @@ public class UsuarioNegocioTests
         Assert.Equal(entrada.IdRol, respuesta.Usuario.IdRol);
         Assert.True(respuesta.Usuario.Estado);
 
-        Usuario usuarioGuardado = await db.Usuarios.SingleAsync();
+        Usuario usuarioGuardado = await db.Usuarios.AsNoTracking().SingleAsync();
 
         Assert.NotEqual(entrada.Clave, usuarioGuardado.Clave);
         Assert.True(BC.Verify(entrada.Clave, usuarioGuardado.Clave));
@@ -200,7 +200,7 @@ public class UsuarioNegocioTests
         string datoInvalido)
     {
         await using var db = await CrearContextoConRolAsync();
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         var entrada = CrearEntradaValida();
 
         switch (datoInvalido)
@@ -239,7 +239,7 @@ public class UsuarioNegocioTests
         await using var db = await CrearContextoConUsuarioParaCreacionAsync(
             90000001,
             "existente@correo.com");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         var entrada = CrearEntradaValida(90000001, "nuevo@correo.com");
 
         RespuestaCreacion respuesta = await negocio.CrearUsuarioAsync(entrada);
@@ -255,7 +255,7 @@ public class UsuarioNegocioTests
         await using var db = await CrearContextoConUsuarioParaCreacionAsync(
             90000001,
             "existente@correo.com");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         var entrada = CrearEntradaValida(90000002, "existente@correo.com");
 
         RespuestaCreacion respuesta = await negocio.CrearUsuarioAsync(entrada);
@@ -269,7 +269,7 @@ public class UsuarioNegocioTests
     public async Task CrearUsuario_CorreoNulo_CreaUsuarioSinCorreo()
     {
         await using var db = await CrearContextoConRolAsync();
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         var entrada = CrearEntradaValida(correo: null);
 
         RespuestaCreacion respuesta = await negocio.CrearUsuarioAsync(entrada);
@@ -283,7 +283,7 @@ public class UsuarioNegocioTests
     public async Task CrearUsuario_RolInexistente_DevuelveDatosInvalidos()
     {
         await using var db = await CrearContextoConRolAsync();
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         var entrada = CrearEntradaValida();
         entrada.IdRol = 999;
 
@@ -299,7 +299,7 @@ public class UsuarioNegocioTests
         await using var db = await CrearContextoConUsuarioParaCreacionAsync(
             90000001,
             "existente@correo.com");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         Usuario usuarioExistente = await db.Usuarios.SingleAsync();
         string hashAnterior = usuarioExistente.Clave;
 
@@ -326,7 +326,7 @@ public class UsuarioNegocioTests
         Assert.Equal(entrada.Correo, respuesta.Usuario.Correo);
         Assert.Equal("Administrador", respuesta.Usuario.RolDescripcion);
 
-        Usuario usuarioGuardado = await db.Usuarios.SingleAsync();
+        Usuario usuarioGuardado = await db.Usuarios.AsNoTracking().SingleAsync();
         Assert.Equal(hashAnterior, usuarioGuardado.Clave);
         Assert.True(BC.Verify("ClaveExistente123!", usuarioGuardado.Clave));
     }
@@ -337,7 +337,7 @@ public class UsuarioNegocioTests
         await using var db = await CrearContextoConUsuarioParaCreacionAsync(
             90000001,
             "existente@correo.com");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         Usuario usuarioExistente = await db.Usuarios.SingleAsync();
         string hashAnterior = usuarioExistente.Clave;
 
@@ -348,7 +348,7 @@ public class UsuarioNegocioTests
 
         Assert.Equal(ResultadoModificacion.Exito, respuesta.Resultado);
 
-        Usuario usuarioGuardado = await db.Usuarios.SingleAsync();
+        Usuario usuarioGuardado = await db.Usuarios.AsNoTracking().SingleAsync();
         Assert.NotEqual(hashAnterior, usuarioGuardado.Clave);
         Assert.False(BC.Verify("ClaveExistente123!", usuarioGuardado.Clave));
         Assert.True(BC.Verify(entrada.Clave, usuarioGuardado.Clave));
@@ -377,7 +377,7 @@ public class UsuarioNegocioTests
             .SingleAsync(usuario => usuario.Dni == 90000001);
         var entrada = CrearEntradaModificacionValida(usuarioAModificar.IdUsuario);
         entrada.Dni = 90000002;
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacion respuesta = await negocio.ModificarUsuarioAsync(entrada);
 
@@ -409,7 +409,7 @@ public class UsuarioNegocioTests
             .SingleAsync(usuario => usuario.Dni == 90000001);
         var entrada = CrearEntradaModificacionValida(usuarioAModificar.IdUsuario);
         entrada.Correo = "segundo@correo.com";
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaModificacion respuesta = await negocio.ModificarUsuarioAsync(entrada);
 
@@ -422,7 +422,7 @@ public class UsuarioNegocioTests
     public async Task ModificarUsuario_UsuarioNoEncontrado_DevuelveUsuarioNoEncontrado()
     {
         await using var db = await CrearContextoConRolAsync();
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         var entrada = CrearEntradaModificacionValida(999);
 
         RespuestaModificacion respuesta = await negocio.ModificarUsuarioAsync(entrada);
@@ -437,7 +437,7 @@ public class UsuarioNegocioTests
         await using var db = await CrearContextoConUsuarioParaCreacionAsync(
             90000001,
             "existente@correo.com");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         Usuario usuarioExistente = await db.Usuarios.SingleAsync();
 
         RespuestaBaja respuesta = await negocio.DesactivarUsuarioAsync(
@@ -448,6 +448,7 @@ public class UsuarioNegocioTests
         Assert.False(respuesta.Usuario!.Estado);
 
         Usuario? usuarioGuardado = await db.Usuarios
+            .AsNoTracking()
             .SingleOrDefaultAsync(usuario => usuario.IdUsuario == usuarioExistente.IdUsuario);
         Assert.NotNull(usuarioGuardado);
         Assert.False(usuarioGuardado!.Estado);
@@ -464,7 +465,7 @@ public class UsuarioNegocioTests
         await using var db = await CrearContextoConUsuarioParaCreacionAsync(
             90000001,
             "existente@correo.com");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         Usuario usuarioExistente = await db.Usuarios.SingleAsync();
 
         await negocio.DesactivarUsuarioAsync(usuarioExistente.IdUsuario);
@@ -480,7 +481,7 @@ public class UsuarioNegocioTests
     public async Task DesactivarUsuario_UsuarioNoEncontrado_DevuelveUsuarioNoEncontrado()
     {
         await using var db = await CrearContextoConRolAsync();
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaBaja respuesta = await negocio.DesactivarUsuarioAsync(999);
 
@@ -494,7 +495,7 @@ public class UsuarioNegocioTests
         await using var db = await CrearContextoConUsuarioParaCreacionAsync(
             90000001,
             "existente@correo.com");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         Usuario usuarioExistente = await db.Usuarios.SingleAsync();
 
         usuarioExistente.IntentosFallidos = 3;
@@ -508,6 +509,7 @@ public class UsuarioNegocioTests
         Assert.True(respuesta.Usuario!.Estado);
 
         Usuario? usuarioGuardado = await db.Usuarios
+            .AsNoTracking()
             .SingleOrDefaultAsync(usuario => usuario.IdUsuario == usuarioExistente.IdUsuario);
         Assert.NotNull(usuarioGuardado);
         Assert.True(usuarioGuardado!.Estado);
@@ -525,7 +527,7 @@ public class UsuarioNegocioTests
         await using var db = await CrearContextoConUsuarioParaCreacionAsync(
             90000001,
             "existente@correo.com");
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
         Usuario usuarioExistente = await db.Usuarios.SingleAsync();
 
         RespuestaActivacion respuesta = await negocio.ActivarUsuarioAsync(
@@ -540,7 +542,7 @@ public class UsuarioNegocioTests
     public async Task ActivarUsuario_UsuarioNoEncontrado_DevuelveUsuarioNoEncontrado()
     {
         await using var db = await CrearContextoConRolAsync();
-        var negocio = new UsuarioNegocio(db);
+        var negocio = new UsuarioNegocio(FabricaContextosPruebas.Desde(db));
 
         RespuestaActivacion respuesta = await negocio.ActivarUsuarioAsync(999);
 
