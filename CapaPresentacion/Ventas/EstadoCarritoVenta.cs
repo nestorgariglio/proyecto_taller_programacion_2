@@ -28,4 +28,10 @@ internal class EstadoCarritoVenta
             terminada.SetResult();
         }
     }
+
+    /// <summary>Restablece el carrito a un estado vacío tras completar una venta.</summary>
+    public void Limpiar()
+    {
+        Carrito = new CarritoVentaDto();
+    }
 }
