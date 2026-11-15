@@ -493,6 +493,12 @@ namespace CapaDatos.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdVenta"));
 
+                    b.Property<string>("DocumentoCliente")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("documento_cliente");
+
                     b.Property<bool>("Estado")
                         .HasColumnType("bit")
                         .HasColumnName("estado");
@@ -520,6 +526,11 @@ namespace CapaDatos.Migrations
                     b.Property<decimal>("MontoTotal")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("monto_total");
+
+                    b.Property<string>("NombreCliente")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("nombre_cliente");
 
                     b.HasKey("IdVenta");
 
