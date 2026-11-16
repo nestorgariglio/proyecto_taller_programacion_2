@@ -170,21 +170,21 @@ Las funcionalidades del sistema se agrupan en 7 Épicas globales:
 
 ### Épica 4: Gestión de Abastecimiento y Compras
 
-#### HU-09: Carga de Compras a Proveedores
+#### HU-09: Solicitudes de Reabastecimiento a Proveedores y Envío por Correo
 - **Actor**: Encargado de Compras exclusivamente.
-- **Descripción**: Como encargado de compras, quiero registrar las facturas recibidas de los proveedores con su detalle de artículos.
+- **Descripción**: Como encargado de compras, quiero generar solicitudes de reabastecimiento a proveedores, enviárselas por correo electrónico y registrar su confirmación con los costos acordados.
 - **Criterios de Aceptación**:
-  - Permite seleccionar un proveedor activo (`Estado = 1`) y asociar el operador responsable.
-  - Permite agregar múltiples líneas especificando Producto, Cantidad, PrecioCompra y PrecioVenta sugerido.
-  - Calcula automáticamente el subtotal de cada ítem y el total del comprobante.
-  - Registra la cabecera `COMPRA` y sus líneas en `DETALLE_COMPRA` bajo una misma transacción atómica.
+  - Permite seleccionar un proveedor activo (`Estado = 1`), asociar el operador responsable y elegir productos del catálogo (destacando aquellos con `Stock <= StockMinimo`).
+  - Al emitir el pedido con las cantidades requeridas, registra la solicitud en estado **`Pendiente`** (`EstadoSolicitud = 'Pendiente'`) sin modificar aún las existencias de `PRODUCTO`.
+  - Despacha la solicitud al correo electrónico del proveedor mediante SMTP configurable en `appsettings.json` (con modo simulación/vista previa local cuando se opere sin conectividad SMTP).
+  - Permite pasar el pedido al estado **`Confirmada`** cuando el proveedor responde confirmando disponibilidad y precios (`PrecioCompra` y `PrecioVenta` sugerido), recalculando subtotales y `MontoTotal`.
 
-#### HU-10: Actualización Automática de Stock y Precios por Compra
-- **Actor**: Sistema (automático tras HU-09).
-- **Descripción**: Como sistema, quiero actualizar las existencias y los costos del catálogo al confirmar una compra.
+#### HU-10: Recepción de Mercadería y Actualización Automática de Stock y Precios
+- **Actor**: Encargado de Compras / Sistema.
+- **Descripción**: Como encargado de compras, quiero cambiar el estado del pedido a **`Recibida`** al ingresar la mercadería al local para que el sistema actualice automáticamente las existencias y los precios del catálogo.
 - **Criterios de Aceptación**:
-  - Al guardar la compra (`COMPRA.Estado = 1`), incrementa `PRODUCTO.Stock` sumando las cantidades adquiridas.
-  - Sobrescribe `PrecioCompra` y actualiza `PrecioVenta` en `PRODUCTO` según los valores declarados en la factura.
+  - Al cambiar el estado de la compra a **`Recibida`**, incrementa de forma atómica `PRODUCTO.Stock` sumando las cantidades adquiridas en cada línea de `DETALLE_COMPRA`.
+  - Sobrescribe `PrecioCompra` y actualiza `PrecioVenta` en `PRODUCTO` según los valores confirmados en la solicitud.
 
 ---
 
@@ -230,18 +230,20 @@ Las funcionalidades del sistema se agrupan en 7 Épicas globales:
 
 #### HU-14: Anulación de Compras y Ajuste de Stock
 - **Actor**: Encargado de Compras exclusivamente.
-- **Descripción**: Como encargado de compras y responsable comercial, quiero cancelar una compra errónea ajustando las existencias del inventario.
+- **Descripción**: Como encargado de compras y responsable comercial, quiero cancelar o anular una solicitud/compra ajustando las existencias del inventario según su estado de recepción.
 - **Criterios de Aceptación**:
   - Exige autenticación y autorización del rol Encargado de Compras; el Administrador técnico y el Cajero no pueden ejecutarla.
-  - Registra el usuario responsable, la fecha y hora y el motivo de la anulación.
-  - Verifica que `PRODUCTO.Stock >= CantidadComprada`. Si las existencias actuales son insuficientes (debido a ventas posteriores), cancela la anulación y emite una advertencia.
-  - Si hay stock suficiente, cambia `COMPRA.Estado = 0` y descuenta las unidades de `PRODUCTO.Stock`.
+  - Registra el usuario responsable, la fecha y hora y el motivo de la anulación (`id_usuario_anula`, `fecha_anulacion`, `motivo_anulacion`).
+  - Si la compra se encontraba en estado **`Pendiente`** o **`Confirmada`**, pasa a **`Anulada`** (`COMPRA.Estado = 0`) sin modificar `PRODUCTO.Stock`.
+  - Si la compra ya se encontraba en estado **`Recibida`**, verifica que `PRODUCTO.Stock >= CantidadComprada`. Si las existencias actuales son insuficientes (debido a ventas posteriores), cancela la anulación y emite una advertencia; si hay stock suficiente, cambia a **`Anulada`** (`COMPRA.Estado = 0`) y descuenta las unidades de `PRODUCTO.Stock`.
 
-#### HU-15: Histórico de Transacciones y Reportes de Gestión
+#### HU-15: Histórico de Transacciones y Tablero de Reportes con Vistas SQL
 - **Actor**: Administrador / Encargado de Compras.
-- **Descripción**: Como usuario gestor, quiero consultar los históricos de ventas y compras con filtros avanzados para evaluar el desempeño comercial.
+- **Descripción**: Como usuario gestor, quiero consultar el tablero de reportes alimentado por vistas SQL en base de datos y los históricos de ventas y compras con filtros avanzados para evaluar el desempeño comercial real.
 - **Criterios de Aceptación**:
-  - Permite filtrar por rango de fechas (desde/hasta), cliente, proveedor o estado (Activa / Anulada).
+  - Utiliza Vistas SQL (`CREATE VIEW`, como `vw_ResumenDiarioVentas` y `vw_ParticipacionCategorias`) para calcular agregaciones de facturación, ganancias, ticket promedio y participación por rubro directamente en el motor.
+  - Alimenta los KPIs, gráficos y tabla de resumen diario de `ReportesForm` con datos reales filtrables por período.
+  - Permite filtrar listados históricos de transacciones por rango de fechas (desde/hasta), cliente, proveedor o estado (`Activa`, `Anulada`, `Pendiente`, `Confirmada`, `Recibida`).
   - Provee métricas resumidas en la pantalla de inicio (ventas del día, monto total transaccionado, conteo de stock crítico).
 
 ---
@@ -279,16 +281,17 @@ Las funcionalidades del sistema se agrupan en 7 Épicas globales:
 | **RF-06** | Alertas de Stock Crítico | Umbral mínimo configurado | Evalúa existencias en tiempo real y detecta artículos con `Stock <= Umbral`. | Grilla de inventario con resaltado visual y resumen en Home. |
 | **RF-07** | Padrón de Clientes y Búsqueda POS | DNI, Nombre, Correo, Teléfono | Registra clientes validados y expone búsqueda optimizada para caja. | Cliente en `CLIENTE` y listado rápido para el POS. |
 | **RF-08** | Padrón de Proveedores | CUIT, Razón Social, Contacto | Valida formato fiscal CUIT (11 dígitos) y unicidad. Gestiona bajas lógicas. | Proveedor persistido en `PROVEEDOR`. |
-| **RF-09** | Carga de Compras Transaccionales | Encargado de Compras autenticado, proveedor y lista de ítems | Ejecuta transacción atómica para insertar cabecera `COMPRA` y `DETALLE_COMPRA`. | Factura de compra registrada con total liquidado. |
-| **RF-10** | Entrada Automática de Stock por Compra | Comprobante de compra confirmado | Suma cantidades adquiridas al stock y actualiza costos y precios de venta. | `PRODUCTO.Stock` incrementado y precios actualizados. |
+| **RF-09** | Solicitudes de Reabastecimiento y Envío por Email | Encargado de Compras autenticado, proveedor y lista de ítems | Registra la solicitud en estado `Pendiente`, envía el pedido por SMTP (con fallback local) y permite confirmarla (`Confirmada`) con costos acordados. | Solicitud de compra registrada y despachada al proveedor. |
+| **RF-10** | Recepción de Mercadería y Entrada de Stock | Solicitud de compra marcada como `Recibida` | Suma atómicamente las cantidades recibidas a `PRODUCTO.Stock` y actualiza `PrecioCompra` y `PrecioVenta`. | `PRODUCTO.Stock` incrementado y precios actualizados. |
 | **RF-11** | Carrito y Validación de Existencias en Caja | Vendedor / Cajero autenticado, Código ingresado mediante teclado / Nombre, Cantidad | Verifica `Stock >= Cantidad`. Rechaza adición si no hay existencias suficientes. | Línea incorporada al carrito con subtotal y total recalculados. |
 | **RF-12** | Inmutabilidad de Clientes en Venta | Cliente del padrón o Consumidor Final | Captura de forma congelada `documento_cliente` y `nombre_cliente` en la cabecera. | Datos del cliente inmutables guardados en `VENTA`. |
 | **RF-13** | Cobro y Cálculo Dinámico de Vuelto | Vendedor / Cajero autenticado, importe de pago (`MontoPago`) | Compara `MontoPago >= MontoTotal` y calcula `MontoCambio = MontoPago - MontoTotal`. | Vuelto visualizado en tiempo real y habilitación de facturación. |
 | **RF-14** | Persistencia Atómica de Venta vía SP | Vendedor / Cajero autenticado, parámetros de venta y tabla de detalles | Invoca `sp_RegistrarVenta` con transacción pura, bloqueo de stock e inserción de venta y detalles. | Venta N° persistida, stock descontado y carrito reiniciado. |
-| **RF-15** | Anulación de Ventas con Devolución de Stock | ID de Venta (Solo Encargado de Compras) | Cambia `VENTA.Estado = 0` y suma las cantidades de `DETALLE_VENTA` al stock. | Venta anulada y stock físico restituido. |
-| **RF-16** | Anulación de Compras con Control de Existencias | ID de Compra (Solo Encargado de Compras) | Verifica `Stock >= CantidadComprada`. Si es válido, pasa a `Estado = 0` y resta stock. | Compra anulada y stock corregido. |
+| **RF-15** | Anulación de Ventas con Devolución de Stock | ID de Venta y motivo (Solo Encargado de Compras) | Registra auditoría, cambia `VENTA.Estado = 0` y suma las cantidades de `DETALLE_VENTA` al stock. | Venta anulada y stock físico restituido. |
+| **RF-16** | Anulación de Compras según Estado | ID de Compra y motivo (Solo Encargado de Compras) | Registra auditoría y pasa a `Anulada`; si estaba `Recibida`, verifica `Stock >= CantidadComprada` y resta stock. | Compra anulada y stock corregido cuando corresponda. |
 | **RF-17** | Generación de Copia de Seguridad (Backup) | Comando del Administrador | Ejecuta `BACKUP DATABASE` en SQL Server y genera archivo `.bak` con fecha y hora. | Respaldo físico creado en disco y confirmación en pantalla. |
 | **RF-18** | Restauración de Base de Datos (Restore) | Archivo `.bak` seleccionado y confirmación | Forza modo exclusivo (`SINGLE_USER`), ejecuta `RESTORE DATABASE` y restablece `MULTI_USER`. | Base de datos recuperada al punto del respaldo. |
+| **RF-19** | Tablero de Reportes mediante Vistas SQL | Período y filtros seleccionados | Consulta vistas SQL (`vw_ResumenDiarioVentas`, `vw_ParticipacionCategorias`) e históricos reales. | KPIs, gráficos y grillas de desempeño comercial actualizados. |
 
 ---
 
