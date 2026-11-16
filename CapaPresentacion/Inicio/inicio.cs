@@ -35,6 +35,7 @@ namespace CapaPresentacion
         private readonly ProveedoresForm _proveedoresForm;
         private readonly ComprasForm _comprasForm;
         private readonly VentasForm _ventasForm;
+        private readonly CapaPresentacion.Reportes.ReportesForm _reportesForm;
         private readonly Func<GenerarBackupForm> _generarBackupFactory;
         private readonly Func<RestaurarBackupForm> _restaurarBackupFactory;
         private readonly HomeResumenNegocio _homeResumenNegocio;
@@ -65,11 +66,13 @@ namespace CapaPresentacion
             ProveedoresForm proveedoresForm,
             ComprasForm comprasForm,
             VentasForm ventasForm,
+            CapaPresentacion.Reportes.ReportesForm reportesForm,
             Func<GenerarBackupForm> generarBackupFactory,
             Func<RestaurarBackupForm> restaurarBackupFactory,
             HomeResumenNegocio homeResumenNegocio)
         {
             _ventasForm = ventasForm;
+            _reportesForm = reportesForm;
             _homeResumenNegocio = homeResumenNegocio;
             _generarBackupFactory = generarBackupFactory;
             _restaurarBackupFactory = restaurarBackupFactory;
@@ -104,6 +107,7 @@ namespace CapaPresentacion
             // del modal DetalleCompraForm, así que la pestaña no necesita manejador.
             _comprasForm = comprasForm;
             _ventasForm = ventasForm;
+            tab_reportes.Enter += tab_reportes_Enter;
 
             var materialSkinManager = MaterialSkinManager.Instance;
             materialSkinManager.AddFormToManage(this);
@@ -138,7 +142,7 @@ namespace CapaPresentacion
             AbrirVistaEnTab(_comprasForm, tab_compras);
             AbrirVistaEnTab(_clientesForm, tab_clientes);
             AbrirVistaEnTab(_proveedoresForm, tab_proveedores);
-            AbrirVistaEnTab(new ReportesForm(), tab_reportes);
+            AbrirVistaEnTab(_reportesForm, tab_reportes);
             AbrirVistaEnTab(new InfoForm(), tab_info);
         }
 
@@ -629,6 +633,14 @@ namespace CapaPresentacion
             if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Proveedores"))
             {
                 await _proveedoresForm.CargarProveedoresAsync();
+            }
+        }
+
+        private async void tab_reportes_Enter(object? sender, EventArgs e)
+        {
+            if (PoliticaAcceso.TieneAcceso(_usuarioActual?.RolDescripcion, "Reportes"))
+            {
+                await _reportesForm.CargarReporteAsync();
             }
         }
 

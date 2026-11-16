@@ -69,6 +69,8 @@ namespace CapaPresentacion
                         sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
                         CapaNegocio.Stock.ResolucionUmbralStock.Resolver(
                             sp.GetRequiredService<IConfiguration>()["StockCritico:UmbralMinimo"])));
+                    services.AddTransient<ReporteNegocio>(sp => new ReporteNegocio(
+                        sp.GetRequiredService<IDbContextFactory<AppDbContext>>()));
 
                     services.AddSingleton<CapaDatos.Respaldo.IProveedorRutaRespaldo, CapaDatos.Respaldo.ProveedorRutaRespaldo>(
                         sp => new CapaDatos.Respaldo.ProveedorRutaRespaldo(
@@ -92,6 +94,7 @@ namespace CapaPresentacion
                     services.AddTransient<ProveedoresForm>();
                     services.AddTransient<ComprasForm>();
                     services.AddTransient<VentasForm>();
+                    services.AddTransient<CapaPresentacion.Reportes.ReportesForm>();
                     services.AddTransient<login>();
                     services.AddTransient<inicio>();
 

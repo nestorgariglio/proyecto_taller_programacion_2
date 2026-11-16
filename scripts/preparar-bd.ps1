@@ -39,7 +39,9 @@ $VerificacionesSeed = @(
     @{ Etiqueta = 'Proveedores de seed';              Consulta = "SELECT COUNT(*) FROM dbo.PROVEEDOR WHERE cuit IN ($CuitsSeed)"; Exacto = 11 },
     @{ Etiqueta = 'Proveedores de seed activos';      Consulta = "SELECT COUNT(*) FROM dbo.PROVEEDOR WHERE estado = 1 AND cuit IN ($CuitsSeed)"; Exacto = 10 },
     @{ Etiqueta = 'Clientes de seed';                 Consulta = "SELECT COUNT(*) FROM dbo.CLIENTE WHERE dni LIKE N'CLI00000__'"; Exacto = 12 },
-    @{ Etiqueta = 'Clientes de seed activos';         Consulta = "SELECT COUNT(*) FROM dbo.CLIENTE WHERE estado = 1 AND dni LIKE N'CLI00000__'"; Exacto = 9 }
+    @{ Etiqueta = 'Clientes de seed activos';         Consulta = "SELECT COUNT(*) FROM dbo.CLIENTE WHERE estado = 1 AND dni LIKE N'CLI00000__'"; Exacto = 9 },
+    @{ Etiqueta = 'Compras de seed';                  Consulta = "SELECT COUNT(*) FROM dbo.COMPRA WHERE observaciones LIKE N'%[SEED]%'"; Exacto = 6 },
+    @{ Etiqueta = 'Ventas de seed';                   Consulta = "SELECT COUNT(*) FROM dbo.VENTA WHERE nro_comprobante LIKE N'B-000000__'"; Exacto = 29 }
 )
 
 # Defaults protegidos contra $PSScriptRoot vacío
