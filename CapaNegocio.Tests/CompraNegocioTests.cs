@@ -2436,7 +2436,7 @@ public class CompraNegocioTests
         Assert.Equal("Ana Gómez", fila.NombreUsuario);
         Assert.Equal("Ferretería Central", fila.RazonSocialProveedor);
         Assert.Equal(
-            new[] { "Estado", "FechaRegistro", "IdCompra", "MontoTotal", "NombreUsuario", "RazonSocialProveedor" },
+            new[] { "Estado", "EstadoSolicitud", "FechaAnulacion", "FechaConfirmacion", "FechaRecepcion", "FechaRegistro", "IdCompra", "MontoTotal", "MotivoAnulacion", "NombreUsuario", "Observaciones", "RazonSocialProveedor" },
             typeof(HistorialCompraDto).GetProperties().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));
     }
 

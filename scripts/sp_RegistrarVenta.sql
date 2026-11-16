@@ -1,7 +1,3 @@
-/*
-    HU-12: Procedimiento Almacenado y Transacción SQL pura para Registro de Ventas
-    Satisface el criterio académico de Procedimiento Almacenado propio y Transacción en motor.
-*/
 
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;

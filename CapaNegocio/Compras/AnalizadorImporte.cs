@@ -4,10 +4,7 @@ using CapaNegocio.Enums;
 namespace CapaNegocio.Compras;
 
 /// <summary>
-/// Interpretación determinista de un precio escrito como texto (RF-22 … RF-26
-/// y RF-28). Admite un único separador decimal —coma o punto, nunca de
-/// miles— y, opcionalmente, un único «-» inicial. Devuelve un motivo tipado y
-/// nunca un texto (RF-55). Sin EF Core y sin redondeos (RNF-1).
+/// Interpretación determinista de un precio escrito como texto.
 /// </summary>
 public static class AnalizadorImporte
 {
@@ -16,9 +13,7 @@ public static class AnalizadorImporte
     private const char SignoNegativo = '-';
 
     /// <summary>
-    /// Analiza el texto en el orden fijado por el plan §6.3: vacío → formato
-    /// → no positivo → decimales excedidos → supera el máximo. El desborde de
-    /// <see cref="decimal"/> se clasifica como <see cref="MotivoPrecioInvalido.SuperaMaximo"/>.
+    /// Analiza el texto validando formato numérico, valor positivo, escala decimal y límites monetarios.
     /// </summary>
     public static ResultadoAnalisisImporte Analizar(string? texto)
     {
@@ -33,7 +28,6 @@ public static class AnalizadorImporte
 
         if (inicioDigitos == recortado.Length)
         {
-            // Solo un signo «-», sin dígitos.
             return Invalido(MotivoPrecioInvalido.FormatoInvalido);
         }
 
@@ -54,20 +48,15 @@ public static class AnalizadorImporte
                 continue;
             }
 
-            // Segundo separador, otro carácter, signo fuera de la posición
-            // inicial o espacio interno.
             return Invalido(MotivoPrecioInvalido.FormatoInvalido);
         }
 
         if (posicionSeparador >= 0
             && (posicionSeparador == inicioDigitos || posicionSeparador == recortado.Length - 1))
         {
-            // Separador sin dígitos a uno de sus lados: «10,» o «,5».
             return Invalido(MotivoPrecioInvalido.FormatoInvalido);
         }
 
-        // El separador se interpreta siempre como decimal (RF-25): no hay
-        // puntos de miles, así que «1.000» es 1,000.
         string normalizado = posicionSeparador >= 0
             ? recortado.Replace(SeparadorComa, SeparadorPunto)
             : recortado;
@@ -78,8 +67,6 @@ public static class AnalizadorImporte
                 CultureInfo.InvariantCulture,
                 out decimal valor))
         {
-            // El formato ya está garantizado: el único fallo posible es el
-            // desborde de decimal, que RF-24 clasifica como supera el máximo.
             return Invalido(MotivoPrecioInvalido.SuperaMaximo);
         }
 
@@ -98,16 +85,25 @@ public static class AnalizadorImporte
             return Invalido(MotivoPrecioInvalido.SuperaMaximo);
         }
 
-        return new ResultadoAnalisisImporte { EsValido = true, Valor = valor };
+        return new ResultadoAnalisisImporte
+        {
+            EsValido = true,
+            Valor = valor,
+            Motivo = null
+        };
     }
 
-    private static int ContarDecimales(string textoNormalizado)
+    private static int ContarDecimales(string normalizado)
     {
-        int posicion = textoNormalizado.IndexOf(SeparadorPunto);
-
-        return posicion < 0 ? 0 : textoNormalizado.Length - posicion - 1;
+        int indicePunto = normalizado.IndexOf(SeparadorPunto);
+        return indicePunto < 0 ? 0 : normalizado.Length - indicePunto - 1;
     }
 
-    private static ResultadoAnalisisImporte Invalido(MotivoPrecioInvalido motivo)
-        => new() { EsValido = false, Motivo = motivo };
+    private static ResultadoAnalisisImporte Invalido(MotivoPrecioInvalido motivo) =>
+        new()
+        {
+            EsValido = false,
+            Valor = 0m,
+            Motivo = motivo
+        };
 }

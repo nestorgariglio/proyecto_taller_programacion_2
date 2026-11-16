@@ -1,9 +1,5 @@
 namespace CapaNegocio.DTOs.Compras;
 
-/// <summary>
-/// Solicitud para guardar la corrección de una línea existente
-/// (RF-30 y RF-62). Mismos valores crudos que el alta (RF-55).
-/// </summary>
 public class SolicitudEditarLineaCompraDto
 {
 	public int IndiceLinea { get; set; }
