@@ -1494,7 +1494,7 @@ public class CompraNegocioTests
 
         DateTime antes = DateTime.Now;
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
-            solicitud, usuario.IdUsuario, "Administrador");
+            solicitud, usuario.IdUsuario, "Encargado");
         DateTime despues = DateTime.Now;
 
         Assert.Equal(ResultadoRegistroCompra.Exito, respuesta.Resultado);
@@ -1569,7 +1569,7 @@ public class CompraNegocioTests
             Linea(producto.IdProducto, "COD1", "Uno", 4, 5.5m, 8m, subtotal: 9_999m));
 
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
-            solicitud, usuario.IdUsuario, "Administrador");
+            solicitud, usuario.IdUsuario, "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.Exito, respuesta.Resultado);
         Assert.Equal(22m, respuesta.MontoTotal);
@@ -1612,7 +1612,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 2, 15.5m, 21.75m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Producto despues = await LeerProductoAsync(db, producto.IdProducto);
 
@@ -1641,7 +1641,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 40m, 60m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Producto despues = await LeerProductoAsync(db, producto.IdProducto);
         Assert.Equal(ResultadoRegistroCompra.Exito, respuesta.Resultado);
@@ -1666,7 +1666,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 3, 10.333m, 99m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Producto despues = await LeerProductoAsync(db, producto.IdProducto);
         Assert.NotEqual(ResultadoRegistroCompra.Exito, respuesta.Resultado);
@@ -1686,14 +1686,14 @@ public class CompraNegocioTests
         await using (var falloDb = new FalloDbContext(escenario.Opciones))
         {
             RespuestaRegistroCompra fallo = await new CompraNegocio(falloDb).RegistrarCompraAsync(
-                escenario.Solicitud, escenario.IdUsuario, "Administrador");
+                escenario.Solicitud, escenario.IdUsuario, "Encargado");
             Assert.Equal(ResultadoRegistroCompra.ErrorPersistencia, fallo.Resultado);
         }
 
         Assert.All(await sano.Productos.AsNoTracking().ToListAsync(), p => Assert.Equal(5, p.Stock));
 
         RespuestaRegistroCompra exito = await new CompraNegocio(sano).RegistrarCompraAsync(
-            escenario.Solicitud, escenario.IdUsuario, "Administrador");
+            escenario.Solicitud, escenario.IdUsuario, "Encargado");
         Assert.Equal(ResultadoRegistroCompra.Exito, exito.Resultado);
 
         List<Producto> productos = await sano.Productos.AsNoTracking().OrderBy(p => p.Codigo).ToListAsync();
@@ -1719,7 +1719,7 @@ public class CompraNegocioTests
                 Linea(uno.IdProducto, "COD1", "Uno", 2, 11m, 13m),
                 Linea(dos.IdProducto, "COD2", "Dos", 10, 20m, 25m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.Exito, respuesta.Resultado);
         Producto u = await LeerProductoAsync(db, uno.IdProducto);
@@ -1746,7 +1746,7 @@ public class CompraNegocioTests
                 Linea(uno.IdProducto, "COD1", "Uno", 1, 10m, 12m),
                 Linea(uno.IdProducto, "COD1", "Uno", 2, 10m, 12m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.ProductoInvalido, respuesta.Resultado);
         Assert.Equal(5, (await LeerProductoAsync(db, uno.IdProducto)).Stock);
@@ -1770,7 +1770,7 @@ public class CompraNegocioTests
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
             SolicitudRegistrar(idProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 10m, 12m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.ProveedorInvalido, respuesta.Resultado);
         Assert.Equal(MensajeProveedorRequerido, respuesta.Mensaje);
@@ -1791,7 +1791,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 Importes.ProveedorInexistente, Linea(producto.IdProducto, "COD1", "Uno", 1, 10m, 12m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.ProveedorInvalido, respuesta.Resultado);
         Assert.Equal(MensajeProveedorInexistente, respuesta.Mensaje);
@@ -1812,7 +1812,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 10m, 12m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.ProveedorInvalido, respuesta.Resultado);
         Assert.Equal(string.Format(MensajeProveedorInactivoFormato, "Ferretería Central"), respuesta.Mensaje);
@@ -1835,7 +1835,7 @@ public class CompraNegocioTests
         await db.SaveChangesAsync();
 
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
-            solicitud, usuario.IdUsuario, "Administrador");
+            solicitud, usuario.IdUsuario, "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.ProveedorInvalido, respuesta.Resultado);
         Assert.Equal(string.Format(MensajeProveedorInactivoFormato, "Ferretería Central"), respuesta.Mensaje);
@@ -1857,7 +1857,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 10m, 12m)),
             idUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.UsuarioInvalido, respuesta.Resultado);
         Assert.Equal(MensajeUsuarioSinIdentificar, respuesta.Mensaje);
@@ -1877,7 +1877,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 10m, 12m)),
             Importes.UsuarioInexistente,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.UsuarioInvalido, respuesta.Resultado);
         Assert.Equal(MensajeUsuarioInexistente, respuesta.Mensaje);
@@ -1898,7 +1898,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 10m, 12m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.UsuarioInvalido, respuesta.Resultado);
         Assert.Equal(MensajeUsuarioInactivo, respuesta.Mensaje);
@@ -1917,7 +1917,7 @@ public class CompraNegocioTests
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
             new SolicitudRegistrarCompraDto { IdProveedor = proveedor.IdProveedor },
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.SinItems, respuesta.Resultado);
         Assert.Equal(MensajeSinItems, respuesta.Mensaje);
@@ -1940,7 +1940,7 @@ public class CompraNegocioTests
         await db.SaveChangesAsync();
 
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
-            solicitud, usuario.IdUsuario, "Administrador");
+            solicitud, usuario.IdUsuario, "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.ProductoInvalido, respuesta.Resultado);
         Assert.Equal(string.Format(MensajeProductoInactivoFormato, "COD1", "Uno", 1), respuesta.Mensaje);
@@ -1968,7 +1968,7 @@ public class CompraNegocioTests
                 Linea(dos.IdProducto, "COD2", "Dos", 1, 20m, 25m),
                 Linea(uno.IdProducto, "COD1", "Uno", 2, 10m, 12m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.ProductoInvalido, respuesta.Resultado);
         Assert.Equal(string.Format(MensajeProductoRepetidoFormato, "COD1", "Uno"), respuesta.Mensaje);
@@ -1992,7 +1992,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 10.333m, 12m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.PrecioInvalido, respuesta.Resultado);
         Assert.Equal(CampoPrecio.PrecioCompra, respuesta.CampoPrecio);
@@ -2017,7 +2017,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 10m, 10.333m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.PrecioInvalido, respuesta.Resultado);
         Assert.Equal(CampoPrecio.PrecioVenta, respuesta.CampoPrecio);
@@ -2040,7 +2040,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 1_000_000_000m, 12m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.PrecioInvalido, respuesta.Resultado);
         Assert.Equal(CampoPrecio.PrecioCompra, respuesta.CampoPrecio);
@@ -2063,7 +2063,7 @@ public class CompraNegocioTests
             SolicitudRegistrar(
                 proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 1, 10m, 1_000_000_000m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.PrecioInvalido, respuesta.Resultado);
         Assert.Equal(CampoPrecio.PrecioVenta, respuesta.CampoPrecio);
@@ -2092,7 +2092,7 @@ public class CompraNegocioTests
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
             new SolicitudRegistrarCompraDto { IdProveedor = proveedor.IdProveedor, Lineas = lineas },
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.MontoTotalSuperaMaximo, respuesta.Resultado);
         Assert.Equal(MensajeMontoTotalSuperaMaximo, respuesta.Mensaje);
@@ -2107,7 +2107,7 @@ public class CompraNegocioTests
         var negocio = new CompraNegocio(db);
 
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
-            new SolicitudRegistrarCompraDto { IdProveedor = Importes.ProveedorInexistente }, 0, "Administrador");
+            new SolicitudRegistrarCompraDto { IdProveedor = Importes.ProveedorInexistente }, 0, "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.ProveedorInvalido, respuesta.Resultado);
         Assert.Equal(MensajeProveedorInexistente, respuesta.Mensaje);
@@ -2125,7 +2125,7 @@ public class CompraNegocioTests
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
             new SolicitudRegistrarCompraDto { IdProveedor = proveedor.IdProveedor },
             Importes.UsuarioInexistente,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.UsuarioInvalido, respuesta.Resultado);
         Assert.Equal(MensajeUsuarioInexistente, respuesta.Mensaje);
@@ -2149,7 +2149,7 @@ public class CompraNegocioTests
                 Linea(uno.IdProducto, "COD1", "Uno", 1, 0m, 12m),
                 Linea(dos.IdProducto, "COD2", "Dos", 0, 20m, 25m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.PrecioInvalido, respuesta.Resultado);
         Assert.Equal(CampoPrecio.PrecioCompra, respuesta.CampoPrecio);
@@ -2176,7 +2176,7 @@ public class CompraNegocioTests
         var negocio = new CompraNegocio(falloDb);
 
         RespuestaRegistroCompra respuesta = await negocio.RegistrarCompraAsync(
-            escenario.Solicitud, escenario.IdUsuario, "Administrador");
+            escenario.Solicitud, escenario.IdUsuario, "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.ErrorPersistencia, respuesta.Resultado);
         Assert.Equal(MensajeErrorPersistencia, respuesta.Mensaje);
@@ -2198,7 +2198,7 @@ public class CompraNegocioTests
         await using (var falloDb = new FalloDbContext(escenario.Opciones))
         {
             RespuestaRegistroCompra fallo = await new CompraNegocio(falloDb).RegistrarCompraAsync(
-                escenario.Solicitud, escenario.IdUsuario, "Administrador");
+                escenario.Solicitud, escenario.IdUsuario, "Encargado");
 
             Assert.Equal(ResultadoRegistroCompra.ErrorPersistencia, fallo.Resultado);
             Assert.Null(fallo.IdCompra);
@@ -2206,7 +2206,7 @@ public class CompraNegocioTests
         }
 
         RespuestaRegistroCompra reintento = await new CompraNegocio(sano).RegistrarCompraAsync(
-            escenario.Solicitud, escenario.IdUsuario, "Administrador");
+            escenario.Solicitud, escenario.IdUsuario, "Encargado");
 
         Assert.Equal(ResultadoRegistroCompra.Exito, reintento.Resultado);
         Assert.NotNull(reintento.IdCompra);
@@ -2246,7 +2246,7 @@ public class CompraNegocioTests
         };
 
         RespuestaRegistroCompra respuesta = await new CompraNegocio(escenario.Db).RegistrarCompraAsync(
-            escenario.Solicitud, escenario.IdUsuario, "Administrador");
+            escenario.Solicitud, escenario.IdUsuario, "Encargado");
 
         escenario.Interceptor.Entidad = null;
         Assert.Equal(ResultadoRegistroCompra.ErrorPersistencia, respuesta.Resultado);
@@ -2322,7 +2322,7 @@ public class CompraNegocioTests
         await using AppDbContext db = await CrearContextoVacioAsync();
 
         RespuestaHistorialCompras respuesta = await new CompraNegocio(db)
-            .ObtenerHistorialAsync("Administrador");
+            .ObtenerHistorialAsync("Encargado");
 
         Assert.Equal(ResultadoHistorialCompras.SinCompras, respuesta.Resultado);
         Assert.Equal(MensajeHistorialVacio, respuesta.Mensaje);
@@ -2344,7 +2344,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, new DateTime(2026, 2, 20, 12, 0, 0), 20m);
 
         RespuestaHistorialCompras respuesta = await new CompraNegocio(db)
-            .ObtenerHistorialAsync("Administrador");
+            .ObtenerHistorialAsync("Encargado");
 
         Assert.Equal(ResultadoHistorialCompras.ConCompras, respuesta.Resultado);
         Assert.Equal(string.Format(MensajeComprasEncontradasFormato, 3), respuesta.Mensaje);
@@ -2366,7 +2366,7 @@ public class CompraNegocioTests
         Compra segunda = await SembrarCompraAsync(db, proveedor.IdProveedor, usuario.IdUsuario, mismaFecha, 20m);
 
         RespuestaHistorialCompras respuesta = await new CompraNegocio(db)
-            .ObtenerHistorialAsync("Administrador");
+            .ObtenerHistorialAsync("Encargado");
 
         Assert.True(primera.IdCompra < segunda.IdCompra);
         Assert.Equal(
@@ -2387,7 +2387,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, new DateTime(2026, 5, 2, 9, 0, 0), 20m, estado: false);
 
         RespuestaHistorialCompras respuesta = await new CompraNegocio(db)
-            .ObtenerHistorialAsync("Administrador");
+            .ObtenerHistorialAsync("Encargado");
 
         Assert.Equal(2, respuesta.Compras.Count);
         Assert.True(respuesta.Compras.Single(c => c.IdCompra == activa.IdCompra).Estado);
@@ -2407,7 +2407,7 @@ public class CompraNegocioTests
         await SembrarCompraAsync(db, proveedor.IdProveedor, usuario.IdUsuario, fecha, 1234.5m);
 
         RespuestaHistorialCompras respuesta = await new CompraNegocio(db)
-            .ObtenerHistorialAsync("Administrador");
+            .ObtenerHistorialAsync("Encargado");
 
         HistorialCompraDto fila = Assert.Single(respuesta.Compras);
         Assert.IsType<DateTime>(fila.FechaRegistro);
@@ -2430,7 +2430,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, new DateTime(2026, 1, 1, 0, 0, 0), 10m);
 
         RespuestaHistorialCompras respuesta = await new CompraNegocio(db)
-            .ObtenerHistorialAsync("Administrador");
+            .ObtenerHistorialAsync("Encargado");
 
         HistorialCompraDto fila = Assert.Single(respuesta.Compras);
         Assert.Equal("Ana Gómez", fila.NombreUsuario);
@@ -2451,7 +2451,7 @@ public class CompraNegocioTests
             new DateTime(2026, 7, 8, 11, 0, 0), 99m);
 
         RespuestaHistorialCompras respuesta = await new CompraNegocio(db)
-            .ObtenerHistorialAsync("Administrador");
+            .ObtenerHistorialAsync("Encargado");
 
         HistorialCompraDto fila = Assert.Single(respuesta.Compras);
         Assert.Equal(TextoSinProveedor, fila.RazonSocialProveedor);
@@ -2478,7 +2478,7 @@ public class CompraNegocioTests
         await SembrarDetalleAsync(db, compra.IdCompra, dos.IdProducto, 3, 10m);
 
         RespuestaCompraConDetalle respuesta = await new CompraNegocio(db)
-            .ObtenerCompraConDetalleAsync(compra.IdCompra, "Administrador");
+            .ObtenerCompraConDetalleAsync(compra.IdCompra, "Encargado");
 
         Assert.Equal(ResultadoCompraConDetalle.Encontrada, respuesta.Resultado);
         Assert.Equal(string.Empty, respuesta.Mensaje);
@@ -2507,7 +2507,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, new DateTime(2026, 2, 2, 2, 2, 2), 0m);
 
         RespuestaCompraConDetalle respuesta = await new CompraNegocio(db)
-            .ObtenerCompraConDetalleAsync(compra.IdCompra, "Administrador");
+            .ObtenerCompraConDetalleAsync(compra.IdCompra, "Encargado");
 
         Assert.Equal(ResultadoCompraConDetalle.Encontrada, respuesta.Resultado);
         Assert.Empty(respuesta.Compra!.Lineas);
@@ -2527,7 +2527,7 @@ public class CompraNegocioTests
         await using AppDbContext db = await CrearContextoVacioAsync();
 
         RespuestaCompraConDetalle respuesta = await new CompraNegocio(db)
-            .ObtenerCompraConDetalleAsync(Importes.CompraInexistente, "Administrador");
+            .ObtenerCompraConDetalleAsync(Importes.CompraInexistente, "Encargado");
 
         Assert.Equal(ResultadoCompraConDetalle.CompraNoEncontrada, respuesta.Resultado);
         Assert.Equal(MensajeCompraNoEncontrada, respuesta.Mensaje);
@@ -2546,7 +2546,7 @@ public class CompraNegocioTests
         await SembrarDetalleAsync(db, compra.IdCompra, Importes.ProductoInexistente, 1, 10m);
 
         RespuestaCompraConDetalle respuesta = await new CompraNegocio(db)
-            .ObtenerCompraConDetalleAsync(compra.IdCompra, "Administrador");
+            .ObtenerCompraConDetalleAsync(compra.IdCompra, "Encargado");
 
         Assert.Equal(ResultadoCompraConDetalle.Encontrada, respuesta.Resultado);
         CompraConDetalleDto dto = respuesta.Compra!;
@@ -2572,7 +2572,7 @@ public class CompraNegocioTests
         int comprasAntes = await db.Compras.AsNoTracking().CountAsync();
         int detallesAntes = await db.DetallesCompra.AsNoTracking().CountAsync();
 
-        await new CompraNegocio(db).ObtenerCompraConDetalleAsync(compra.IdCompra, "Administrador");
+        await new CompraNegocio(db).ObtenerCompraConDetalleAsync(compra.IdCompra, "Encargado");
 
         Assert.Equal(comprasAntes, await db.Compras.AsNoTracking().CountAsync());
         Assert.Equal(detallesAntes, await db.DetallesCompra.AsNoTracking().CountAsync());
@@ -2593,7 +2593,7 @@ public class CompraNegocioTests
         var negocio = new CompraNegocio(db);
         await db.DisposeAsync();
 
-        RespuestaHistorialCompras respuesta = await negocio.ObtenerHistorialAsync("Administrador");
+        RespuestaHistorialCompras respuesta = await negocio.ObtenerHistorialAsync("Encargado");
 
         Assert.Equal(ResultadoHistorialCompras.ErrorPersistencia, respuesta.Resultado);
         Assert.Equal(MensajeErrorPersistencia, respuesta.Mensaje);
@@ -2609,7 +2609,7 @@ public class CompraNegocioTests
         var negocio = new CompraNegocio(db);
         await db.DisposeAsync();
 
-        RespuestaCompraConDetalle respuesta = await negocio.ObtenerCompraConDetalleAsync(1, "Administrador");
+        RespuestaCompraConDetalle respuesta = await negocio.ObtenerCompraConDetalleAsync(1, "Encargado");
 
         Assert.Equal(ResultadoCompraConDetalle.ErrorPersistencia, respuesta.Resultado);
         Assert.Equal(MensajeErrorPersistencia, respuesta.Mensaje);
@@ -2620,6 +2620,7 @@ public class CompraNegocioTests
 
     // RF-60: el rol se evalúa primero y solo se informa el permiso; no se escribe nada.
     [Theory]
+    [InlineData("Administrador")]
     [InlineData("Vendedor")]
     [InlineData("  vendedor ")]
     [InlineData("Otro")]
@@ -2682,6 +2683,7 @@ public class CompraNegocioTests
 
     // RF-61: el historial exige permiso de consulta y no entrega datos.
     [Theory]
+    [InlineData("Administrador")]
     [InlineData("Vendedor")]
     [InlineData("Otro")]
     [InlineData(null)]
@@ -2718,6 +2720,7 @@ public class CompraNegocioTests
 
     // RF-61: el detalle exige permiso de consulta y no entrega la compra.
     [Theory]
+    [InlineData("Administrador")]
     [InlineData("Vendedor")]
     [InlineData("Otro")]
     [InlineData(null)]
@@ -2768,7 +2771,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
 
         RespuestaProveedoresDeProducto respuesta = await new CompraNegocio(db)
-            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Administrador");
+            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.ConResultados, respuesta.Resultado);
         Assert.Equal(string.Empty, respuesta.Mensaje);
@@ -2801,7 +2804,7 @@ public class CompraNegocioTests
             db, alfaPrimero.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 4, 8, 0, 0));
 
         RespuestaProveedoresDeProducto respuesta = await new CompraNegocio(db)
-            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Administrador");
+            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.ConResultados, respuesta.Resultado);
         Assert.Equal(
@@ -2821,7 +2824,7 @@ public class CompraNegocioTests
         Producto producto = await SembrarProductoAsync(db, "COD1", "Uno");
 
         RespuestaProveedoresDeProducto respuesta = await new CompraNegocio(db)
-            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Administrador");
+            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.SinResultados, respuesta.Resultado);
         Assert.Equal(MensajeSinProveedoresHistoricos, respuesta.Mensaje);
@@ -2844,7 +2847,7 @@ public class CompraNegocioTests
             db, inactivo.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 2, 10, 0, 0));
 
         RespuestaProveedoresDeProducto respuesta = await new CompraNegocio(db)
-            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Administrador");
+            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Encargado");
 
         ProveedorDeProductoDto fila = Assert.Single(respuesta.Proveedores);
         Assert.Equal(activo.IdProveedor, fila.IdProveedor);
@@ -2864,7 +2867,7 @@ public class CompraNegocioTests
             new DateTime(2026, 9, 1, 10, 0, 0), estado: false);
 
         RespuestaProveedoresDeProducto respuesta = await new CompraNegocio(db)
-            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Administrador");
+            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.ConResultados, respuesta.Resultado);
         ProveedorDeProductoDto fila = Assert.Single(respuesta.Proveedores);
@@ -2888,7 +2891,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 3, 10, 0, 0));
 
         RespuestaProveedoresDeProducto respuesta = await new CompraNegocio(db)
-            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Administrador");
+            .ObtenerProveedoresDeProductoAsync(producto.IdProducto, "Encargado");
 
         Assert.Single(respuesta.Proveedores);
     }
@@ -2906,7 +2909,7 @@ public class CompraNegocioTests
         await db.DisposeAsync();
 
         RespuestaProveedoresDeProducto respuesta = await negocio
-            .ObtenerProveedoresDeProductoAsync(idProducto, "Administrador");
+            .ObtenerProveedoresDeProductoAsync(idProducto, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.SinResultados, respuesta.Resultado);
         Assert.Equal(string.Empty, respuesta.Mensaje);
@@ -2975,7 +2978,7 @@ public class CompraNegocioTests
         await db.DisposeAsync();
 
         RespuestaProveedoresDeProducto respuesta = await negocio
-            .ObtenerProveedoresDeProductoAsync(1, "Administrador");
+            .ObtenerProveedoresDeProductoAsync(1, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.ErrorPersistencia, respuesta.Resultado);
         Assert.Equal(MensajeErrorPersistencia, respuesta.Mensaje);
@@ -2996,7 +2999,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
 
         RespuestaProductosDeProveedor respuesta = await new CompraNegocio(db)
-            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Administrador");
+            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.ConResultados, respuesta.Resultado);
         Assert.Equal(string.Empty, respuesta.Mensaje);
@@ -3026,7 +3029,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, abrazadera.IdProducto, new DateTime(2026, 9, 3, 8, 0, 0));
 
         RespuestaProductosDeProveedor respuesta = await new CompraNegocio(db)
-            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Administrador");
+            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Encargado");
 
         Assert.Equal(
             new[] { abrazadera.IdProducto, bulon.IdProducto, cable.IdProducto },
@@ -3044,7 +3047,7 @@ public class CompraNegocioTests
         Proveedor proveedor = await SembrarProveedorAsync(db, "20451234567", "Ferretería Central");
 
         RespuestaProductosDeProveedor respuesta = await new CompraNegocio(db)
-            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Administrador");
+            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.SinResultados, respuesta.Resultado);
         Assert.Equal(MensajeSinProductosHistoricos, respuesta.Mensaje);
@@ -3067,7 +3070,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, inactivo.IdProducto, new DateTime(2026, 9, 2, 10, 0, 0));
 
         RespuestaProductosDeProveedor respuesta = await new CompraNegocio(db)
-            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Administrador");
+            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Encargado");
 
         ProductoDeProveedorDto fila = Assert.Single(respuesta.Productos);
         Assert.Equal(activo.IdProducto, fila.IdProducto);
@@ -3086,7 +3089,7 @@ public class CompraNegocioTests
             new DateTime(2026, 9, 1, 10, 0, 0), estado: false);
 
         RespuestaProductosDeProveedor respuesta = await new CompraNegocio(db)
-            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Administrador");
+            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.ConResultados, respuesta.Resultado);
         Assert.Equal(producto.IdProducto, Assert.Single(respuesta.Productos).IdProducto);
@@ -3107,7 +3110,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 2, 10, 0, 0));
 
         RespuestaProductosDeProveedor respuesta = await new CompraNegocio(db)
-            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Administrador");
+            .ObtenerProductosDeProveedorAsync(proveedor.IdProveedor, "Encargado");
 
         Assert.Single(respuesta.Productos);
     }
@@ -3123,7 +3126,7 @@ public class CompraNegocioTests
         await db.DisposeAsync();
 
         RespuestaProductosDeProveedor respuesta = await negocio
-            .ObtenerProductosDeProveedorAsync(idProveedor, "Administrador");
+            .ObtenerProductosDeProveedorAsync(idProveedor, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.SinResultados, respuesta.Resultado);
         Assert.Equal(string.Empty, respuesta.Mensaje);
@@ -3174,7 +3177,7 @@ public class CompraNegocioTests
         await db.DisposeAsync();
 
         RespuestaProductosDeProveedor respuesta = await negocio
-            .ObtenerProductosDeProveedorAsync(1, "Administrador");
+            .ObtenerProductosDeProveedorAsync(1, "Encargado");
 
         Assert.Equal(ResultadoConsultaHistoricaCompra.ErrorPersistencia, respuesta.Resultado);
         Assert.Equal(MensajeErrorPersistencia, respuesta.Mensaje);
@@ -3199,7 +3202,7 @@ public class CompraNegocioTests
             db, reciente.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
 
         RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
-            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Administrador");
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Encargado");
 
         Assert.Equal(ResultadoBusquedaCompras.ConResultados, respuesta.Resultado);
         Assert.Equal(
@@ -3223,7 +3226,7 @@ public class CompraNegocioTests
         await SembrarDetalleAsync(db, segunda.IdCompra, otro.IdProducto, 1, 10m);
 
         RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
-            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Administrador");
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Encargado");
 
         Assert.Single(respuesta.Proveedores);
     }
@@ -3242,7 +3245,7 @@ public class CompraNegocioTests
             db, historico.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
 
         RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
-            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Administrador");
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Encargado");
 
         Assert.Equal(
             new[] { historico.IdProveedor, nuevoA.IdProveedor, nuevoB.IdProveedor },
@@ -3272,7 +3275,7 @@ public class CompraNegocioTests
         }
 
         RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
-            .BuscarProveedoresParaCompraAsync(texto, producto.IdProducto, false, "Administrador");
+            .BuscarProveedoresParaCompraAsync(texto, producto.IdProducto, false, "Encargado");
 
         Proveedor esperado = proveedores[indiceEsperado];
         Assert.Equal(esperado.IdProveedor, Assert.Single(respuesta.Proveedores).IdProveedor);
@@ -3292,7 +3295,7 @@ public class CompraNegocioTests
             db, inactivoHistorico.IdProveedor, usuario.IdUsuario, producto.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
 
         RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
-            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Administrador");
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Encargado");
 
         Assert.Equal(activo.IdProveedor, Assert.Single(respuesta.Proveedores).IdProveedor);
     }
@@ -3308,9 +3311,9 @@ public class CompraNegocioTests
         var negocio = new CompraNegocio(db);
 
         RespuestaBusquedaProveedoresCompra sinHistorial = await negocio
-            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Administrador");
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Encargado");
         RespuestaBusquedaProveedoresCompra conTodos = await negocio
-            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Administrador");
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Encargado");
 
         Assert.Empty(sinHistorial.Proveedores);
         Assert.Equal(proveedor.IdProveedor, Assert.Single(conTodos.Proveedores).IdProveedor);
@@ -3318,11 +3321,11 @@ public class CompraNegocioTests
         RespuestaRegistroCompra registro = await negocio.RegistrarCompraAsync(
             SolicitudRegistrar(proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 2, 10m, 15m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
         Assert.Equal(ResultadoRegistroCompra.Exito, registro.Resultado);
 
         RespuestaBusquedaProveedoresCompra tras = await negocio
-            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Administrador");
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Encargado");
 
         Assert.Equal(proveedor.IdProveedor, Assert.Single(tras.Proveedores).IdProveedor);
     }
@@ -3341,7 +3344,7 @@ public class CompraNegocioTests
         await SembrarProveedorAsync(db, "30799999999", "Proveedor Inactivo", estado: false);
 
         RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
-            .BuscarProveedoresParaCompraAsync(null, null, true, "Administrador");
+            .BuscarProveedoresParaCompraAsync(null, null, true, "Encargado");
 
         Assert.Equal(25, respuesta.Proveedores.Count);
         Assert.Equal(25, respuesta.Proveedores.Select(p => p.IdProveedor).Distinct().Count());
@@ -3365,7 +3368,7 @@ public class CompraNegocioTests
         await SembrarProveedorAsync(db, "30788888888", "Otra Razón");
 
         RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
-            .BuscarProveedoresParaCompraAsync("proveedor", null, false, "Administrador");
+            .BuscarProveedoresParaCompraAsync("proveedor", null, false, "Encargado");
 
         Assert.Equal(25, respuesta.Proveedores.Count);
         Assert.Equal(25, respuesta.Proveedores.Select(p => p.IdProveedor).Distinct().Count());
@@ -3390,7 +3393,7 @@ public class CompraNegocioTests
         }
 
         RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
-            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Administrador");
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, false, "Encargado");
 
         ids.Reverse();
         Assert.Equal(ids, respuesta.Proveedores.Select(p => p.IdProveedor));
@@ -3413,7 +3416,7 @@ public class CompraNegocioTests
         }
 
         RespuestaBusquedaProveedoresCompra respuesta = await new CompraNegocio(db)
-            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Administrador");
+            .BuscarProveedoresParaCompraAsync(null, producto.IdProducto, true, "Encargado");
 
         Assert.Equal(26, respuesta.Proveedores.Count);
         Assert.Equal(26, respuesta.Proveedores.Select(p => p.IdProveedor).Distinct().Count());
@@ -3447,7 +3450,7 @@ public class CompraNegocioTests
         await db.DisposeAsync();
 
         RespuestaBusquedaProveedoresCompra respuesta = await negocio
-            .BuscarProveedoresParaCompraAsync("  ", null, false, "Administrador");
+            .BuscarProveedoresParaCompraAsync("  ", null, false, "Encargado");
 
         Assert.Equal(ResultadoBusquedaCompras.SinResultados, respuesta.Resultado);
         Assert.Equal(string.Empty, respuesta.Mensaje);
@@ -3471,7 +3474,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, reciente.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
 
         RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
-            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Administrador");
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Encargado");
 
         Assert.Equal(ResultadoBusquedaCompras.ConResultados, respuesta.Resultado);
         Assert.Equal(
@@ -3493,7 +3496,7 @@ public class CompraNegocioTests
         await SembrarDetalleAsync(db, segunda.IdCompra, producto.IdProducto, 2, 10m);
 
         RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
-            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Administrador");
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Encargado");
 
         Assert.Single(respuesta.Productos);
     }
@@ -3511,7 +3514,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, historico.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
 
         RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
-            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Administrador");
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Encargado");
 
         Assert.Equal(
             new[] { historico.IdProducto, nuevoA.IdProducto, nuevoB.IdProducto },
@@ -3540,7 +3543,7 @@ public class CompraNegocioTests
         }
 
         RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
-            .BuscarProductosParaCompraAsync(texto, proveedor.IdProveedor, false, "Administrador");
+            .BuscarProductosParaCompraAsync(texto, proveedor.IdProveedor, false, "Encargado");
 
         Assert.Equal(productos[indiceEsperado].IdProducto, Assert.Single(respuesta.Productos).IdProducto);
     }
@@ -3558,7 +3561,7 @@ public class CompraNegocioTests
             db, proveedor.IdProveedor, usuario.IdUsuario, inactivoHistorico.IdProducto, new DateTime(2026, 9, 1, 10, 0, 0));
 
         RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
-            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Administrador");
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Encargado");
 
         Assert.Equal(activo.IdProducto, Assert.Single(respuesta.Productos).IdProducto);
     }
@@ -3573,9 +3576,9 @@ public class CompraNegocioTests
         var negocio = new CompraNegocio(db);
 
         RespuestaBusquedaProductosCompra sinHistorial = await negocio
-            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Administrador");
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Encargado");
         RespuestaBusquedaProductosCompra conTodos = await negocio
-            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Administrador");
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Encargado");
 
         Assert.Empty(sinHistorial.Productos);
         Assert.Equal(producto.IdProducto, Assert.Single(conTodos.Productos).IdProducto);
@@ -3583,11 +3586,11 @@ public class CompraNegocioTests
         RespuestaRegistroCompra registro = await negocio.RegistrarCompraAsync(
             SolicitudRegistrar(proveedor.IdProveedor, Linea(producto.IdProducto, "COD1", "Uno", 2, 10m, 15m)),
             usuario.IdUsuario,
-            "Administrador");
+            "Encargado");
         Assert.Equal(ResultadoRegistroCompra.Exito, registro.Resultado);
 
         RespuestaBusquedaProductosCompra tras = await negocio
-            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Administrador");
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Encargado");
 
         Assert.Equal(producto.IdProducto, Assert.Single(tras.Productos).IdProducto);
     }
@@ -3606,7 +3609,7 @@ public class CompraNegocioTests
         await SembrarProductoAsync(db, "COD999", "Producto Inactivo", estado: false);
 
         RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
-            .BuscarProductosParaCompraAsync(null, null, true, "Administrador");
+            .BuscarProductosParaCompraAsync(null, null, true, "Encargado");
 
         Assert.Equal(25, respuesta.Productos.Count);
         Assert.Equal(25, respuesta.Productos.Select(p => p.IdProducto).Distinct().Count());
@@ -3629,7 +3632,7 @@ public class CompraNegocioTests
         await SembrarProductoAsync(db, "ZZZ001", "Otro Artículo");
 
         RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
-            .BuscarProductosParaCompraAsync("producto", null, false, "Administrador");
+            .BuscarProductosParaCompraAsync("producto", null, false, "Encargado");
 
         Assert.Equal(25, respuesta.Productos.Count);
         Assert.Equal(25, respuesta.Productos.Select(p => p.IdProducto).Distinct().Count());
@@ -3653,7 +3656,7 @@ public class CompraNegocioTests
         }
 
         RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
-            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Administrador");
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, false, "Encargado");
 
         ids.Reverse();
         Assert.Equal(ids, respuesta.Productos.Select(p => p.IdProducto));
@@ -3675,7 +3678,7 @@ public class CompraNegocioTests
         }
 
         RespuestaBusquedaProductosCompra respuesta = await new CompraNegocio(db)
-            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Administrador");
+            .BuscarProductosParaCompraAsync(null, proveedor.IdProveedor, true, "Encargado");
 
         Assert.Equal(26, respuesta.Productos.Count);
         Assert.Equal(26, respuesta.Productos.Select(p => p.IdProducto).Distinct().Count());
@@ -3707,7 +3710,7 @@ public class CompraNegocioTests
         await db.DisposeAsync();
 
         RespuestaBusquedaProductosCompra respuesta = await negocio
-            .BuscarProductosParaCompraAsync("  ", null, false, "Administrador");
+            .BuscarProductosParaCompraAsync("  ", null, false, "Encargado");
 
         Assert.Equal(ResultadoBusquedaCompras.SinResultados, respuesta.Resultado);
         Assert.Equal(string.Empty, respuesta.Mensaje);

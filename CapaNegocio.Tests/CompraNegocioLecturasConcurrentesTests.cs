@@ -17,7 +17,7 @@ namespace CapaNegocio.Tests;
 /// </summary>
 public class CompraNegocioLecturasConcurrentesTests
 {
-    private const string RolCompras = "Administrador";
+    private const string RolCompras = "Encargado";
 
     private const string MensajeErrorBuscarProveedores = "No se pudo buscar proveedores por un problema con el origen de datos. Intente nuevamente.";
     private const string MensajeErrorBuscarProductos = "No se pudo buscar productos por un problema con el origen de datos. Intente nuevamente.";

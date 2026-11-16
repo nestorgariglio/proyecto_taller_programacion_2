@@ -6,10 +6,12 @@ namespace CapaNegocio.Tests;
 public class PoliticaAccesoTests
 {
     [Fact]
-    public void TieneAcceso_Administrador_DevuelveTrueParaTodosLosModulos()
+    public void TieneAcceso_Administrador_DevuelveSoloModulosTecnicosYCatalogos()
     {
-        foreach (string modulo in new[] { "Usuarios", "Productos", "Categorías", "Ventas", "Compras", "Clientes", "Proveedores", "Reportes" })
+        foreach (string modulo in new[] { "Usuarios", "Productos", "Categorías", "Clientes", "Proveedores", "Reportes" })
             Assert.True(PoliticaAcceso.TieneAcceso("Administrador", modulo));
+        foreach (string modulo in new[] { "Ventas", "Compras" })
+            Assert.False(PoliticaAcceso.TieneAcceso("Administrador", modulo));
     }
 
     [Fact]
@@ -102,19 +104,19 @@ public class PoliticaAccesoTests
         Assert.False(PoliticaAcceso.PuedeAdministrarProveedores(rol));
     }
 
-    // RF-59: Administrador y Encargado operan el módulo de compras.
+    // Solo Encargado opera el módulo de compras; Administrador técnico y Vendedor no.
     [Theory]
-    [InlineData("Administrador")]
-    [InlineData("administrador")]
     [InlineData("Encargado")]
+    [InlineData("encargado")]
     [InlineData("  ENCARGADO ")]
-    public void PuedeOperarCompras_AdministradorOEncargado_DevuelveTrue(string rol)
+    public void PuedeOperarCompras_SoloEncargado_DevuelveTrue(string rol)
     {
         Assert.True(PoliticaAcceso.PuedeOperarCompras(rol));
     }
 
-    // RF-60/RF-61: el Vendedor, el rol desconocido y el rol ausente o vacío no.
     [Theory]
+    [InlineData("Administrador")]
+    [InlineData("administrador")]
     [InlineData("Vendedor")]
     [InlineData("vendedor")]
     [InlineData("  vEnDeDoR ")]
@@ -122,12 +124,12 @@ public class PoliticaAccesoTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void PuedeOperarCompras_VendedorNuloVacioODesconocido_DevuelveFalse(string? rol)
+    public void PuedeOperarCompras_AdministradorVendedorNuloVacioODesconocido_DevuelveFalse(string? rol)
     {
         Assert.False(PoliticaAcceso.PuedeOperarCompras(rol));
     }
 
-    // RF-59: la regla se apoya en el módulo «Compras», sin duplicar la lista.
+    // La regla se apoya en el módulo «Compras», sin duplicar la lista.
     [Theory]
     [InlineData("Administrador")]
     [InlineData("Encargado")]
@@ -136,5 +138,29 @@ public class PoliticaAccesoTests
     public void PuedeOperarCompras_CoincideConElModuloCompras(string? rol)
     {
         Assert.Equal(PoliticaAcceso.TieneAcceso(rol, "Compras"), PoliticaAcceso.PuedeOperarCompras(rol));
+    }
+
+    [Theory]
+    [InlineData("Vendedor", true)]
+    [InlineData("  vendedor ", true)]
+    [InlineData("Administrador", false)]
+    [InlineData("Encargado", false)]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    public void PuedeOperarVentas_SoloVendedor(string? rol, bool esperado)
+    {
+        Assert.Equal(esperado, PoliticaAcceso.PuedeOperarVentas(rol));
+    }
+
+    [Theory]
+    [InlineData("Encargado", true)]
+    [InlineData("  ENCARGADO ", true)]
+    [InlineData("Administrador", false)]
+    [InlineData("Vendedor", false)]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    public void PuedeAnularOperaciones_SoloEncargado(string? rol, bool esperado)
+    {
+        Assert.Equal(esperado, PoliticaAcceso.PuedeAnularOperaciones(rol));
     }
 }
