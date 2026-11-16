@@ -260,6 +260,7 @@ CONTEXT_HANDOVER.md
 skills-lock.json
 test_result*.txt
 docs/continuidad/
+docs/TESTING_POLICY.md
 docs/CAMBIOS-PENDIENTES-DE-SUBIR.md
 # Mantener la carpeta de backups del proyecto
 !backup_restore/
