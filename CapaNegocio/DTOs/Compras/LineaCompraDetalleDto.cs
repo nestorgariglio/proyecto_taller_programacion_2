@@ -6,6 +6,8 @@ namespace CapaNegocio.DTOs.Compras;
 /// </summary>
 public class LineaCompraDetalleDto
 {
+	public int IdProducto { get; set; }
+
 	public string CodigoProducto { get; set; } = string.Empty;
 
 	public string NombreProducto { get; set; } = string.Empty;

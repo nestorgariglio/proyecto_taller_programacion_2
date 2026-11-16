@@ -20,5 +20,17 @@ public class CompraConDetalleDto
 	/// <summary><see langword="true"/> = activa; <see langword="false"/> = inactiva.</summary>
 	public bool Estado { get; set; }
 
+	public string EstadoSolicitud { get; set; } = "Recibida";
+
+	public DateTime? FechaConfirmacion { get; set; }
+
+	public DateTime? FechaRecepcion { get; set; }
+
+	public DateTime? FechaAnulacion { get; set; }
+
+	public string? MotivoAnulacion { get; set; }
+
+	public string? Observaciones { get; set; }
+
 	public IReadOnlyList<LineaCompraDetalleDto> Lineas { get; set; } = Array.Empty<LineaCompraDetalleDto>();
 }
