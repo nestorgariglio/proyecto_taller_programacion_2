@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using CapaDatos;
 using CapaNegocio;
 using CapaNegocio.DTOs.Clientes;
 using CapaNegocio.DTOs.Ventas;
@@ -50,14 +51,49 @@ namespace CapaPresentacion.Ventas
         private MaterialTextBox2 _txtPagaCon = null!;
         private MaterialLabel _lblVuelto = null!;
         private MaterialButton _btnCobrar = null!;
+        private MaterialButton _btnVerHistorial = null!;
+
+        private TableLayoutPanel _layoutPos = null!;
+        private TableLayoutPanel _layoutHistorial = null!;
+        private DataGridView _grillaHistorialVentas = null!;
+        private DataGridView _grillaDetalleHistorial = null!;
+        private MaterialLabel _lblEstadoHistorial = null!;
+        private MaterialLabel _lblResumenSeleccionada = null!;
+        private TableLayoutPanel _panelAnulacion = null!;
+        private MaterialTextBox2 _txtMotivoAnulacion = null!;
+        private MaterialButton _btnAnularVenta = null!;
+        private MaterialButton _btnActualizarHistorial = null!;
+        private MaterialButton _btnVolverACaja = null!;
+        private ResumenVentaDatos? _ventaHistorialSeleccionada;
+        private bool _cargandoHistorial;
 
         private bool _ocupadoCarrito;
         private bool _pintandoCarrito;
         private int _idUsuarioActual;
+        private string? _rolActual;
 
-        public void AplicarSesion(int idUsuario)
+        public void AplicarSesion(int idUsuario, string? rol = null)
         {
             _idUsuarioActual = idUsuario;
+            _rolActual = rol;
+
+            bool puedeOperarCaja = string.IsNullOrWhiteSpace(_rolActual) || PoliticaAcceso.PuedeOperarVentas(_rolActual);
+            bool puedeAnular = PoliticaAcceso.PuedeAnularOperaciones(_rolActual);
+
+            _panelAnulacion.Visible = puedeAnular;
+            _btnVolverACaja.Visible = puedeOperarCaja;
+
+            if (puedeOperarCaja)
+            {
+                _layoutHistorial.Visible = false;
+                _layoutPos.Visible = true;
+            }
+            else
+            {
+                _layoutPos.Visible = false;
+                _layoutHistorial.Visible = true;
+                _ = CargarHistorialVentasAsync();
+            }
         }
 
         public VentasForm(
@@ -81,6 +117,7 @@ namespace CapaPresentacion.Ventas
             ConfigurarCarrito();
             ConfigurarCliente();
             ConfigurarCobro();
+            ConfigurarHistorial();
             PintarCarrito();
             ActualizarControlesCarrito();
 
@@ -304,6 +341,16 @@ namespace CapaPresentacion.Ventas
             layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
             layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Absolute, 55F));
 
+            var layoutEncabezadoCarrito = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = Padding.Empty
+            };
+            layoutEncabezadoCarrito.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
+            layoutEncabezadoCarrito.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
+
             MaterialLabel lblCarrito = new MaterialLabel
             {
                 Text = "📋 DETALLE DEL CARRITO",
@@ -311,6 +358,16 @@ namespace CapaPresentacion.Ventas
                 Dock = DockStyle.Fill,
                 AutoSize = true
             };
+
+            _btnVerHistorial = new MaterialButton
+            {
+                Text = "📜 Historial",
+                Dock = DockStyle.Fill,
+                Type = MaterialButton.MaterialButtonType.Outlined,
+                Margin = new Padding(4, 0, 0, 0)
+            };
+            layoutEncabezadoCarrito.Controls.Add(lblCarrito, 0, 0);
+            layoutEncabezadoCarrito.Controls.Add(_btnVerHistorial, 1, 0);
 
             _grillaCarrito = new GrillaCarritoVenta
             {
@@ -417,7 +474,7 @@ namespace CapaPresentacion.Ventas
                 UseAccentColor = true
             };
 
-            layoutCarrito.Controls.Add(lblCarrito, 0, 0);
+            layoutCarrito.Controls.Add(layoutEncabezadoCarrito, 0, 0);
             layoutCarrito.Controls.Add(_grillaCarrito, 0, 1);
             layoutCarrito.Controls.Add(_btnQuitar, 0, 2);
             layoutCarrito.Controls.Add(_lblEstadoCarrito, 0, 3);
@@ -429,7 +486,420 @@ namespace CapaPresentacion.Ventas
             layout.Controls.Add(cardCarga, 0, 0);
             layout.Controls.Add(cardCarrito, 1, 0);
 
-            Controls.Add(layout);
+            _layoutPos = layout;
+            _layoutHistorial = ConstruirPanelHistorial();
+
+            Controls.Add(_layoutHistorial);
+            Controls.Add(_layoutPos);
+        }
+
+        private TableLayoutPanel ConstruirPanelHistorial()
+        {
+            var layoutHist = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Padding = new Padding(10),
+                BackColor = TemaAplicacion.FondoPrincipal,
+                Visible = false
+            };
+            layoutHist.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
+            layoutHist.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
+
+            var cardLista = new MaterialCard
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(5),
+                Padding = new Padding(15)
+            };
+
+            var layoutLista = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 3,
+                Margin = Padding.Empty
+            };
+            layoutLista.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            layoutLista.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
+            layoutLista.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            layoutLista.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+
+            var barraSuperior = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 1,
+                Margin = Padding.Empty
+            };
+            barraSuperior.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            barraSuperior.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130F));
+            barraSuperior.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 145F));
+
+            var lblTituloHist = new MaterialLabel
+            {
+                Text = "📜 HISTORIAL DE VENTAS",
+                FontType = MaterialSkinManager.fontType.H6,
+                Dock = DockStyle.Fill,
+                AutoSize = true
+            };
+
+            _btnActualizarHistorial = new MaterialButton
+            {
+                Text = "🔄 Actualizar",
+                Dock = DockStyle.Fill,
+                Type = MaterialButton.MaterialButtonType.Outlined,
+                Margin = new Padding(4, 2, 4, 2)
+            };
+
+            _btnVolverACaja = new MaterialButton
+            {
+                Text = "⬅ Volver a Caja",
+                Dock = DockStyle.Fill,
+                Type = MaterialButton.MaterialButtonType.Contained,
+                Margin = new Padding(4, 2, 0, 2)
+            };
+
+            barraSuperior.Controls.Add(lblTituloHist, 0, 0);
+            barraSuperior.Controls.Add(_btnActualizarHistorial, 1, 0);
+            barraSuperior.Controls.Add(_btnVolverACaja, 2, 0);
+
+            _grillaHistorialVentas = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AutoGenerateColumns = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                MultiSelect = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                BackgroundColor = Color.FromArgb(40, 40, 40),
+                BorderStyle = BorderStyle.None,
+                RowHeadersVisible = false,
+                EnableHeadersVisualStyles = false,
+                AccessibleName = "Historial de ventas registradas"
+            };
+            _grillaHistorialVentas.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(30, 30, 30);
+            _grillaHistorialVentas.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            _grillaHistorialVentas.ColumnHeadersDefaultCellStyle.Font = new Font("Roboto", 9, FontStyle.Bold);
+            _grillaHistorialVentas.DefaultCellStyle.BackColor = Color.FromArgb(50, 50, 50);
+            _grillaHistorialVentas.DefaultCellStyle.ForeColor = Color.White;
+            _grillaHistorialVentas.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = "Comprobante", DataPropertyName = nameof(ResumenVentaDatos.NroComprobante), FillWeight = 20
+            });
+            _grillaHistorialVentas.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = "Fecha", DataPropertyName = nameof(ResumenVentaDatos.FechaRegistro), FillWeight = 22,
+                DefaultCellStyle = new DataGridViewCellStyle { Format = "dd/MM/yyyy HH:mm" }
+            });
+            _grillaHistorialVentas.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = "Cliente", DataPropertyName = nameof(ResumenVentaDatos.NombreCliente), FillWeight = 26
+            });
+            _grillaHistorialVentas.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = "Total", DataPropertyName = nameof(ResumenVentaDatos.MontoTotal), FillWeight = 17,
+                DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+            });
+            _grillaHistorialVentas.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colEstadoVenta", HeaderText = "Estado", DataPropertyName = nameof(ResumenVentaDatos.Estado), FillWeight = 15
+            });
+
+            _lblEstadoHistorial = new MaterialLabel
+            {
+                Text = "Seleccione una venta para ver su detalle.",
+                Dock = DockStyle.Fill,
+                AutoSize = false
+            };
+
+            layoutLista.Controls.Add(barraSuperior, 0, 0);
+            layoutLista.Controls.Add(_grillaHistorialVentas, 0, 1);
+            layoutLista.Controls.Add(_lblEstadoHistorial, 0, 2);
+            cardLista.Controls.Add(layoutLista);
+
+            var cardDetalle = new MaterialCard
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(5),
+                Padding = new Padding(15)
+            };
+
+            var layoutDetalle = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 4,
+                Margin = Padding.Empty
+            };
+            layoutDetalle.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            layoutDetalle.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            layoutDetalle.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
+            layoutDetalle.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            layoutDetalle.RowStyles.Add(new RowStyle(SizeType.Absolute, 118F));
+
+            var lblTituloDet = new MaterialLabel
+            {
+                Text = "🧾 DETALLE DEL COMPROBANTE",
+                FontType = MaterialSkinManager.fontType.H6,
+                Dock = DockStyle.Fill,
+                AutoSize = true
+            };
+
+            _lblResumenSeleccionada = new MaterialLabel
+            {
+                Text = "Ninguna venta seleccionada.",
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                FontType = MaterialSkinManager.fontType.Body2,
+                UseAccent = true
+            };
+
+            _grillaDetalleHistorial = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AutoGenerateColumns = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                MultiSelect = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                BackgroundColor = Color.FromArgb(40, 40, 40),
+                BorderStyle = BorderStyle.None,
+                RowHeadersVisible = false,
+                EnableHeadersVisualStyles = false,
+                AccessibleName = "Renglones del comprobante seleccionado"
+            };
+            _grillaDetalleHistorial.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(30, 30, 30);
+            _grillaDetalleHistorial.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            _grillaDetalleHistorial.ColumnHeadersDefaultCellStyle.Font = new Font("Roboto", 9, FontStyle.Bold);
+            _grillaDetalleHistorial.DefaultCellStyle.BackColor = Color.FromArgb(50, 50, 50);
+            _grillaDetalleHistorial.DefaultCellStyle.ForeColor = Color.White;
+            _grillaDetalleHistorial.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = "Código", DataPropertyName = nameof(DetalleLineaVentaDatos.Codigo), FillWeight = 22
+            });
+            _grillaDetalleHistorial.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = "Producto", DataPropertyName = nameof(DetalleLineaVentaDatos.NombreProducto), FillWeight = 38
+            });
+            _grillaDetalleHistorial.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = "Cant.", DataPropertyName = nameof(DetalleLineaVentaDatos.Cantidad), FillWeight = 12
+            });
+            _grillaDetalleHistorial.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = "P. Unit.", DataPropertyName = nameof(DetalleLineaVentaDatos.PrecioVenta), FillWeight = 14,
+                DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+            });
+            _grillaDetalleHistorial.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = "Subtotal", DataPropertyName = nameof(DetalleLineaVentaDatos.Subtotal), FillWeight = 14,
+                DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+            });
+
+            _panelAnulacion = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Margin = Padding.Empty,
+                Visible = false
+            };
+            _panelAnulacion.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _panelAnulacion.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
+            _panelAnulacion.RowStyles.Add(new RowStyle(SizeType.Absolute, 52F));
+
+            _txtMotivoAnulacion = new MaterialTextBox2
+            {
+                Hint = "Motivo de anulación (obligatorio para Encargado)",
+                Dock = DockStyle.Top,
+                Margin = new Padding(0, 4, 0, 4),
+                AccessibleName = "Motivo de anulación de la venta"
+            };
+
+            _btnAnularVenta = new MaterialButton
+            {
+                Text = "🚫 ANULAR VENTA Y RESTITUIR STOCK",
+                Dock = DockStyle.Fill,
+                Enabled = false,
+                Type = MaterialButton.MaterialButtonType.Contained,
+                UseAccentColor = true
+            };
+
+            _panelAnulacion.Controls.Add(_txtMotivoAnulacion, 0, 0);
+            _panelAnulacion.Controls.Add(_btnAnularVenta, 0, 1);
+
+            layoutDetalle.Controls.Add(lblTituloDet, 0, 0);
+            layoutDetalle.Controls.Add(_lblResumenSeleccionada, 0, 1);
+            layoutDetalle.Controls.Add(_grillaDetalleHistorial, 0, 2);
+            layoutDetalle.Controls.Add(_panelAnulacion, 0, 3);
+            cardDetalle.Controls.Add(layoutDetalle);
+
+            layoutHist.Controls.Add(cardLista, 0, 0);
+            layoutHist.Controls.Add(cardDetalle, 1, 0);
+            return layoutHist;
+        }
+
+        private void ConfigurarHistorial()
+        {
+            _btnVerHistorial.Click += async (_, _) =>
+            {
+                _layoutPos.Visible = false;
+                _layoutHistorial.Visible = true;
+                await CargarHistorialVentasAsync();
+            };
+
+            _btnVolverACaja.Click += (_, _) =>
+            {
+                if (!PoliticaAcceso.PuedeOperarVentas(_rolActual) && !string.IsNullOrWhiteSpace(_rolActual))
+                    return;
+
+                _layoutHistorial.Visible = false;
+                _layoutPos.Visible = true;
+            };
+
+            _btnActualizarHistorial.Click += async (_, _) => await CargarHistorialVentasAsync();
+
+            _grillaHistorialVentas.CellFormatting += (_, e) =>
+            {
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0 &&
+                    _grillaHistorialVentas.Columns[e.ColumnIndex].Name == "colEstadoVenta" &&
+                    e.Value is bool activa)
+                {
+                    e.Value = activa ? "Activa" : "Anulada";
+                    e.FormattingApplied = true;
+                }
+            };
+
+            _grillaHistorialVentas.SelectionChanged += async (_, _) => await CargarDetalleVentaSeleccionadaAsync();
+
+            _btnAnularVenta.Click += async (_, _) => await ConfirmarAnulacionVentaAsync();
+        }
+
+        private async Task CargarHistorialVentasAsync()
+        {
+            if (_cargandoHistorial || IsDisposed || Disposing) return;
+            _cargandoHistorial = true;
+            _btnActualizarHistorial.Enabled = false;
+            _lblEstadoHistorial.Text = "Cargando historial de ventas...";
+
+            try
+            {
+                var ventas = await _ventaNegocio.ObtenerHistorialVentasAsync();
+                if (IsDisposed || Disposing) return;
+
+                _grillaHistorialVentas.DataSource = ventas.ToList();
+                _lblEstadoHistorial.Text = ventas.Count == 0
+                    ? "No hay ventas registradas todavía."
+                    : $"{ventas.Count} venta(s) registrada(s).";
+
+                if (ventas.Count == 0)
+                {
+                    _ventaHistorialSeleccionada = null;
+                    _grillaDetalleHistorial.DataSource = null;
+                    _lblResumenSeleccionada.Text = "Ninguna venta seleccionada.";
+                    _btnAnularVenta.Enabled = false;
+                }
+            }
+            finally
+            {
+                _cargandoHistorial = false;
+                if (!IsDisposed && !Disposing)
+                    _btnActualizarHistorial.Enabled = true;
+            }
+        }
+
+        private async Task CargarDetalleVentaSeleccionadaAsync()
+        {
+            if (IsDisposed || Disposing) return;
+
+            _ventaHistorialSeleccionada = _grillaHistorialVentas.SelectedRows.Count == 1
+                ? _grillaHistorialVentas.SelectedRows[0].DataBoundItem as ResumenVentaDatos
+                : null;
+
+            if (_ventaHistorialSeleccionada is null)
+            {
+                _grillaDetalleHistorial.DataSource = null;
+                _lblResumenSeleccionada.Text = "Ninguna venta seleccionada.";
+                _btnAnularVenta.Enabled = false;
+                return;
+            }
+
+            string estadoTexto = _ventaHistorialSeleccionada.Estado
+                ? "ACTIVA"
+                : $"ANULADA ({_ventaHistorialSeleccionada.FechaAnulacion:dd/MM/yyyy HH:mm} por {_ventaHistorialSeleccionada.NombreUsuarioAnula ?? "Encargado"} — Motivo: {_ventaHistorialSeleccionada.MotivoAnulacion})";
+
+            _lblResumenSeleccionada.Text =
+                $"{_ventaHistorialSeleccionada.NroComprobante} | Cliente: {_ventaHistorialSeleccionada.NombreCliente} (DNI {_ventaHistorialSeleccionada.DocumentoCliente})\n" +
+                $"Cajero: {_ventaHistorialSeleccionada.NombreOperador} | Estado: {estadoTexto}";
+
+            _btnAnularVenta.Enabled = _ventaHistorialSeleccionada.Estado && PoliticaAcceso.PuedeAnularOperaciones(_rolActual);
+
+            var detalles = await _ventaNegocio.ObtenerDetalleVentaAsync(_ventaHistorialSeleccionada.IdVenta);
+            if (!IsDisposed && !Disposing)
+            {
+                _grillaDetalleHistorial.DataSource = detalles.ToList();
+            }
+        }
+
+        private async Task ConfirmarAnulacionVentaAsync()
+        {
+            if (_ventaHistorialSeleccionada is null || !_ventaHistorialSeleccionada.Estado)
+                return;
+
+            string motivo = _txtMotivoAnulacion.Text.Trim();
+            if (motivo.Length < 3)
+            {
+                MessageBox.Show(
+                    "Ingrese un motivo de anulación de al menos 3 caracteres antes de confirmar.",
+                    "Motivo requerido",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                _txtMotivoAnulacion.Focus();
+                return;
+            }
+
+            var confirmacion = MessageBox.Show(
+                $"¿Confirma la anulación de la venta {_ventaHistorialSeleccionada.NroComprobante} por {_ventaHistorialSeleccionada.MontoTotal:C2}?\n\n" +
+                $"Se restituirán automáticamente las existencias de todos sus productos al stock.",
+                "Confirmar Anulación de Venta",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirmacion != DialogResult.Yes)
+                return;
+
+            _btnAnularVenta.Enabled = false;
+            var respuesta = await _ventaNegocio.AnularVentaAsync(
+                _ventaHistorialSeleccionada.IdVenta,
+                _idUsuarioActual,
+                _rolActual,
+                motivo);
+
+            if (respuesta.Exito)
+            {
+                _txtMotivoAnulacion.Text = string.Empty;
+                MessageBox.Show(
+                    respuesta.Mensaje ?? "Venta anulada con éxito.",
+                    "Venta Anulada",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                await CargarHistorialVentasAsync();
+            }
+            else
+            {
+                _btnAnularVenta.Enabled = true;
+                MessageBox.Show(
+                    respuesta.Mensaje ?? "No se pudo anular la venta.",
+                    "Error al Anular",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
         }
 
         private void ConfigurarCliente()
