@@ -55,7 +55,7 @@ public sealed class RestaurarBackupForm : MaterialForm
         _lblEstado = new MaterialLabel { Dock = DockStyle.Fill, AutoSize = false, Text = string.Empty };
         _progreso = new MaterialProgressBar { Dock = DockStyle.Fill, Style = ProgressBarStyle.Marquee, Visible = false };
         _btnRestaurar = new MaterialButton { Text = "Restaurar", Type = MaterialButton.MaterialButtonType.Contained, AutoSize = true, Enabled = false };
-        _btnCancelar = new MaterialButton { Text = "Cancelar", Type = MaterialButton.MaterialButtonType.Outlined, AutoSize = true };
+        _btnCancelar = new MaterialButton { Text = "Cancelar", Type = MaterialButton.MaterialButtonType.Outlined, NoAccentTextColor = Color.FromArgb(224, 224, 224), AutoSize = true };
 
         var botones = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, WrapContents = false };
         botones.Controls.Add(_btnCancelar);

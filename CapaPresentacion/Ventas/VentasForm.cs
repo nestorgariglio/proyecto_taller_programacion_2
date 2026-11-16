@@ -194,6 +194,7 @@ namespace CapaPresentacion.Ventas
                 Text = "Cons. Final",
                 Dock = DockStyle.Fill,
                 Type = MaterialButton.MaterialButtonType.Outlined,
+                NoAccentTextColor = Color.FromArgb(224, 224, 224),
                 Margin = new Padding(0, 3, 0, 3)
             };
             layoutCliente.Controls.Add(_txtCliente, 0, 0);
@@ -364,6 +365,7 @@ namespace CapaPresentacion.Ventas
                 Text = "📜 Historial",
                 Dock = DockStyle.Fill,
                 Type = MaterialButton.MaterialButtonType.Outlined,
+                NoAccentTextColor = Color.FromArgb(224, 224, 224),
                 Margin = new Padding(4, 0, 0, 0)
             };
             layoutEncabezadoCarrito.Controls.Add(lblCarrito, 0, 0);
@@ -416,7 +418,8 @@ namespace CapaPresentacion.Ventas
                 Text = "Quitar seleccionado",
                 Dock = DockStyle.Fill,
                 Enabled = false,
-                Type = MaterialButton.MaterialButtonType.Outlined
+                Type = MaterialButton.MaterialButtonType.Outlined,
+                NoAccentTextColor = Color.FromArgb(224, 224, 224)
             };
 
             _lblEstadoCarrito = new MaterialLabel
@@ -550,6 +553,7 @@ namespace CapaPresentacion.Ventas
                 Text = "🔄 Actualizar",
                 Dock = DockStyle.Fill,
                 Type = MaterialButton.MaterialButtonType.Outlined,
+                NoAccentTextColor = Color.FromArgb(224, 224, 224),
                 Margin = new Padding(4, 2, 4, 2)
             };
 

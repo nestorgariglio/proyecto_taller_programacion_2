@@ -43,7 +43,7 @@ public sealed class GenerarBackupForm : MaterialForm
         _lblMensaje = new MaterialLabel { Dock = DockStyle.Fill, AutoSize = false, Text = string.Empty };
         _progreso = new MaterialProgressBar { Dock = DockStyle.Fill, Style = ProgressBarStyle.Marquee, Visible = false };
         _btnGenerar = new MaterialButton { Text = "Generar", Type = MaterialButton.MaterialButtonType.Contained, AutoSize = true };
-        _btnCancelar = new MaterialButton { Text = "Cancelar", Type = MaterialButton.MaterialButtonType.Outlined, AutoSize = true };
+        _btnCancelar = new MaterialButton { Text = "Cancelar", Type = MaterialButton.MaterialButtonType.Outlined, NoAccentTextColor = Color.FromArgb(224, 224, 224), AutoSize = true };
 
         var botones = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, WrapContents = false };
         botones.Controls.Add(_btnCancelar);
