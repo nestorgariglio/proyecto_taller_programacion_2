@@ -16,6 +16,9 @@ public class VentaNegocioTests
         public ParametrosRegistroVentaDatos? UltimosParametros { get; private set; }
         public ResultadoVentaDatos ResultadoADevolver { get; set; } = new(true, 101, 0, "Éxito");
         public bool DebeLanzarExcepcion { get; set; }
+        public IReadOnlyList<ResumenVentaDatos> HistorialADevolver { get; set; } = Array.Empty<ResumenVentaDatos>();
+        public IReadOnlyList<DetalleLineaVentaDatos> DetalleADevolver { get; set; } = Array.Empty<DetalleLineaVentaDatos>();
+        public (int IdVenta, int IdUsuario, string Motivo)? UltimaAnulacion { get; private set; }
 
         public Task<ResultadoVentaDatos> RegistrarVentaAsync(
             ParametrosRegistroVentaDatos parametros,
@@ -25,6 +28,38 @@ public class VentaNegocioTests
                 throw new InvalidOperationException("Fallo simulado de conexión.");
 
             UltimosParametros = parametros;
+            return Task.FromResult(ResultadoADevolver);
+        }
+
+        public Task<IReadOnlyList<ResumenVentaDatos>> ObtenerHistorialVentasAsync(
+            CancellationToken ct = default)
+        {
+            if (DebeLanzarExcepcion)
+                throw new InvalidOperationException("Fallo simulado de conexión.");
+
+            return Task.FromResult(HistorialADevolver);
+        }
+
+        public Task<IReadOnlyList<DetalleLineaVentaDatos>> ObtenerDetalleVentaAsync(
+            int idVenta,
+            CancellationToken ct = default)
+        {
+            if (DebeLanzarExcepcion)
+                throw new InvalidOperationException("Fallo simulado de conexión.");
+
+            return Task.FromResult(DetalleADevolver);
+        }
+
+        public Task<ResultadoVentaDatos> AnularVentaAsync(
+            int idVenta,
+            int idUsuarioAnula,
+            string motivoAnulacion,
+            CancellationToken ct = default)
+        {
+            if (DebeLanzarExcepcion)
+                throw new InvalidOperationException("Fallo simulado de conexión.");
+
+            UltimaAnulacion = (idVenta, idUsuarioAnula, motivoAnulacion);
             return Task.FromResult(ResultadoADevolver);
         }
     }
@@ -253,5 +288,56 @@ public class VentaNegocioTests
 
         Assert.False(respuesta.Exito);
         Assert.Equal("Ocurrió un error inesperado al procesar la venta. Intente nuevamente.", respuesta.Mensaje);
+    }
+
+    [Theory]
+    [InlineData("Administrador")]
+    [InlineData("Vendedor")]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task AnularVentaAsync_RolNoAutorizado_DevuelveErrorPermisos(string? rol)
+    {
+        var repo = new RepositorioVentaFalso();
+        var negocio = new VentaNegocio(repo);
+
+        var respuesta = await negocio.AnularVentaAsync(10, 2, rol, "Cliente devolvió mercadería");
+
+        Assert.False(respuesta.Exito);
+        Assert.Equal("Solo el Encargado tiene permisos para anular ventas.", respuesta.Mensaje);
+        Assert.Null(repo.UltimaAnulacion);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    [InlineData("ab")]
+    public async Task AnularVentaAsync_MotivoCortoOVacio_DevuelveErrorValidacion(string? motivo)
+    {
+        var repo = new RepositorioVentaFalso();
+        var negocio = new VentaNegocio(repo);
+
+        var respuesta = await negocio.AnularVentaAsync(10, 2, "Encargado", motivo);
+
+        Assert.False(respuesta.Exito);
+        Assert.Equal("Ingrese un motivo de anulación de al menos 3 caracteres.", respuesta.Mensaje);
+        Assert.Null(repo.UltimaAnulacion);
+    }
+
+    [Fact]
+    public async Task AnularVentaAsync_EncargadoConMotivoValido_AnulaYRegistraAuditoria()
+    {
+        var repo = new RepositorioVentaFalso
+        {
+            ResultadoADevolver = new(true, 15, 0, "Venta anulada y stock restituido con éxito.")
+        };
+        var negocio = new VentaNegocio(repo);
+
+        var respuesta = await negocio.AnularVentaAsync(15, 3, "Encargado", "  Error en cantidad facturada  ");
+
+        Assert.True(respuesta.Exito);
+        Assert.Equal(15, respuesta.IdVenta);
+        Assert.NotNull(repo.UltimaAnulacion);
+        Assert.Equal((15, 3, "Error en cantidad facturada"), repo.UltimaAnulacion!.Value);
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace CapaDatos;
@@ -33,3 +34,32 @@ public record ResultadoVentaDatos(
     int IdVenta,
     int CodigoResultado,
     string Mensaje);
+
+/// <summary>
+/// Fila de cabecera de venta para el historial y supervisión de anulaciones.
+/// </summary>
+public record ResumenVentaDatos(
+    int IdVenta,
+    string NroComprobante,
+    DateTime FechaRegistro,
+    string DocumentoCliente,
+    string NombreCliente,
+    string NombreOperador,
+    decimal MontoTotal,
+    decimal MontoPago,
+    decimal MontoCambio,
+    bool Estado,
+    string? MotivoAnulacion = null,
+    DateTime? FechaAnulacion = null,
+    string? NombreUsuarioAnula = null);
+
+/// <summary>
+/// Renglón de detalle de una venta registrada.
+/// </summary>
+public record DetalleLineaVentaDatos(
+    int IdProducto,
+    string Codigo,
+    string NombreProducto,
+    int Cantidad,
+    decimal PrecioVenta,
+    decimal Subtotal);
