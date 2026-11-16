@@ -2,49 +2,82 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
-using System.Text;
+using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using CapaNegocio;
+using CapaNegocio.DTOs.Clientes;
+using CapaNegocio.DTOs.Ventas;
 using CapaPresentacion.Tema;
 using MaterialSkin;
 using MaterialSkin.Controls;
-using CapaNegocio;
-using CapaNegocio.DTOs.Ventas;
-using System.Globalization;
 
 namespace CapaPresentacion.Ventas
 {
     public partial class VentasForm : UserControl
     {
         private readonly CarritoVentaNegocio _carritoVentaNegocio;
+        private readonly VentaNegocio _ventaNegocio;
+        private readonly ClienteNegocio _clienteNegocio;
         private readonly BusquedaProductosVenta _busqueda;
         private readonly System.Windows.Forms.Timer _temporizadorBusqueda;
+        private readonly System.Windows.Forms.Timer _temporizadorCliente;
+
+        private MaterialCard _cardCarga = null!;
+        private ClienteRespuestaDto? _clienteSeleccionado;
+        private MaterialTextBox2 _txtCliente = null!;
+        private MaterialButton _btnConsumidorFinal = null!;
+        private MaterialLabel _lblClienteSeleccionado = null!;
+        private ListBox _listaClientes = null!;
+        private bool _buscandoCliente;
+        private bool _busquedaClientePendiente;
+        private bool _actualizandoTextoCliente;
+
         private MaterialTextBox2 _txtCodigo = null!;
         private MaterialTextBox2 _txtCantidad = null!;
         private DataGridView _grillaProductos = null!;
         private MaterialLabel _lblEstadoBusqueda = null!;
         private ProductoVentaDto? _productoSeleccionado;
+
         private readonly EstadoCarritoVenta _estadoCarrito = new();
         private MaterialButton _btnAgregar = null!;
         private MaterialButton _btnQuitar = null!;
         private DataGridView _grillaCarrito = null!;
         private MaterialLabel _lblTotal = null!;
         private MaterialLabel _lblEstadoCarrito = null!;
+
+        private MaterialTextBox2 _txtPagaCon = null!;
+        private MaterialLabel _lblVuelto = null!;
+        private MaterialButton _btnCobrar = null!;
+
         private bool _ocupadoCarrito;
         private bool _pintandoCarrito;
 
-        public VentasForm(CarritoVentaNegocio carritoVentaNegocio)
+        public VentasForm(
+            CarritoVentaNegocio carritoVentaNegocio,
+            VentaNegocio ventaNegocio,
+            ClienteNegocio clienteNegocio)
         {
             _carritoVentaNegocio = carritoVentaNegocio;
+            _ventaNegocio = ventaNegocio;
+            _clienteNegocio = clienteNegocio;
             _busqueda = new BusquedaProductosVenta(_carritoVentaNegocio.BuscarProductosAsync);
+
             InitializeComponent();
             components ??= new Container();
             _temporizadorBusqueda = new System.Windows.Forms.Timer(components) { Interval = 300 };
+            _temporizadorCliente = new System.Windows.Forms.Timer(components) { Interval = 300 };
+
             BackColor = TemaAplicacion.FondoPrincipal;
             ArmarInterfazMaterial();
             ConfigurarBusqueda();
             ConfigurarCarrito();
+            ConfigurarCliente();
+            ConfigurarCobro();
             PintarCarrito();
             ActualizarControlesCarrito();
+
             Disposed += (_, _) => _busqueda.Invalidar();
         }
 
@@ -63,28 +96,29 @@ namespace CapaPresentacion.Ventas
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
 
-            // ================= PANAL IZQUIERDO: CARGA =================
             MaterialCard cardCarga = new MaterialCard
             {
                 Dock = DockStyle.Fill,
                 Margin = new Padding(5),
                 Padding = new Padding(15)
             };
+            _cardCarga = cardCarga;
 
             var layoutCarga = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 6,
+                RowCount = 7,
                 Margin = Padding.Empty
             };
             layoutCarga.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             layoutCarga.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
-            layoutCarga.RowStyles.Add(new RowStyle(SizeType.Absolute, 70F));
-            layoutCarga.RowStyles.Add(new RowStyle(SizeType.Absolute, 70F));
-            layoutCarga.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
-            layoutCarga.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             layoutCarga.RowStyles.Add(new RowStyle(SizeType.Absolute, 55F));
+            layoutCarga.RowStyles.Add(new RowStyle(SizeType.Absolute, 26F));
+            layoutCarga.RowStyles.Add(new RowStyle(SizeType.Absolute, 65F));
+            layoutCarga.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            layoutCarga.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            layoutCarga.RowStyles.Add(new RowStyle(SizeType.Absolute, 52F));
 
             MaterialLabel lblIngreso = new MaterialLabel
             {
@@ -94,12 +128,40 @@ namespace CapaPresentacion.Ventas
                 AutoSize = true
             };
 
-            MaterialTextBox2 txtCliente = new MaterialTextBox2
+            var layoutCliente = new TableLayoutPanel
             {
-                Hint = "DNI Cliente / Consumidor Final",
-                Text = "20-3811223-4 - Carlos Gómez",
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = Padding.Empty
+            };
+            layoutCliente.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
+            layoutCliente.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
+
+            _txtCliente = new MaterialTextBox2
+            {
+                Hint = "DNI o Nombre Cliente",
                 Dock = DockStyle.Top,
-                AccessibleName = "Cliente"
+                Margin = new Padding(0, 3, 6, 3),
+                AccessibleName = "Buscar cliente por DNI o nombre"
+            };
+
+            _btnConsumidorFinal = new MaterialButton
+            {
+                Text = "Cons. Final",
+                Dock = DockStyle.Fill,
+                Type = MaterialButton.MaterialButtonType.Outlined,
+                Margin = new Padding(0, 3, 0, 3)
+            };
+            layoutCliente.Controls.Add(_txtCliente, 0, 0);
+            layoutCliente.Controls.Add(_btnConsumidorFinal, 1, 0);
+
+            _lblClienteSeleccionado = new MaterialLabel
+            {
+                Text = "Cliente: Consumidor Final",
+                Dock = DockStyle.Fill,
+                FontType = MaterialSkinManager.fontType.Body2,
+                UseAccent = true
             };
 
             var layoutBusqueda = new TableLayoutPanel
@@ -140,6 +202,7 @@ namespace CapaPresentacion.Ventas
                 AutoSize = false,
                 AccessibleName = "Estado de la búsqueda"
             };
+
             _grillaProductos = new DataGridView
             {
                 Dock = DockStyle.Fill,
@@ -190,14 +253,28 @@ namespace CapaPresentacion.Ventas
             };
 
             layoutCarga.Controls.Add(lblIngreso, 0, 0);
-            layoutCarga.Controls.Add(txtCliente, 0, 1);
-            layoutCarga.Controls.Add(layoutBusqueda, 0, 2);
-            layoutCarga.Controls.Add(_lblEstadoBusqueda, 0, 3);
-            layoutCarga.Controls.Add(_grillaProductos, 0, 4);
-            layoutCarga.Controls.Add(_btnAgregar, 0, 5);
-            cardCarga.Controls.Add(layoutCarga);
+            layoutCarga.Controls.Add(layoutCliente, 0, 1);
+            layoutCarga.Controls.Add(_lblClienteSeleccionado, 0, 2);
+            layoutCarga.Controls.Add(layoutBusqueda, 0, 3);
+            layoutCarga.Controls.Add(_lblEstadoBusqueda, 0, 4);
+            layoutCarga.Controls.Add(_grillaProductos, 0, 5);
+            layoutCarga.Controls.Add(_btnAgregar, 0, 6);
 
-            // ================= PANEL DERECHO: CARRITO Y COBRO =================
+            _listaClientes = new ListBox
+            {
+                Visible = false,
+                BackColor = Color.FromArgb(45, 45, 45),
+                ForeColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Roboto", 9.5F),
+                IntegralHeight = false,
+                AccessibleName = "Coincidencias de clientes"
+            };
+
+            cardCarga.Controls.Add(_listaClientes);
+            cardCarga.Controls.Add(layoutCarga);
+            _listaClientes.BringToFront();
+
             MaterialCard cardCarrito = new MaterialCard
             {
                 Dock = DockStyle.Fill,
@@ -209,15 +286,16 @@ namespace CapaPresentacion.Ventas
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 6,
+                RowCount = 7,
                 Margin = Padding.Empty
             };
             layoutCarrito.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
             layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F));
-            layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
-            layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
+            layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
             layoutCarrito.RowStyles.Add(new RowStyle(SizeType.Absolute, 55F));
 
             MaterialLabel lblCarrito = new MaterialLabel
@@ -261,12 +339,14 @@ namespace CapaPresentacion.Ventas
                 SortMode = DataGridViewColumnSortMode.NotSortable
             });
             foreach (string titulo in new[] { "P. Unit.", "Subtotal" })
+            {
                 _grillaCarrito.Columns.Add(new DataGridViewTextBoxColumn
                 {
                     HeaderText = titulo, ReadOnly = true, ValueType = typeof(decimal), FillWeight = 23,
                     SortMode = DataGridViewColumnSortMode.NotSortable,
                     DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
                 });
+            }
 
             _btnQuitar = new MaterialButton
             {
@@ -275,6 +355,7 @@ namespace CapaPresentacion.Ventas
                 Enabled = false,
                 Type = MaterialButton.MaterialButtonType.Outlined
             };
+
             _lblEstadoCarrito = new MaterialLabel
             {
                 Text = "Seleccione un producto y agréguelo al carrito.",
@@ -291,7 +372,37 @@ namespace CapaPresentacion.Ventas
                 UseAccent = true
             };
 
-            MaterialButton btnCobrar = new MaterialButton
+            var layoutPago = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = Padding.Empty
+            };
+            layoutPago.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            layoutPago.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+            _txtPagaCon = new MaterialTextBox2
+            {
+                Hint = "Paga con $",
+                Dock = DockStyle.Top,
+                Margin = new Padding(0, 3, 6, 3),
+                AccessibleName = "Monto con el que paga el cliente"
+            };
+
+            _lblVuelto = new MaterialLabel
+            {
+                Text = "Vuelto: $0.00",
+                FontType = MaterialSkinManager.fontType.H6,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                UseAccent = true,
+                AccessibleName = "Vuelto calculado"
+            };
+            layoutPago.Controls.Add(_txtPagaCon, 0, 0);
+            layoutPago.Controls.Add(_lblVuelto, 1, 0);
+
+            _btnCobrar = new MaterialButton
             {
                 Text = "💳 CONFIRMAR Y FACTURAR",
                 Dock = DockStyle.Fill,
@@ -305,13 +416,389 @@ namespace CapaPresentacion.Ventas
             layoutCarrito.Controls.Add(_btnQuitar, 0, 2);
             layoutCarrito.Controls.Add(_lblEstadoCarrito, 0, 3);
             layoutCarrito.Controls.Add(_lblTotal, 0, 4);
-            layoutCarrito.Controls.Add(btnCobrar, 0, 5);
+            layoutCarrito.Controls.Add(layoutPago, 0, 5);
+            layoutCarrito.Controls.Add(_btnCobrar, 0, 6);
             cardCarrito.Controls.Add(layoutCarrito);
 
             layout.Controls.Add(cardCarga, 0, 0);
             layout.Controls.Add(cardCarrito, 1, 0);
 
             Controls.Add(layout);
+        }
+
+        private void ConfigurarCliente()
+        {
+            _btnConsumidorFinal.Click += (_, _) =>
+            {
+                _temporizadorCliente.Stop();
+                _busquedaClientePendiente = false;
+                _clienteSeleccionado = null;
+                EstablecerTextoClienteSinEvento(string.Empty);
+                OcultarListaClientes();
+                _lblClienteSeleccionado.Text = "Cliente: Consumidor Final";
+            };
+
+            _txtCliente.TextChanged += (_, _) =>
+            {
+                if (IsDisposed || Disposing || _actualizandoTextoCliente) return;
+                _temporizadorCliente.Stop();
+                string texto = _txtCliente.Text.Trim();
+                if (string.IsNullOrWhiteSpace(texto))
+                {
+                    _busquedaClientePendiente = false;
+                    _clienteSeleccionado = null;
+                    OcultarListaClientes();
+                    _lblClienteSeleccionado.Text = "Cliente: Consumidor Final";
+                    return;
+                }
+                _lblClienteSeleccionado.Text = "Buscando clientes...";
+                _temporizadorCliente.Start();
+            };
+
+            _temporizadorCliente.Tick += async (_, _) =>
+            {
+                _temporizadorCliente.Stop();
+                await BuscarClienteAsync();
+            };
+
+            _txtCliente.KeyDown += async (_, e) =>
+            {
+                if (e.KeyCode == Keys.Down && _listaClientes.Visible && _listaClientes.Items.Count > 0)
+                {
+                    e.SuppressKeyPress = true;
+                    _listaClientes.SelectedIndex = Math.Min(
+                        _listaClientes.Items.Count - 1,
+                        _listaClientes.SelectedIndex + 1);
+                }
+                else if (e.KeyCode == Keys.Up && _listaClientes.Visible && _listaClientes.Items.Count > 0)
+                {
+                    e.SuppressKeyPress = true;
+                    _listaClientes.SelectedIndex = Math.Max(0, _listaClientes.SelectedIndex - 1);
+                }
+                else if (e.KeyCode == Keys.Enter)
+                {
+                    e.SuppressKeyPress = true;
+                    _temporizadorCliente.Stop();
+                    if (_listaClientes.Visible && _listaClientes.SelectedItem is ItemClientePos item)
+                    {
+                        SeleccionarCliente(item.Cliente);
+                    }
+                    else
+                    {
+                        await BuscarClienteAsync(seleccionarUnico: true);
+                    }
+                }
+                else if (e.KeyCode == Keys.Escape && _listaClientes.Visible)
+                {
+                    e.SuppressKeyPress = true;
+                    OcultarListaClientes();
+                    ActualizarEtiquetaClienteActual();
+                }
+            };
+
+            _listaClientes.MouseClick += (_, _) =>
+            {
+                if (_listaClientes.SelectedItem is ItemClientePos item)
+                {
+                    SeleccionarCliente(item.Cliente);
+                }
+            };
+
+            _listaClientes.KeyDown += (_, e) =>
+            {
+                if (e.KeyCode == Keys.Enter && _listaClientes.SelectedItem is ItemClientePos item)
+                {
+                    e.SuppressKeyPress = true;
+                    SeleccionarCliente(item.Cliente);
+                }
+                else if (e.KeyCode == Keys.Escape)
+                {
+                    e.SuppressKeyPress = true;
+                    OcultarListaClientes();
+                    ActualizarEtiquetaClienteActual();
+                    _txtCliente.Focus();
+                }
+            };
+
+            _txtCliente.SizeChanged += (_, _) =>
+            {
+                if (_listaClientes.Visible) PosicionarListaClientes();
+            };
+
+            _txtCodigo.Enter += (_, _) =>
+            {
+                if (_listaClientes.Visible)
+                {
+                    OcultarListaClientes();
+                    ActualizarEtiquetaClienteActual();
+                }
+            };
+        }
+
+        private async Task BuscarClienteAsync(bool seleccionarUnico = false)
+        {
+            if (IsDisposed || Disposing) return;
+
+            if (_buscandoCliente)
+            {
+                _busquedaClientePendiente = true;
+                return;
+            }
+
+            string busqueda = _txtCliente.Text.Trim();
+            if (string.IsNullOrWhiteSpace(busqueda))
+            {
+                _clienteSeleccionado = null;
+                OcultarListaClientes();
+                _lblClienteSeleccionado.Text = "Cliente: Consumidor Final";
+                return;
+            }
+
+            _buscandoCliente = true;
+            try
+            {
+                var respuesta = await _clienteNegocio.BuscarClientesParaPosAsync(busqueda);
+                if (IsDisposed || Disposing) return;
+
+                if (!string.Equals(busqueda, _txtCliente.Text.Trim(), StringComparison.Ordinal))
+                {
+                    _busquedaClientePendiente = true;
+                    return;
+                }
+
+                if (respuesta.Resultado == CapaNegocio.Enums.ResultadoListadoClientes.ConResultados && respuesta.Clientes.Count > 0)
+                {
+                    if (seleccionarUnico && respuesta.Clientes.Count == 1)
+                    {
+                        SeleccionarCliente(respuesta.Clientes[0]);
+                        return;
+                    }
+
+                    MostrarListaClientes(respuesta.Clientes);
+                    _lblClienteSeleccionado.Text = $"{respuesta.Clientes.Count} coincidencia(s). Elija con ↓/Enter o clic.";
+                }
+                else
+                {
+                    _clienteSeleccionado = null;
+                    OcultarListaClientes();
+                    _lblClienteSeleccionado.Text = "Cliente no encontrado. Se asigna Consumidor Final.";
+                }
+            }
+            catch (Exception)
+            {
+                if (!IsDisposed && !Disposing)
+                {
+                    _clienteSeleccionado = null;
+                    OcultarListaClientes();
+                    _lblClienteSeleccionado.Text = "Error al consultar cliente. Se asigna Consumidor Final.";
+                }
+            }
+            finally
+            {
+                _buscandoCliente = false;
+                if (_busquedaClientePendiente && !IsDisposed && !Disposing)
+                {
+                    _busquedaClientePendiente = false;
+                    await BuscarClienteAsync(seleccionarUnico);
+                }
+            }
+        }
+
+        private void MostrarListaClientes(IReadOnlyList<ClienteRespuestaDto> clientes)
+        {
+            _listaClientes.BeginUpdate();
+            try
+            {
+                _listaClientes.Items.Clear();
+                foreach (var cliente in clientes)
+                {
+                    _listaClientes.Items.Add(new ItemClientePos(cliente));
+                }
+                if (_listaClientes.Items.Count > 0)
+                {
+                    _listaClientes.SelectedIndex = 0;
+                }
+            }
+            finally
+            {
+                _listaClientes.EndUpdate();
+            }
+
+            PosicionarListaClientes();
+            _listaClientes.Visible = true;
+            _listaClientes.BringToFront();
+        }
+
+        private void PosicionarListaClientes()
+        {
+            if (_cardCarga is null || _txtCliente?.Parent is null || _listaClientes is null) return;
+
+            Point ubicacionEnCard = _cardCarga.PointToClient(
+                _txtCliente.Parent.PointToScreen(_txtCliente.Location));
+
+            int altoFila = Math.Max(18, _listaClientes.ItemHeight);
+            int filasVisibles = Math.Clamp(_listaClientes.Items.Count, 1, 6);
+            int alto = (filasVisibles * altoFila) + 8;
+
+            _listaClientes.Bounds = new Rectangle(
+                ubicacionEnCard.X,
+                ubicacionEnCard.Y + _txtCliente.Height + 2,
+                Math.Max(_txtCliente.Width, 240),
+                alto);
+        }
+
+        private void OcultarListaClientes()
+        {
+            if (_listaClientes is not null)
+            {
+                _listaClientes.Visible = false;
+            }
+        }
+
+        private void SeleccionarCliente(ClienteRespuestaDto cliente)
+        {
+            _temporizadorCliente.Stop();
+            _busquedaClientePendiente = false;
+            _clienteSeleccionado = cliente;
+            EstablecerTextoClienteSinEvento(cliente.NombreCompleto);
+            OcultarListaClientes();
+            ActualizarEtiquetaClienteActual();
+            _txtCodigo.Focus();
+        }
+
+        private void ActualizarEtiquetaClienteActual()
+        {
+            _lblClienteSeleccionado.Text = _clienteSeleccionado is not null
+                ? $"Cliente: {_clienteSeleccionado.NombreCompleto} (DNI: {_clienteSeleccionado.Documento})"
+                : "Cliente: Consumidor Final";
+        }
+
+        private void EstablecerTextoClienteSinEvento(string texto)
+        {
+            _actualizandoTextoCliente = true;
+            try
+            {
+                _txtCliente.Text = texto;
+                _txtCliente.Refresh();
+            }
+            finally
+            {
+                _actualizandoTextoCliente = false;
+            }
+        }
+
+        private void ConfigurarCobro()
+        {
+            _txtPagaCon.TextChanged += (_, _) => ActualizarCalculoVuelto();
+            _btnCobrar.Click += async (_, _) => await ConfirmarCobroAsync();
+        }
+
+        private void ActualizarCalculoVuelto()
+        {
+            if (IsDisposed || Disposing) return;
+
+            decimal total = _estadoCarrito.Carrito.Total;
+            string texto = _txtPagaCon.Text?.Trim().Replace(',', '.') ?? string.Empty;
+            bool esValido = decimal.TryParse(texto, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal pago);
+
+            if (total <= 0)
+            {
+                _lblVuelto.Text = "Vuelto: $0.00";
+                _btnCobrar.Enabled = false;
+                return;
+            }
+
+            if (esValido && pago >= total)
+            {
+                decimal vuelto = pago - total;
+                _lblVuelto.Text = "Vuelto: " + vuelto.ToString("C2", CultureInfo.CurrentCulture);
+                _btnCobrar.Enabled = !_ocupadoCarrito;
+            }
+            else if (esValido && pago < total)
+            {
+                decimal falta = total - pago;
+                _lblVuelto.Text = "Falta: " + falta.ToString("C2", CultureInfo.CurrentCulture);
+                _btnCobrar.Enabled = false;
+            }
+            else
+            {
+                _lblVuelto.Text = "Vuelto: $0.00";
+                _btnCobrar.Enabled = false;
+            }
+        }
+
+        private async Task ConfirmarCobroAsync()
+        {
+            if (_ocupadoCarrito || _estadoCarrito.Carrito.Lineas.Count == 0 || IsDisposed || Disposing)
+                return;
+
+            decimal total = _estadoCarrito.Carrito.Total;
+            string texto = _txtPagaCon.Text?.Trim().Replace(',', '.') ?? string.Empty;
+            if (!decimal.TryParse(texto, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal pago) || pago < total)
+            {
+                _lblEstadoCarrito.Text = "Ingrese un monto de pago suficiente para cubrir el total.";
+                return;
+            }
+
+            _ocupadoCarrito = true;
+            ActualizarControlesCarrito();
+            _lblEstadoCarrito.Text = "Procesando cobro y registrando venta en base de datos...";
+
+            try
+            {
+                var solicitud = new SolicitudRegistrarVentaDto
+                {
+                    IdCliente = _clienteSeleccionado?.IdCliente,
+                    DocumentoCliente = _clienteSeleccionado?.Documento ?? "0",
+                    NombreCliente = _clienteSeleccionado?.NombreCompleto ?? "Consumidor Final",
+                    MontoPago = pago,
+                    Lineas = _estadoCarrito.Carrito.Lineas
+                };
+
+                var respuesta = await _ventaNegocio.RegistrarVentaAsync(solicitud);
+
+                if (respuesta.Exito)
+                {
+                    _estadoCarrito.Limpiar();
+                    PintarCarrito();
+                    _txtPagaCon.Text = string.Empty;
+                    _lblVuelto.Text = "Vuelto: $0.00";
+                    _lblEstadoCarrito.Text = $"✅ ¡Venta N° {respuesta.IdVenta} registrada! Vuelto: {respuesta.MontoCambio:C2}";
+
+                    MessageBox.Show(
+                        $"Venta N° {respuesta.IdVenta} registrada con éxito.\n\n" +
+                        $"Cliente: {solicitud.NombreCliente}\n" +
+                        $"Total: {respuesta.MontoTotal:C2}\n" +
+                        $"Abonado: {respuesta.MontoPago:C2}\n" +
+                        $"Vuelto: {respuesta.MontoCambio:C2}",
+                        "Venta Confirmada",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+
+                    _txtCodigo.Focus();
+                }
+                else
+                {
+                    _lblEstadoCarrito.Text = "❌ " + (respuesta.Mensaje ?? "No se pudo registrar la venta.");
+                    MessageBox.Show(
+                        respuesta.Mensaje ?? "No se pudo registrar la venta en la base de datos.",
+                        "Fallo al Registrar Venta",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                }
+            }
+            catch (Exception)
+            {
+                _lblEstadoCarrito.Text = "❌ Error inesperado al procesar la venta.";
+            }
+            finally
+            {
+                _ocupadoCarrito = false;
+                if (!IsDisposed && !Disposing)
+                {
+                    ActualizarControlesCarrito();
+                }
+            }
         }
 
         private void ConfigurarBusqueda()
@@ -515,14 +1002,19 @@ namespace CapaPresentacion.Ventas
                 }
                 _grillaCarrito.ClearSelection();
                 if (idSeleccionado.HasValue)
+                {
                     foreach (DataGridViewRow fila in _grillaCarrito.Rows)
+                    {
                         if ((int)fila.Tag! == idSeleccionado.Value)
                         {
                             _grillaCarrito.CurrentCell = fila.Cells[0];
                             fila.Selected = true;
                             break;
                         }
+                    }
+                }
                 _lblTotal.Text = "TOTAL: " + _estadoCarrito.Carrito.Total.ToString("C2", CultureInfo.CurrentCulture);
+                ActualizarCalculoVuelto();
             }
             finally { _pintandoCarrito = false; }
         }
@@ -535,6 +1027,17 @@ namespace CapaPresentacion.Ventas
             _txtCantidad.Enabled = !_ocupadoCarrito;
             _grillaProductos.Enabled = !_ocupadoCarrito;
             _grillaCarrito.Enabled = !_ocupadoCarrito;
+            _txtCliente.Enabled = !_ocupadoCarrito;
+            _btnConsumidorFinal.Enabled = !_ocupadoCarrito;
+            _listaClientes.Enabled = !_ocupadoCarrito;
+            if (_ocupadoCarrito) OcultarListaClientes();
+            _txtPagaCon.Enabled = !_ocupadoCarrito && _estadoCarrito.Carrito.Lineas.Count > 0;
+            ActualizarCalculoVuelto();
+        }
+
+        private sealed record ItemClientePos(ClienteRespuestaDto Cliente)
+        {
+            public override string ToString() => $"{Cliente.NombreCompleto} — DNI: {Cliente.Documento}";
         }
 
         private class GrillaCarritoVenta : DataGridView

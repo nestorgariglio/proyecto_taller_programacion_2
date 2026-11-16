@@ -535,6 +535,17 @@ BEGIN TRY
         INSERT dbo.PROVEEDOR (cuit, razon_social, correo, telefono, estado, fecha_registro)
         VALUES (N'30711000008', N'Theta Almacen SRL', N'compras@theta-almacen.example.com', N'01140000008', 1, GETDATE());
 
+    ---------------------------------------------------------------------------
+    -- Cliente genérico Consumidor Final y Tipo de Factura inicial (HU-12)
+    ---------------------------------------------------------------------------
+    IF NOT EXISTS (SELECT 1 FROM dbo.CLIENTE WHERE dni = N'0' OR (nombre = N'Consumidor' AND apellido = N'Final'))
+        INSERT dbo.CLIENTE (dni, nombre, apellido, estado, fecha_registro)
+        VALUES (N'0', N'Consumidor', N'Final', 1, GETDATE());
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.TIPO_FACTURA WHERE tipo_factura = N'B')
+        INSERT dbo.TIPO_FACTURA (tipo_factura, nro_factura)
+        VALUES (N'B', 1);
+
     COMMIT TRANSACTION;
 END TRY
 BEGIN CATCH

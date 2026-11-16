@@ -174,6 +174,16 @@ namespace CapaDatos
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            modelBuilder.Entity<Venta>(entity =>
+            {
+                entity.Property(venta => venta.DocumentoCliente)
+                    .HasMaxLength(20)
+                    .IsUnicode(false);
+
+                entity.Property(venta => venta.NombreCliente)
+                    .HasMaxLength(200);
+            });
+
         }
     }
 }

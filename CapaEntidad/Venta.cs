@@ -19,6 +19,12 @@ namespace CapaEntidad
         [Column("id_tipo")]
         public int IdTipo { get; set; }
 
+        [Column("documento_cliente")]
+        public string? DocumentoCliente { get; set; }
+
+        [Column("nombre_cliente")]
+        public string? NombreCliente { get; set; }
+
         [Column("monto_pago")]
         public decimal MontoPago { get; set; }
 

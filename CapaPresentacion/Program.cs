@@ -44,6 +44,8 @@ namespace CapaPresentacion
                     services.AddTransient<CompraNegocio>();
                     services.AddTransient<ConsultaProductosVentaDatos>();
                     services.AddTransient<CarritoVentaNegocio>();
+                    services.AddTransient<CapaDatos.IVentaRepositorio>(_ => new CapaDatos.VentaRepositorio(connectionString));
+                    services.AddTransient<VentaNegocio>();
 
                     services.AddTransient<HomeResumenNegocio>(sp => new HomeResumenNegocio(
                         sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
