@@ -12,19 +12,9 @@ using MaterialSkin.Controls;
 namespace CapaPresentacion.Compras
 {
     /// <summary>
-    /// Modal de solo lectura con el historial de compras y su detalle (RF-49 …
-    /// RF-54). Se abre en dos modos: <b>detalle</b>, con una compra elegida, que
-    /// muestra su cabecera y sus líneas; y <b>lista</b>, sin compra, que lista las
-    /// compras y carga el detalle de la fila seleccionada. Consume únicamente
-    /// <see cref="CompraNegocio"/>: no accede al origen de datos, no calcula
-    /// importes ni redacta mensajes, y muestra el <c>Mensaje</c> del negocio tal
-    /// cual (RF-55 y RNF-13).
+    /// Modal para la consulta del historial de compras, visualización de detalle y
+    /// gestión del ciclo de vida de operaciones comerciales (confirmación, recepción y anulación).
     /// </summary>
-    /// <remarks>
-    /// El detalle no muestra el precio de venta porque no se persiste en
-    /// <c>DETALLE_COMPRA</c> (D-2 y D-17). Al cerrarse no altera la compra en
-    /// carga de <see cref="ComprasForm"/>.
-    /// </remarks>
     public partial class DetalleCompraForm : MaterialForm
     {
         private const string ColumnaDetalleProducto = "colDetalleProducto";
@@ -33,40 +23,40 @@ namespace CapaPresentacion.Compras
         private const string ColumnaListaFecha = "colListaFecha";
         private const string ColumnaListaTotal = "colListaTotal";
         private const string ColumnaListaEstado = "colListaEstado";
+        private const string ColumnaListaEstadoSolicitud = "colListaEstadoSolicitud";
         private const string FormatoFecha = "dd/MM/yyyy HH:mm";
         private const string FormatoImporte = "N2";
         private const float AltoListaHistorial = 170F;
 
         private readonly CompraNegocio _negocio;
+        private readonly int _idUsuario;
         private readonly string? _rol;
 
-        /// <summary>
-        /// Compra mostrada en el detalle. Cero significa modo <b>lista</b>: el
-        /// modal no abre con una compra fija y espera la elección del historial.
-        /// </summary>
         private int _idCompra;
-
-        /// <summary>
-        /// Suprime la selección mientras se enlaza el historial, para no cargar
-        /// un detalle que el usuario no pidió.
-        /// </summary>
         private bool _cargandoLista;
+        private CompraConDetalleDto? _compraActual;
+
+        private TableLayoutPanel _tblAcciones = null!;
+        private MaterialButton _btnConfirmar = null!;
+        private MaterialButton _btnRecibir = null!;
+        private MaterialButton _btnVerCorreo = null!;
+        private MaterialTextBox2 _txtMotivoAnulacion = null!;
+        private MaterialButton _btnAnular = null!;
 
         /// <summary>
-        /// Inicializa el modal en modo <b>lista</b>: lista las compras del
-        /// historial y, al elegir una fila, muestra su detalle.
+        /// Inicializa el formulario en modo lista con la sesión del usuario.
         /// </summary>
-        /// <param name="negocio">Servicio que resuelve el historial y el detalle.</param>
-        /// <param name="rol">Rol de la sesión con el que el negocio evalúa el permiso.</param>
-        public DetalleCompraForm(CompraNegocio negocio, string? rol)
+        public DetalleCompraForm(CompraNegocio negocio, string? rol, int idUsuario = 0)
         {
             ArgumentNullException.ThrowIfNull(negocio);
 
             _negocio = negocio;
+            _idUsuario = idUsuario;
             _rol = rol;
             _idCompra = 0;
 
             InitializeComponent();
+            InicializarAccionesOperacion();
 
             MaterialSkinManager.Instance.AddFormToManage(this);
             BackColor = MaterialSkinManager.Instance.BackdropColor;
@@ -82,15 +72,103 @@ namespace CapaPresentacion.Compras
         }
 
         /// <summary>
-        /// Inicializa el modal en modo <b>detalle</b> con la compra indicada.
+        /// Inicializa el formulario en modo detalle para una compra específica.
         /// </summary>
-        /// <param name="negocio">Servicio que resuelve el detalle de la compra.</param>
-        /// <param name="idCompra">Compra elegida en el historial.</param>
-        /// <param name="rol">Rol de la sesión con el que el negocio evalúa el permiso.</param>
-        public DetalleCompraForm(CompraNegocio negocio, int idCompra, string? rol)
-            : this(negocio, rol)
+        public DetalleCompraForm(CompraNegocio negocio, int idCompra, string? rol, int idUsuario = 0)
+            : this(negocio, rol, idUsuario)
         {
             _idCompra = idCompra;
+        }
+
+        private void InicializarAccionesOperacion()
+        {
+            _tblAcciones = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0),
+                RowCount = 1,
+                ColumnCount = 5
+            };
+
+            _tblAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _tblAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _tblAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _tblAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _tblAcciones.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+            _btnConfirmar = new MaterialButton
+            {
+                Text = "CONFIRMAR SOLICITUD",
+                Type = MaterialButton.MaterialButtonType.Contained,
+                UseAccentColor = false,
+                HighEmphasis = true,
+                Visible = false,
+                Margin = new Padding(0, 4, 6, 4)
+            };
+            _btnConfirmar.Click += btnConfirmar_Click;
+
+            _btnRecibir = new MaterialButton
+            {
+                Text = "RECIBIR MERCADERÍA",
+                Type = MaterialButton.MaterialButtonType.Contained,
+                UseAccentColor = false,
+                HighEmphasis = true,
+                Visible = false,
+                Margin = new Padding(0, 4, 6, 4)
+            };
+            _btnRecibir.Click += btnRecibir_Click;
+
+            _btnVerCorreo = new MaterialButton
+            {
+                Text = "VER SOLICITUD",
+                Type = MaterialButton.MaterialButtonType.Outlined,
+                NoAccentTextColor = Color.FromArgb(224, 224, 224),
+                Visible = false,
+                Margin = new Padding(0, 4, 10, 4)
+            };
+            _btnVerCorreo.Click += btnVerCorreo_Click;
+
+            _txtMotivoAnulacion = new MaterialTextBox2
+            {
+                Hint = "Motivo de anulación (mín. 3 caracteres)",
+                Dock = DockStyle.Fill,
+                Visible = PoliticaAcceso.PuedeAnularOperaciones(_rol),
+                Margin = new Padding(4, 2, 6, 2)
+            };
+
+            _btnAnular = new MaterialButton
+            {
+                Text = "ANULAR",
+                Type = MaterialButton.MaterialButtonType.Contained,
+                UseAccentColor = true,
+                Visible = PoliticaAcceso.PuedeAnularOperaciones(_rol),
+                Enabled = false,
+                Margin = new Padding(0, 4, 0, 4)
+            };
+            _btnAnular.Click += btnAnular_Click;
+
+            _tblAcciones.Controls.Add(_btnConfirmar, 0, 0);
+            _tblAcciones.Controls.Add(_btnRecibir, 1, 0);
+            _tblAcciones.Controls.Add(_btnVerCorreo, 2, 0);
+            _tblAcciones.Controls.Add(_txtMotivoAnulacion, 3, 0);
+            _tblAcciones.Controls.Add(_btnAnular, 4, 0);
+
+            tblPrincipal.SuspendLayout();
+            tblPrincipal.Controls.Remove(lblMensajeDetalle);
+            tblPrincipal.RowCount = 6;
+            tblPrincipal.RowStyles.Clear();
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 170F));
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 72F));
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 52F));
+            tblPrincipal.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
+
+            tblPrincipal.Controls.Add(_tblAcciones, 0, 4);
+            tblPrincipal.Controls.Add(lblMensajeDetalle, 0, 5);
+            tblPrincipal.ResumeLayout(false);
+
+            ClientSize = new Size(960, 640);
         }
 
         private async void DetalleCompraForm_Load(object? sender, EventArgs e)
@@ -106,10 +184,6 @@ namespace CapaPresentacion.Compras
             await CargarHistorialAsync();
         }
 
-        /// <summary>
-        /// Deja el modal mostrando solo la compra elegida: oculta el historial y
-        /// cede su alto al detalle.
-        /// </summary>
         private void AplicarModoDetalle()
         {
             Text = "Detalle de compra";
@@ -118,10 +192,6 @@ namespace CapaPresentacion.Compras
             tblPrincipal.RowStyles[1].Height = 0F;
         }
 
-        /// <summary>
-        /// Deja el modal mostrando el historial sobre el detalle de la compra
-        /// seleccionada.
-        /// </summary>
         private void AplicarModoLista()
         {
             Text = "Historial de compras";
@@ -130,13 +200,6 @@ namespace CapaPresentacion.Compras
             tblPrincipal.RowStyles[1].Height = AltoListaHistorial;
         }
 
-        /// <summary>
-        /// Consulta el historial de compras con el rol de la sesión y lo enlaza,
-        /// sin cargar ningún detalle hasta que el usuario elija una fila. El
-        /// mensaje que se muestra es siempre el que devuelve el negocio
-        /// (RF-49 … RF-52).
-        /// </summary>
-        /// <returns>Tarea que representa la consulta del historial.</returns>
         private async Task CargarHistorialAsync()
         {
             _cargandoLista = true;
@@ -158,12 +221,14 @@ namespace CapaPresentacion.Compras
                 gridListaCompras.CurrentCell = null;
 
                 LimpiarDetalle();
+                ActualizarEstadoBotonesAccion(null);
                 lblMensajeDetalle.Text = respuesta.Mensaje;
             }
             catch (Exception excepcion)
             {
                 lblMensajeDetalle.Text = excepcion.Message;
                 LimpiarDetalle();
+                ActualizarEstadoBotonesAccion(null);
             }
             finally
             {
@@ -195,12 +260,6 @@ namespace CapaPresentacion.Compras
             await CargarDetalleAsync();
         }
 
-        /// <summary>
-        /// Consulta la compra indicada y muestra su cabecera y sus líneas. El
-        /// mensaje del negocio se presenta tal cual ante compra inexistente,
-        /// permiso denegado o fallo de lectura (RF-53 y RF-57).
-        /// </summary>
-        /// <returns>Tarea que representa la consulta del detalle.</returns>
         private async Task CargarDetalleAsync()
         {
             try
@@ -213,34 +272,34 @@ namespace CapaPresentacion.Compras
                 if (respuesta.Resultado != ResultadoCompraConDetalle.Encontrada
                     || respuesta.Compra is null)
                 {
+                    _compraActual = null;
                     LimpiarDetalle();
+                    ActualizarEstadoBotonesAccion(null);
                     return;
                 }
 
-                MostrarCabecera(respuesta.Compra);
-                gridDetalle.DataSource = respuesta.Compra.Lineas.ToList();
+                _compraActual = respuesta.Compra;
+                MostrarCabecera(_compraActual);
+                gridDetalle.DataSource = _compraActual.Lineas.ToList();
+                ActualizarEstadoBotonesAccion(_compraActual);
             }
             catch (Exception excepcion)
             {
                 lblMensajeDetalle.Text = excepcion.Message;
+                _compraActual = null;
                 LimpiarDetalle();
+                ActualizarEstadoBotonesAccion(null);
             }
         }
 
-        /// <summary>
-        /// Deja la cabecera y las líneas del detalle sin datos.
-        /// </summary>
         private void LimpiarDetalle()
         {
+            _compraActual = null;
             gridDetalle.DataSource = null;
             MostrarCabecera(null);
+            ActualizarEstadoBotonesAccion(null);
         }
 
-        /// <summary>
-        /// Muestra la cabecera de la compra elegida; con <see langword="null"/>
-        /// deja los rótulos vacíos con «—».
-        /// </summary>
-        /// <param name="compra">Compra recuperada, o <see langword="null"/>.</param>
         private void MostrarCabecera(CompraConDetalleDto? compra)
         {
             if (compra is null)
@@ -251,28 +310,239 @@ namespace CapaPresentacion.Compras
                 lblTotalDetalle.Text = "Total: —";
                 lblProveedorDetalle.Text = "Proveedor: —";
                 lblUsuarioDetalle.Text = "Usuario: —";
+                lblMensajeDetalle.ForeColor = Color.White;
                 return;
             }
 
             lblNumeroCompra.Text = $"N° compra: {compra.IdCompra}";
             lblFechaDetalle.Text =
                 $"Fecha: {compra.FechaRegistro.ToString(FormatoFecha, CultureInfo.CurrentCulture)}";
-            lblEstadoDetalle.Text = compra.Estado ? "Estado: Activa" : "Estado: Inactiva";
-            lblTotalDetalle.Text =
-                $"Total: {compra.MontoTotal.ToString(FormatoImporte, CultureInfo.CurrentCulture)}";
+            string estadoTexto = compra.Estado ? "Activa" : "Anulada";
+            lblEstadoDetalle.Text = $"Estado: {estadoTexto} ({compra.EstadoSolicitud})";
+            lblTotalDetalle.Text = compra.MontoTotal > 0
+                ? $"Total: {compra.MontoTotal.ToString(FormatoImporte, CultureInfo.CurrentCulture)}"
+                : "Total: — (A convenir por correo)";
             lblProveedorDetalle.Text = $"Proveedor: {compra.RazonSocialProveedor}";
             lblUsuarioDetalle.Text = $"Usuario: {compra.NombreUsuario}";
+
+            if (!compra.Estado || string.Equals(compra.EstadoSolicitud, "Anulada", StringComparison.OrdinalIgnoreCase))
+            {
+                lblMensajeDetalle.Text = $"❌ Anulada el {compra.FechaAnulacion?.ToString(FormatoFecha, CultureInfo.CurrentCulture) ?? "—"}. Motivo: {compra.MotivoAnulacion}";
+                lblMensajeDetalle.ForeColor = Color.OrangeRed;
+            }
+            else
+            {
+                lblMensajeDetalle.ForeColor = Color.White;
+            }
         }
 
-        // =====================================================================
-        // ESTILO Y FORMATO DE PRESENTACIÓN (RNF-7 y RNF-12)
-        // =====================================================================
+        private void ActualizarEstadoBotonesAccion(CompraConDetalleDto? compra)
+        {
+            if (compra is null)
+            {
+                _btnConfirmar.Visible = false;
+                _btnRecibir.Visible = false;
+                _btnVerCorreo.Visible = false;
+                _btnAnular.Enabled = false;
+                _txtMotivoAnulacion.Text = string.Empty;
+                return;
+            }
 
-        /// <summary>
-        /// Aplica el estilo oscuro compartido por las pantallas de la aplicación a
-        /// una grilla ya declarada en el diseñador.
-        /// </summary>
-        /// <param name="grilla">Grilla a estilizar.</param>
+            bool puedeOperar = PoliticaAcceso.PuedeOperarCompras(_rol);
+            bool puedeAnular = PoliticaAcceso.PuedeAnularOperaciones(_rol);
+            bool esActiva = compra.Estado && !string.Equals(compra.EstadoSolicitud, "Anulada", StringComparison.OrdinalIgnoreCase);
+
+            string estadoSolicitud = compra.EstadoSolicitud;
+
+            _btnConfirmar.Visible = esActiva && puedeOperar && string.Equals(estadoSolicitud, "Pendiente", StringComparison.OrdinalIgnoreCase);
+            _btnConfirmar.Enabled = _btnConfirmar.Visible;
+
+            _btnRecibir.Visible = esActiva && puedeOperar && (string.Equals(estadoSolicitud, "Pendiente", StringComparison.OrdinalIgnoreCase) || string.Equals(estadoSolicitud, "Confirmada", StringComparison.OrdinalIgnoreCase));
+            _btnRecibir.Enabled = _btnRecibir.Visible;
+
+            _btnVerCorreo.Visible = string.Equals(estadoSolicitud, "Pendiente", StringComparison.OrdinalIgnoreCase) || string.Equals(estadoSolicitud, "Confirmada", StringComparison.OrdinalIgnoreCase);
+            _btnVerCorreo.Enabled = _btnVerCorreo.Visible;
+
+            _btnAnular.Visible = puedeAnular;
+            _btnAnular.Enabled = esActiva && puedeAnular;
+            _txtMotivoAnulacion.Visible = puedeAnular;
+            _txtMotivoAnulacion.Enabled = _btnAnular.Enabled;
+        }
+
+        private async void btnConfirmar_Click(object? sender, EventArgs e)
+        {
+            if (_compraActual is null || !string.Equals(_compraActual.EstadoSolicitud, "Pendiente", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            using var modal = new ConfirmarCompraModalForm(_compraActual);
+            if (modal.ShowDialog(this) != DialogResult.OK || modal.SolicitudConfirmacion is null)
+            {
+                return;
+            }
+
+            _btnConfirmar.Enabled = false;
+
+            try
+            {
+                RespuestaAccionCompra respuesta =
+                    await _negocio.ConfirmarSolicitudCompraAsync(modal.SolicitudConfirmacion, _idUsuario, _rol);
+
+                if (respuesta.Exitoso)
+                {
+                    MessageBox.Show(respuesta.Mensaje, "Solicitud Confirmada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    await CargarHistorialAsync();
+                    await CargarDetalleAsync();
+                }
+                else
+                {
+                    MessageBox.Show(respuesta.Mensaje, "Error al Confirmar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            finally
+            {
+                if (_compraActual is not null)
+                {
+                    ActualizarEstadoBotonesAccion(_compraActual);
+                }
+            }
+        }
+
+        private async void btnRecibir_Click(object? sender, EventArgs e)
+        {
+            if (_compraActual is null)
+            {
+                return;
+            }
+
+            DialogResult resultado = MessageBox.Show(
+                $"¿Confirma la recepción de la mercadería para la compra N° {_compraActual.IdCompra:D6}?\nEsta acción incrementará el stock de los productos e impactará el catálogo.",
+                "Recepción de Mercadería",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (resultado != DialogResult.Yes)
+            {
+                return;
+            }
+
+            _btnRecibir.Enabled = false;
+
+            try
+            {
+                RespuestaAccionCompra respuesta =
+                    await _negocio.RecibirCompraAsync(_compraActual.IdCompra, _idUsuario, _rol);
+
+                if (respuesta.Exitoso)
+                {
+                    MessageBox.Show(respuesta.Mensaje, "Mercadería Recibida", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    await CargarHistorialAsync();
+                    await CargarDetalleAsync();
+                }
+                else
+                {
+                    MessageBox.Show(respuesta.Mensaje, "Error al Recibir", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            finally
+            {
+                if (_compraActual is not null)
+                {
+                    ActualizarEstadoBotonesAccion(_compraActual);
+                }
+            }
+        }
+
+        private async void btnAnular_Click(object? sender, EventArgs e)
+        {
+            if (_compraActual is null || !_compraActual.Estado)
+            {
+                return;
+            }
+
+            string motivo = _txtMotivoAnulacion.Text.Trim();
+            if (motivo.Length < 3)
+            {
+                MessageBox.Show(
+                    "Ingrese un motivo de anulación de al menos 3 caracteres.",
+                    "Motivo Requerido",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                _txtMotivoAnulacion.Focus();
+                return;
+            }
+
+            string avisoStock = string.Equals(_compraActual.EstadoSolicitud, "Recibida", StringComparison.OrdinalIgnoreCase)
+                ? "\n⚠️ ATENCIÓN: La compra está en estado 'Recibida'. Se revertirá el stock de los productos si cuentan con existencias suficientes."
+                : "\n(La solicitud no impactó stock, se cancelará sin alterar inventario).";
+
+            DialogResult resultado = MessageBox.Show(
+                $"¿Está seguro de anular la compra N° {_compraActual.IdCompra:D6} por {_compraActual.MontoTotal:C2}?{avisoStock}\n\nMotivo: {motivo}",
+                "Confirmar Anulación de Compra",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (resultado != DialogResult.Yes)
+            {
+                return;
+            }
+
+            _btnAnular.Enabled = false;
+
+            try
+            {
+                var solicitud = new SolicitudAnularCompraDto
+                {
+                    IdCompra = _compraActual.IdCompra,
+                    Motivo = motivo
+                };
+
+                RespuestaAccionCompra respuesta =
+                    await _negocio.AnularCompraAsync(solicitud, _idUsuario, _rol);
+
+                if (respuesta.Exitoso)
+                {
+                    _txtMotivoAnulacion.Text = string.Empty;
+                    MessageBox.Show(respuesta.Mensaje, "Compra Anulada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    await CargarHistorialAsync();
+                    await CargarDetalleAsync();
+                }
+                else
+                {
+                    MessageBox.Show(respuesta.Mensaje, "No se pudo anular la compra", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            finally
+            {
+                if (_compraActual is not null)
+                {
+                    ActualizarEstadoBotonesAccion(_compraActual);
+                }
+            }
+        }
+
+        private void btnVerCorreo_Click(object? sender, EventArgs e)
+        {
+            if (_compraActual is null)
+            {
+                return;
+            }
+
+            string lineasTexto = string.Join(Environment.NewLine, _compraActual.Lineas.Select(l =>
+                $" • [{l.CodigoProducto}] {l.NombreProducto} | Cantidad solicitada: {l.Cantidad}" +
+                (l.PrecioCompra > 0 ? $" | Costo ref.: {l.PrecioCompra:C2}" : string.Empty)));
+
+            string cuerpo = $"SOLICITUD DE REABASTECIMIENTO N° {_compraActual.IdCompra:D6}{Environment.NewLine}" +
+                            $"Fecha de emisión: {_compraActual.FechaRegistro:dd/MM/yyyy HH:mm}{Environment.NewLine}" +
+                            $"Proveedor: {_compraActual.RazonSocialProveedor}{Environment.NewLine}" +
+                            $"Estado actual: {_compraActual.EstadoSolicitud}{Environment.NewLine}{Environment.NewLine}" +
+                            $"PRODUCTOS SOLICITADOS:{Environment.NewLine}{lineasTexto}{Environment.NewLine}{Environment.NewLine}" +
+                            $"Observaciones: {_compraActual.Observaciones ?? "Ninguna"}";
+
+            MessageBox.Show(cuerpo, "Detalle de Solicitud a Proveedor", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         private static void AplicarEstiloGrilla(DataGridView grilla)
         {
             grilla.BackgroundColor = Color.FromArgb(48, 48, 48);
@@ -330,16 +600,13 @@ namespace CapaPresentacion.Compras
 
             if (esImporte && e.Value is decimal importe)
             {
-                e.Value = importe.ToString(FormatoImporte, CultureInfo.CurrentCulture);
+                e.Value = importe > 0
+                    ? importe.ToString(FormatoImporte, CultureInfo.CurrentCulture)
+                    : "—";
                 e.FormattingApplied = true;
             }
         }
 
-        /// <summary>
-        /// Aplica el formato de presentación del historial: fecha y hora,
-        /// importes con <c>N2</c> y estado como «Activa»/«Inactiva» (RNF-12). La
-        /// grilla solo presenta los datos del negocio.
-        /// </summary>
         private void gridListaCompras_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0
@@ -358,12 +625,26 @@ namespace CapaPresentacion.Compras
             }
             else if (columna == ColumnaListaTotal && e.Value is decimal total)
             {
-                e.Value = total.ToString(FormatoImporte, CultureInfo.CurrentCulture);
+                e.Value = total > 0
+                    ? total.ToString(FormatoImporte, CultureInfo.CurrentCulture)
+                    : "—";
                 e.FormattingApplied = true;
             }
             else if (columna == ColumnaListaEstado && e.Value is bool estado)
             {
                 e.Value = estado ? "Activa" : "Inactiva";
+                e.FormattingApplied = true;
+            }
+            else if (columna == ColumnaListaEstadoSolicitud && e.Value is string estadoSolicitud)
+            {
+                e.Value = estadoSolicitud switch
+                {
+                    "Pendiente" => "⏳ Pendiente",
+                    "Confirmada" => "📋 Confirmada",
+                    "Recibida" => "✅ Recibida",
+                    "Anulada" => "❌ Anulada",
+                    _ => estadoSolicitud
+                };
                 e.FormattingApplied = true;
             }
         }

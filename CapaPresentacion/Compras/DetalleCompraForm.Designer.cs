@@ -37,6 +37,7 @@ namespace CapaPresentacion.Compras
             colListaUsuario = new DataGridViewTextBoxColumn();
             colListaTotal = new DataGridViewTextBoxColumn();
             colListaEstado = new DataGridViewTextBoxColumn();
+            colListaEstadoSolicitud = new DataGridViewTextBoxColumn();
             tblCabecera = new TableLayoutPanel();
             lblNumeroCompra = new MaterialSkin.Controls.MaterialLabel();
             lblFechaDetalle = new MaterialSkin.Controls.MaterialLabel();
@@ -102,7 +103,7 @@ namespace CapaPresentacion.Compras
             gridListaCompras.AutoGenerateColumns = false;
             gridListaCompras.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridListaCompras.ColumnHeadersHeight = 32;
-            gridListaCompras.Columns.AddRange(new DataGridViewColumn[] { colListaNumero, colListaFecha, colListaProveedor, colListaUsuario, colListaTotal, colListaEstado });
+            gridListaCompras.Columns.AddRange(new DataGridViewColumn[] { colListaNumero, colListaFecha, colListaProveedor, colListaUsuario, colListaTotal, colListaEstado, colListaEstadoSolicitud });
             gridListaCompras.Dock = DockStyle.Fill;
             gridListaCompras.Location = new Point(16, 46);
             gridListaCompras.Margin = new Padding(0);
@@ -169,6 +170,15 @@ namespace CapaPresentacion.Compras
             colListaEstado.Name = "colListaEstado";
             colListaEstado.ReadOnly = true;
             colListaEstado.SortMode = DataGridViewColumnSortMode.NotSortable;
+            // 
+            // colListaEstadoSolicitud
+            // 
+            colListaEstadoSolicitud.DataPropertyName = "EstadoSolicitud";
+            colListaEstadoSolicitud.FillWeight = 14F;
+            colListaEstadoSolicitud.HeaderText = "Solicitud / Etapa";
+            colListaEstadoSolicitud.Name = "colListaEstadoSolicitud";
+            colListaEstadoSolicitud.ReadOnly = true;
+            colListaEstadoSolicitud.SortMode = DataGridViewColumnSortMode.NotSortable;
             //
             // tblCabecera
             //
@@ -387,6 +397,7 @@ namespace CapaPresentacion.Compras
         private DataGridViewTextBoxColumn colListaUsuario;
         private DataGridViewTextBoxColumn colListaTotal;
         private DataGridViewTextBoxColumn colListaEstado;
+        private DataGridViewTextBoxColumn colListaEstadoSolicitud;
         private TableLayoutPanel tblCabecera;
         private MaterialSkin.Controls.MaterialLabel lblNumeroCompra;
         private MaterialSkin.Controls.MaterialLabel lblFechaDetalle;

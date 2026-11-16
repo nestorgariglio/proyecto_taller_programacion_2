@@ -15,24 +15,24 @@ using MaterialSkin.Controls;
 
 namespace CapaPresentacion.Compras
 {
-    /// <summary>
-    /// Pantalla de carga de compras a proveedores organizada en tres bloques:
-    /// producto y proveedor (búsquedas a demanda), compra actual y barra de
-    /// acciones. El producto y el proveedor se buscan a demanda (RF-9 … RF-17)
-    /// sobre catálogos independientes. El historial de compras solo prioriza:
-    /// elegir un producto muestra primero los proveedores que ya lo vendieron y
-    /// elegir un proveedor muestra primero sus productos habituales; las casillas
-    /// «Mostrar todos» amplían cada listado a todos los activos y la búsqueda por
-    /// texto se aplica sobre el universo vigente. Nunca se autoselecciona una
-    /// fila ni se descarta lo elegido. Cada selector tiene una única rutina de
-    /// refresco, sin encadenar consultas ni bucles de eventos; ninguna selección
-    /// programática dispara el flujo inverso. El
-    /// historial ya no se lista dentro de la pantalla: la barra de acciones abre
-    /// <see cref="DetalleCompraForm"/> en modo lista (RF-52 … RF-54). La pantalla
-    /// no valida, no calcula importes ni redacta mensajes: solo invoca
-    /// <see cref="CompraNegocio"/> y muestra el <c>Mensaje</c> que este devuelve
-    /// (RF-55, RNF-6 y RNF-13).
-    /// </summary>
+ /// <summary>
+ /// Pantalla de carga de compras a proveedores organizada en tres bloques:
+ /// producto y proveedor (búsquedas a demanda), compra actual y barra de
+ /// acciones. El producto y el proveedor se buscan a demanda 
+ /// sobre catálogos independientes. El historial de compras solo prioriza:
+ /// elegir un producto muestra primero los proveedores que ya lo vendieron y
+ /// elegir un proveedor muestra primero sus productos habituales; las casillas
+ /// «Mostrar todos» amplían cada listado a todos los activos y la búsqueda por
+ /// texto se aplica sobre el universo vigente. Nunca se autoselecciona una
+ /// fila ni se descarta lo elegido. Cada selector tiene una única rutina de
+ /// refresco, sin encadenar consultas ni bucles de eventos; ninguna selección
+ /// programática dispara el flujo inverso. El
+ /// historial ya no se lista dentro de la pantalla: la barra de acciones abre
+ /// <see cref="DetalleCompraForm"/> en modo lista. La pantalla
+ /// no valida, no calcula importes ni redacta mensajes: solo invoca
+ /// <see cref="CompraNegocio"/> y muestra el <c>Mensaje</c> que este devuelve
+ ///.
+ /// </summary>
     public partial class ComprasForm : UserControl
     {
         private const string ColumnaLineaProducto = "colLineaProducto";
@@ -54,6 +54,7 @@ namespace CapaPresentacion.Compras
         private const string TextoBotonGuardar = "Guardar línea";
 
         private readonly CompraNegocio _negocio;
+        private readonly MaterialSkin.Controls.MaterialCheckbox _chkSolicitudReabastecimiento = new();
         private readonly System.Windows.Forms.Timer _temporizadorProveedores =
             new() { Interval = 350 };
         private readonly System.Windows.Forms.Timer _temporizadorProductos =
@@ -62,10 +63,10 @@ namespace CapaPresentacion.Compras
         private readonly List<ProveedorSeleccionadoDto> _proveedoresBuscados = new();
         private readonly List<ProductoBuscadoDto> _productosBuscados = new();
 
-        /// <summary>
-        /// Último listado completo de productos (texto vacío) con la clave que lo
-        /// produjo: permite restituirlo sin consultar al limpiar la captura (RF-16).
-        /// </summary>
+ /// <summary>
+ /// Último listado completo de productos (texto vacío) con la clave que lo
+ /// produjo: permite restituirlo sin consultar al limpiar la captura.
+ /// </summary>
         private readonly List<ProductoBuscadoDto> _cacheProductos = new();
         private (int? IdProveedor, bool MostrarTodos)? _claveCacheProductos;
 
@@ -81,18 +82,18 @@ namespace CapaPresentacion.Compras
         private bool _registrando;
         private bool _actualizandoSeleccion;
 
-        /// <summary>
-        /// Nivel de supresión de eventos de las grillas. Es un contador para que
-        /// las supresiones anidadas (limpieza, rebind y selección) no se pisen:
-        /// los manejadores salen mientras el valor sea mayor que cero.
-        /// </summary>
+ /// <summary>
+ /// Nivel de supresión de eventos de las grillas. Es un contador para que
+ /// las supresiones anidadas (limpieza, rebind y selección) no se pisen:
+ /// los manejadores salen mientras el valor sea mayor que cero.
+ /// </summary>
         private int _nivelActualizando;
 
-        /// <summary>
-        /// Inicializa la pantalla de compras con el servicio de negocio inyectado
-        /// (mismo patrón que <see cref="Proveedores.ProveedoresForm"/>).
-        /// </summary>
-        /// <param name="negocio">Lógica de negocio de compras.</param>
+ /// <summary>
+ /// Inicializa la pantalla de compras con el servicio de negocio inyectado
+ /// (mismo patrón que <see cref="Proveedores.ProveedoresForm"/>).
+ /// </summary>
+ /// <param name="negocio">Lógica de negocio de compras.</param>
         public ComprasForm(CompraNegocio negocio)
         {
             ArgumentNullException.ThrowIfNull(negocio);
@@ -110,7 +111,6 @@ namespace CapaPresentacion.Compras
             AlinearCabecerasNumericas();
             AplicarEscalaYDisposicion();
 
-            // Los listados arrancan vacíos: solo se llenan al tipear (RF-10, RF-16).
             MostrarProductos(null);
             MostrarProveedores(null);
             MostrarDatosProducto();
@@ -144,17 +144,42 @@ namespace CapaPresentacion.Compras
             ConectarAccionDeFila(gridProveedores);
             ConectarAccionDeFila(gridProductos);
 
+            gridProductos.CellFormatting += gridProductos_CellFormatting;
+
+            lblRotuloPrecioCompra.Visible = false;
+            txtPrecioCompra.Visible = false;
+            lblRotuloPrecioVenta.Visible = false;
+            txtPrecioVenta.Visible = false;
+            lblSubtotalPreparacion.Visible = false;
+
+            colLineaPrecioCompra.Visible = false;
+            colLineaPrecioVenta.Visible = false;
+            colLineaSubtotal.Visible = false;
+            colLineaProducto.FillWeight = 75F;
+            colLineaCantidad.FillWeight = 25F;
+
+            tblDatosProducto.SetCellPosition(btnAgregarLinea, new TableLayoutPanelCellPosition(1, 4));
+            tblDatosProducto.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, 180F);
+            tblDatosProducto.ColumnStyles[1] = new ColumnStyle(SizeType.AutoSize);
+            tblDatosProducto.ColumnStyles[2] = new ColumnStyle(SizeType.Percent, 100F);
+            tblDatosProducto.ColumnStyles[3] = new ColumnStyle(SizeType.Absolute, 0F);
+
+            lblTitulo.Text = "Solicitudes de Reabastecimiento a Proveedores";
+            lblTituloCompraActual.Text = "Productos solicitados";
+            btnRegistrar.Text = "ENVIAR SOLICITUD A PROVEEDOR";
+            btnAgregarLinea.Text = "Agregar producto";
+
             RefrescarGrillaLineas();
         }
 
-        /// <summary>
-        /// Guarda la sesión con la que se registran las compras y se consultan el
-        /// historial y el detalle. La pantalla queda habilitada solo para los roles
-        /// que operan el módulo (RF-8, RF-59, RF-60 y RF-61); con otro rol no hay
-        /// acciones disponibles y la pestaña ya viene oculta desde el inicio.
-        /// </summary>
-        /// <param name="idUsuario">Identificador del usuario responsable.</param>
-        /// <param name="rol">Descripción del rol de la sesión.</param>
+ /// <summary>
+ /// Guarda la sesión con la que se registran las compras y se consultan el
+ /// historial y el detalle. La pantalla queda habilitada solo para los roles
+ /// que operan el módulo; con otro rol no hay
+ /// acciones disponibles y la pestaña ya viene oculta desde el inicio.
+ /// </summary>
+ /// <param name="idUsuario">Identificador del usuario responsable.</param>
+ /// <param name="rol">Descripción del rol de la sesión.</param>
         public void AplicarSesion(int idUsuario, string? rol)
         {
             _idUsuario = idUsuario;
@@ -167,6 +192,7 @@ namespace CapaPresentacion.Compras
             gridProductos.Enabled = habilitado;
             chkMostrarTodosProveedores.Enabled = habilitado;
             chkMostrarTodosProductos.Enabled = habilitado;
+            _chkSolicitudReabastecimiento.Enabled = habilitado;
             txtCantidad.Enabled = habilitado;
             txtPrecioCompra.Enabled = habilitado;
             txtPrecioVenta.Enabled = habilitado;
@@ -177,12 +203,12 @@ namespace CapaPresentacion.Compras
             ActualizarAccionesDeSeleccion();
         }
 
-        /// <summary>
-        /// Habilita la acción primaria solo si la sesión puede operar el módulo, no
-        /// hay un registro en curso y la compra en carga tiene proveedor e ítems
-        /// (RF-58 y <c>desktop-ux-patterns</c> §3). No valida ni redacta mensajes:
-        /// solo refleja el estado de la pantalla.
-        /// </summary>
+ /// <summary>
+ /// Habilita la acción primaria solo si la sesión puede operar el módulo, no
+ /// hay un registro en curso y la compra en carga tiene proveedor e ítems
+ ///. No valida ni redacta mensajes:
+ /// solo refleja el estado de la pantalla.
+ /// </summary>
         private void ActualizarEstadoAcciones()
         {
             btnRegistrar.Enabled = PoliticaAcceso.PuedeOperarCompras(_rolActual)
@@ -191,15 +217,12 @@ namespace CapaPresentacion.Compras
                 && _lineas.Count > 0;
         }
 
-        // =====================================================================
-        // 1. ESTILO DE LAS GRILLAS (MaterialSkin 2, dark)
-        // =====================================================================
 
-        /// <summary>
-        /// Aplica el estilo oscuro compartido por las pantallas de la aplicación a
-        /// una grilla ya declarada en el diseñador (RNF-7).
-        /// </summary>
-        /// <param name="grilla">Grilla a estilizar.</param>
+ /// <summary>
+ /// Aplica el estilo oscuro compartido por las pantallas de la aplicación a
+ /// una grilla ya declarada en el diseñador.
+ /// </summary>
+ /// <param name="grilla">Grilla a estilizar.</param>
         private static void AplicarEstiloGrilla(DataGridView grilla)
         {
             grilla.BackgroundColor = Color.FromArgb(48, 48, 48);
@@ -208,9 +231,6 @@ namespace CapaPresentacion.Compras
             grilla.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             grilla.EnableHeadersVisualStyles = false;
 
-            // Los estilos se clonan desde el diseñador y solo se mutan los colores,
-            // la fuente y el ajuste de línea: así se conservan la alineación de los
-            // importes a la derecha y el formato que aporta cada columna.
             grilla.ColumnHeadersDefaultCellStyle = grilla.ColumnHeadersDefaultCellStyle.Clone();
             grilla.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(55, 71, 79);
             grilla.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
@@ -227,11 +247,6 @@ namespace CapaPresentacion.Compras
             grilla.DefaultCellStyle.Font = new Font("Segoe UI", 9.5F);
             grilla.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
 
-            // Filas alternadas para leer renglones largos (desktop-ux-patterns §2).
-            // Se hereda de DefaultCellStyle y solo cambia el fondo. La alineación se deja
-            // sin definir (NotSet): el estilo de filas alternadas tiene prioridad sobre el
-            // de columna, y si copiara MiddleLeft de DefaultCellStyle los importes
-            // alineados a la derecha quedarían a la izquierda en las filas impares.
             grilla.AlternatingRowsDefaultCellStyle = grilla.DefaultCellStyle.Clone();
             grilla.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(56, 56, 56);
             grilla.AlternatingRowsDefaultCellStyle.Alignment = DataGridViewContentAlignment.NotSet;
@@ -239,13 +254,13 @@ namespace CapaPresentacion.Compras
             grilla.GridColor = Color.FromArgb(80, 80, 80);
         }
 
-        /// <summary>
-        /// Pinta la fila elegida de los selectores con el color de acento oscuro
-        /// <see cref="PintorAccionFila.ColorFilaElegida"/> y texto blanco (5,60:1), también en
-        /// las filas alternadas. Una grilla de WinForms no atenúa la selección al perder el
-        /// foco: mantiene <c>SelectionBackColor</c>. Solo se aplica a los dos selectores.
-        /// </summary>
-        /// <param name="grilla">Grilla de proveedores o de productos.</param>
+ /// <summary>
+ /// Pinta la fila elegida de los selectores con el color de acento oscuro
+ /// <see cref="PintorAccionFila.ColorFilaElegida"/> y texto blanco (5,60:1), también en
+ /// las filas alternadas. Una grilla de WinForms no atenúa la selección al perder el
+ /// foco: mantiene <c>SelectionBackColor</c>. Solo se aplica a los dos selectores.
+ /// </summary>
+ /// <param name="grilla">Grilla de proveedores o de productos.</param>
         private static void AplicarColorFilaElegida(DataGridView grilla)
         {
             grilla.DefaultCellStyle.SelectionBackColor = PintorAccionFila.ColorFilaElegida;
@@ -254,9 +269,6 @@ namespace CapaPresentacion.Compras
             grilla.AlternatingRowsDefaultCellStyle.SelectionForeColor = PintorAccionFila.ColorTextoFilaElegida;
         }
 
-        // =====================================================================
-        // 2. BÚSQUEDAS A DEMANDA Y SELECCIÓN PRODUCTO → PROVEEDORES
-        // =====================================================================
 
         private void txtBuscarProveedor_TextChanged(object? sender, EventArgs e)
         {
@@ -286,14 +298,14 @@ namespace CapaPresentacion.Compras
             await EjecutarAsync(RefrescarProveedoresAsync);
         }
 
-        /// <summary>
-        /// Única rutina de refresco del selector de proveedores. Depende del texto
-        /// de búsqueda, del producto elegido (solo prioriza con el historial) y de
-        /// la casilla «Mostrar todos los proveedores». No modifica la selección: tras
-        /// enlazar el listado restituye la fila del proveedor elegido si está en él,
-        /// sin disparar el manejador de selección, y nunca selecciona otra fila.
-        /// </summary>
-        /// <returns>Tarea que representa el refresco.</returns>
+ /// <summary>
+ /// Única rutina de refresco del selector de proveedores. Depende del texto
+ /// de búsqueda, del producto elegido (solo prioriza con el historial) y de
+ /// la casilla «Mostrar todos los proveedores». No modifica la selección: tras
+ /// enlazar el listado restituye la fila del proveedor elegido si está en él,
+ /// sin disparar el manejador de selección, y nunca selecciona otra fila.
+ /// </summary>
+ /// <returns>Tarea que representa el refresco.</returns>
         private async Task RefrescarProveedoresAsync()
         {
             string texto = txtBuscarProveedor.Text;
@@ -312,7 +324,6 @@ namespace CapaPresentacion.Compras
 
             if (respuesta.Resultado == ResultadoBusquedaCompras.ErrorPersistencia)
             {
-                // Solo se informa el mensaje del negocio, sin tocar el listado (RF-57).
                 lblMensajeProveedores.Text = respuesta.Mensaje;
                 return;
             }
@@ -329,8 +340,6 @@ namespace CapaPresentacion.Compras
                 }
             }
 
-            // El elegido sigue vigente en sus rótulos aunque no figure en el listado;
-            // se avisa para que la grilla sin fila marcada no resulte confusa.
             bool elegidoFuera = _idProveedorElegido.HasValue
                 && respuesta.Proveedores.Count > 0
                 && !respuesta.Proveedores.Any(p => p.IdProveedor == _idProveedorElegido.Value);
@@ -366,14 +375,14 @@ namespace CapaPresentacion.Compras
             await EjecutarAsync(RefrescarProductosAsync);
         }
 
-        /// <summary>
-        /// Única rutina de refresco del selector de productos. Depende del texto de
-        /// búsqueda, del proveedor elegido (solo prioriza con el historial) y de la
-        /// casilla «Mostrar todos los productos». No modifica la selección: tras
-        /// enlazar el listado restituye la fila del producto elegido si está en él,
-        /// sin disparar el manejador de selección, y nunca selecciona otra fila.
-        /// </summary>
-        /// <returns>Tarea que representa el refresco.</returns>
+ /// <summary>
+ /// Única rutina de refresco del selector de productos. Depende del texto de
+ /// búsqueda, del proveedor elegido (solo prioriza con el historial) y de la
+ /// casilla «Mostrar todos los productos». No modifica la selección: tras
+ /// enlazar el listado restituye la fila del producto elegido si está en él,
+ /// sin disparar el manejador de selección, y nunca selecciona otra fila.
+ /// </summary>
+ /// <returns>Tarea que representa el refresco.</returns>
         private async Task RefrescarProductosAsync()
         {
             string texto = txtBuscarProducto.Text;
@@ -392,7 +401,6 @@ namespace CapaPresentacion.Compras
 
             if (respuesta.Resultado == ResultadoBusquedaCompras.ErrorPersistencia)
             {
-                // Solo se informa el mensaje del negocio, sin tocar el listado (RF-57).
                 lblMensajeProductos.Text = respuesta.Mensaje;
                 return;
             }
@@ -412,8 +420,6 @@ namespace CapaPresentacion.Compras
                 _claveCacheProductos = (idProveedor, mostrarTodos);
             }
 
-            // El elegido sigue vigente en sus rótulos aunque no figure en el listado;
-            // se avisa para que la grilla sin fila marcada no resulte confusa.
             bool elegidoFuera = _idProductoElegido.HasValue
                 && respuesta.Productos.Count > 0
                 && !respuesta.Productos.Any(p => p.IdProducto == _idProductoElegido.Value);
@@ -460,12 +466,9 @@ namespace CapaPresentacion.Compras
                     return;
                 }
 
-                // RF-38 / RF-39: el foco queda en Cantidad con el texto seleccionado.
                 txtCantidad.Focus();
                 txtCantidad.SelectAll();
 
-                // El historial solo prioriza: se refresca el listado de proveedores
-                // sin tocar el proveedor elegido ni autoseleccionar ninguno.
                 await RefrescarProveedoresAsync();
             });
         }
@@ -497,20 +500,18 @@ namespace CapaPresentacion.Compras
 
             ActualizarProveedorSeleccionado(idProveedor, razonSocial, documento);
 
-            // Elegir proveedor refresca solo el listado de productos (prioriza los
-            // habituales); no cambia el producto elegido ni encadena otros eventos.
             await EjecutarAsync(RefrescarProductosAsync);
         }
 
-        /// <summary>
-        /// Fija el proveedor elegido y refresca solo sus rótulos descriptivos y el
-        /// estado de la acción primaria (RF-12 y RF-58). No invoca el negocio ni
-        /// toca por sí mismo el listado de productos: el refresco del listado
-        /// de productos lo resuelve su manejador.
-        /// </summary>
-        /// <param name="idProveedor">Identificador del proveedor elegido.</param>
-        /// <param name="razonSocial">Razón social del proveedor elegido.</param>
-        /// <param name="documento">Documento del proveedor elegido.</param>
+ /// <summary>
+ /// Fija el proveedor elegido y refresca solo sus rótulos descriptivos y el
+ /// estado de la acción primaria. No invoca el negocio ni
+ /// toca por sí mismo el listado de productos: el refresco del listado
+ /// de productos lo resuelve su manejador.
+ /// </summary>
+ /// <param name="idProveedor">Identificador del proveedor elegido.</param>
+ /// <param name="razonSocial">Razón social del proveedor elegido.</param>
+ /// <param name="documento">Documento del proveedor elegido.</param>
         private void ActualizarProveedorSeleccionado(
             int idProveedor, string razonSocial, string documento)
         {
@@ -518,17 +519,15 @@ namespace CapaPresentacion.Compras
             _razonSocialProveedor = razonSocial;
             _documentoProveedor = documento;
 
-            // MostrarDatosProveedor refresca los dos rótulos y, con ellos, el
-            // estado de «REGISTRAR COMPRA» (RF-58).
             MostrarDatosProveedor();
         }
 
-        /// <summary>
-        /// Propone los precios actuales del producto en el área de captura. El
-        /// usuario puede corregirlos antes de agregar la línea (RF-38 y RF-39).
-        /// </summary>
-        /// <param name="idProducto">Producto elegido en la búsqueda.</param>
-        /// <returns>Tarea que representa la consulta del prellenado.</returns>
+ /// <summary>
+ /// Propone los precios actuales del producto en el área de captura. El
+ /// usuario puede corregirlos antes de agregar la línea.
+ /// </summary>
+ /// <param name="idProducto">Producto elegido en la búsqueda.</param>
+ /// <returns>Tarea que representa la consulta del prellenado.</returns>
         private async Task PrellenarPreciosAsync(int idProducto)
         {
             RespuestaPreciosProducto respuesta =
@@ -552,19 +551,16 @@ namespace CapaPresentacion.Compras
                 respuesta.Precios.PrecioVenta.ToString("0.00", CultureInfo.CurrentCulture);
         }
 
-        // =====================================================================
-        // 3. ÁREA DE CAPTURA Y GRILLA DE LÍNEAS
-        // =====================================================================
 
         private void captura_TextChanged(object? sender, EventArgs e)
         {
             ActualizarSubtotalPreparacion();
         }
 
-        /// <summary>
-        /// Muestra el subtotal de la línea en preparación. Se calcula solo con el
-        /// negocio y vale «—» mientras la entrada no sea válida (RF-65 / D-21).
-        /// </summary>
+ /// <summary>
+ /// Muestra el subtotal de la línea en preparación. Se calcula solo con el
+ /// negocio y vale «—» mientras la entrada no sea válida.
+ /// </summary>
         private void ActualizarSubtotalPreparacion()
         {
             SubtotalLineaDto subtotal = _negocio.CalcularSubtotalEnPreparacion(
@@ -584,12 +580,12 @@ namespace CapaPresentacion.Compras
             await EjecutarAsync(GuardarLineaAsync);
         }
 
-        /// <summary>
-        /// Agrega una línea nueva o guarda la corrección de la línea en edición,
-        /// según el estado del área de captura, y rebindea la grilla con la lista
-        /// que devuelve el negocio.
-        /// </summary>
-        /// <returns>Tarea que representa la operación de línea.</returns>
+ /// <summary>
+ /// Agrega una línea nueva o guarda la corrección de la línea en edición,
+ /// según el estado del área de captura, y rebindea la grilla con la lista
+ /// que devuelve el negocio.
+ /// </summary>
+ /// <returns>Tarea que representa la operación de línea.</returns>
         private async Task GuardarLineaAsync()
         {
             if (!_idProveedorElegido.HasValue)
@@ -610,8 +606,8 @@ namespace CapaPresentacion.Compras
                     IndiceLinea = indiceEdicion,
                     IdProducto = idProducto,
                     Cantidad = txtCantidad.Text,
-                    PrecioCompra = txtPrecioCompra.Text,
-                    PrecioVenta = txtPrecioVenta.Text,
+                    PrecioCompra = null,
+                    PrecioVenta = null,
                     LineasActuales = lineasActuales
                 });
             }
@@ -621,8 +617,8 @@ namespace CapaPresentacion.Compras
                 {
                     IdProducto = idProducto,
                     Cantidad = txtCantidad.Text,
-                    PrecioCompra = txtPrecioCompra.Text,
-                    PrecioVenta = txtPrecioVenta.Text,
+                    PrecioCompra = null,
+                    PrecioVenta = null,
                     LineasActuales = lineasActuales
                 });
             }
@@ -635,7 +631,6 @@ namespace CapaPresentacion.Compras
 
             if (!esExito)
             {
-                // En rechazo se conserva la captura y la grilla (RNF-11).
                 return;
             }
 
@@ -683,11 +678,11 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        /// <summary>
-        /// Quita la línea indicada con el resultado del negocio: si falla muestra
-        /// su mensaje y no toca la grilla (RF-29). Sin un índice válido no hace nada.
-        /// </summary>
-        /// <param name="indice">Fila de la grilla seleccionada.</param>
+ /// <summary>
+ /// Quita la línea indicada con el resultado del negocio: si falla muestra
+ /// su mensaje y no toca la grilla. Sin un índice válido no hace nada.
+ /// </summary>
+ /// <param name="indice">Fila de la grilla seleccionada.</param>
         private void QuitarLineaDeGrilla(int indice)
         {
             if (_nivelActualizando > 0 || indice < 0 || indice >= _lineas.Count)
@@ -715,12 +710,12 @@ namespace CapaPresentacion.Compras
             RefrescarGrillaLineas();
         }
 
-        /// <summary>
-        /// Carga en el área de captura la línea indicada y activa el modo edición
-        /// (RF-30 y RF-62). No consulta la base ni recalcula importes. Sin un
-        /// índice válido no hace nada.
-        /// </summary>
-        /// <param name="indice">Fila de la grilla seleccionada.</param>
+ /// <summary>
+ /// Carga en el área de captura la línea indicada y activa el modo edición
+ ///. No consulta la base ni recalcula importes. Sin un
+ /// índice válido no hace nada.
+ /// </summary>
+ /// <param name="indice">Fila de la grilla seleccionada.</param>
         private void EditarLineaEnCaptura(int indice)
         {
             if (_nivelActualizando > 0 || indice < 0 || indice >= _lineas.Count)
@@ -743,10 +738,10 @@ namespace CapaPresentacion.Compras
             ActualizarSubtotalPreparacion();
         }
 
-        /// <summary>
-        /// Vuelve a enlazar la grilla de líneas y actualiza el total general con la
-        /// única fórmula del negocio sobre los subtotales de las líneas (RF-7).
-        /// </summary>
+ /// <summary>
+ /// Vuelve a enlazar la grilla de líneas y actualiza el total general con la
+ /// única fórmula del negocio sobre los subtotales de las líneas.
+ /// </summary>
         private void RefrescarGrillaLineas()
         {
             using (SuspenderEventos())
@@ -756,31 +751,18 @@ namespace CapaPresentacion.Compras
                 gridLineas.DataSource = _lineas.ToList();
             }
 
-            decimal montoTotal =
-                CalculoImportesCompra.CalcularMontoTotal(_lineas.Select(linea => linea.Subtotal));
-
-            lblMontoTotal.Text = $"Total: {montoTotal.ToString("N2", CultureInfo.CurrentCulture)}";
+            int totalUnidades = _lineas.Sum(linea => linea.Cantidad);
+            lblMontoTotal.Text = $"Total: {totalUnidades} uds. ({_lineas.Count} ítems)";
 
             ActualizarEstadoAcciones();
         }
 
-        // =====================================================================
-        // 4. REGISTRO, LIMPIEZA E HISTORIAL (el historial se abre en el modal)
-        // =====================================================================
 
         private async void btnRegistrar_Click(object? sender, EventArgs e)
         {
             await EjecutarAsync(RegistrarCompraAsync);
         }
 
-        /// <summary>
-        /// Registra la compra con el proveedor elegido y las líneas de la grilla.
-        /// Mientras dura la operación el botón queda deshabilitado y la bandera
-        /// ignora reentradas (RF-58). En éxito descarta la compra en carga (RF-32);
-        /// el historial ya no se refresca en esta pantalla (RF-52 se cumple desde
-        /// el modal). En rechazo conserva todo (RNF-11).
-        /// </summary>
-        /// <returns>Tarea que representa el registro de la compra.</returns>
         private async Task RegistrarCompraAsync()
         {
             if (_registrando)
@@ -804,7 +786,8 @@ namespace CapaPresentacion.Compras
                 SolicitudRegistrarCompraDto solicitud = new()
                 {
                     IdProveedor = _idProveedorElegido,
-                    Lineas = _lineas.ToList()
+                    Lineas = _lineas.ToList(),
+                    EstadoSolicitud = "Pendiente"
                 };
 
                 RespuestaRegistroCompra respuesta =
@@ -815,6 +798,17 @@ namespace CapaPresentacion.Compras
                 if (respuesta.Resultado != ResultadoRegistroCompra.Exito)
                 {
                     return;
+                }
+
+                if (respuesta.InfoCorreo != null)
+                {
+                    string mensajeCorreo = respuesta.InfoCorreo.Simulado
+                        ? $"Solicitud N° {respuesta.IdCompra:D6} enviada al proveedor en estado 'Pendiente'.\n\n[Simulación SMTP activa]\nCorreo: {respuesta.InfoCorreo.Destinatario}\nAsunto: {respuesta.InfoCorreo.Asunto}\n\nLa orden se generó exitosamente sin alterar el inventario."
+                        : respuesta.InfoCorreo.Exitoso
+                            ? $"Solicitud N° {respuesta.IdCompra:D6} registrada y despachada por correo a {respuesta.InfoCorreo.Destinatario}."
+                            : $"Solicitud N° {respuesta.IdCompra:D6} registrada en estado 'Pendiente'.\nAdvertencia de correo: {respuesta.InfoCorreo.Mensaje}";
+
+                    MessageBox.Show(mensajeCorreo, "Solicitud de Reabastecimiento", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
 
                 LimpiarTrasRegistro();
@@ -834,7 +828,6 @@ namespace CapaPresentacion.Compras
                 return;
             }
 
-            // El texto de la confirmación lo redacta el negocio (RF-31).
             DialogResult resultado = MaterialMessageBox.Show(
                 propietario,
                 _negocio.ObtenerMensajeConfirmacionCancelarCompra(),
@@ -854,17 +847,34 @@ namespace CapaPresentacion.Compras
 
         private void btnVerHistorial_Click(object? sender, EventArgs e)
         {
-            // El historial vive ahora en el modal (RF-49 … RF-54): se abre en modo
-            // lista y cada fila elegida carga su detalle. Al cerrarse no altera la
-            // compra en carga.
-            using DetalleCompraForm historial = new DetalleCompraForm(_negocio, _rolActual);
+            using DetalleCompraForm historial = new DetalleCompraForm(_negocio, _rolActual, _idUsuario);
             historial.ShowDialog(this);
         }
 
-        /// <summary>
-        /// Descarta el proveedor elegido, las líneas y el área de captura, tanto
-        /// tras registrar (RF-32) como tras confirmar la limpieza (RF-31).
-        /// </summary>
+        private void gridProductos_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.RowIndex >= gridProductos.Rows.Count)
+            {
+                return;
+            }
+
+            if (gridProductos.Rows[e.RowIndex].DataBoundItem is ProductoBuscadoDto prod && prod.EsBajoStockMinimo)
+            {
+                e.CellStyle.ForeColor = Color.OrangeRed;
+                e.CellStyle.SelectionForeColor = Color.Gold;
+
+                if (gridProductos.Columns[e.ColumnIndex].Name == colProductoNombre.Name)
+                {
+                    e.Value = $"⚠️ {prod.Nombre} (Stock: {prod.Stock}/{prod.StockMinimo})";
+                    e.FormattingApplied = true;
+                }
+            }
+        }
+
+ /// <summary>
+ /// Descarta el proveedor elegido, las líneas y el área de captura, tanto
+ /// tras registrar como tras confirmar la limpieza.
+ /// </summary>
         private void LimpiarTrasRegistro()
         {
             using (SuspenderEventos())
@@ -888,13 +898,13 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        /// <summary>
-        /// Deja el área de captura vacía y sin modo edición. El listado de
-        /// productos se restituye desde la caché si coincide con el proveedor vigente y
-        /// la casilla «Mostrar todos los productos»; si no hay caché coherente queda
-        /// vacío, sin consultar el origen de datos (RF-16). No modifica las casillas
-        /// ni el listado de proveedores.
-        /// </summary>
+ /// <summary>
+ /// Deja el área de captura vacía y sin modo edición. El listado de
+ /// productos se restituye desde la caché si coincide con el proveedor vigente y
+ /// la casilla «Mostrar todos los productos»; si no hay caché coherente queda
+ /// vacío, sin consultar el origen de datos. No modifica las casillas
+ /// ni el listado de proveedores.
+ /// </summary>
         private void LimpiarCaptura()
         {
             using (SuspenderEventos())
@@ -915,16 +925,15 @@ namespace CapaPresentacion.Compras
                 btnAgregarLinea.Text = TextoBotonAgregar;
             }
 
-            // Sin consultar: restituye desde la caché el listado del proveedor vigente.
             RestituirProductosDesdeCache();
             ActualizarSubtotalPreparacion();
         }
 
-        /// <summary>
-        /// Restituye el último listado completo de productos si su clave (proveedor y
-        /// casilla) coincide con el estado actual. Sin caché coherente no hace nada:
-        /// el listado queda vacío. Nunca consulta el origen de datos (RF-16).
-        /// </summary>
+ /// <summary>
+ /// Restituye el último listado completo de productos si su clave (proveedor y
+ /// casilla) coincide con el estado actual. Sin caché coherente no hace nada:
+ /// el listado queda vacío. Nunca consulta el origen de datos.
+ /// </summary>
         private void RestituirProductosDesdeCache()
         {
             if (!string.IsNullOrWhiteSpace(txtBuscarProducto.Text)
@@ -943,12 +952,12 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        /// <summary>
-        /// Deselecciona el proveedor elegido sin tocar textos, casillas, producto,
-        /// captura ni líneas, y refresca el listado de productos sin contexto de
-        /// proveedor. Cambiar el contexto invalida por sí solo las respuestas pendientes.
-        /// </summary>
-        /// <returns>Tarea que representa el refresco del listado de productos.</returns>
+ /// <summary>
+ /// Deselecciona el proveedor elegido sin tocar textos, casillas, producto,
+ /// captura ni líneas, y refresca el listado de productos sin contexto de
+ /// proveedor. Cambiar el contexto invalida por sí solo las respuestas pendientes.
+ /// </summary>
+ /// <returns>Tarea que representa el refresco del listado de productos.</returns>
         private async Task QuitarProveedorAsync()
         {
             _idProveedorElegido = null;
@@ -960,12 +969,12 @@ namespace CapaPresentacion.Compras
             await RefrescarProductosAsync();
         }
 
-        /// <summary>
-        /// Deselecciona el producto elegido, limpia la captura prellenada y refresca
-        /// el listado de proveedores sin contexto de producto. No toca al proveedor
-        /// elegido, los textos de búsqueda, las casillas ni las líneas.
-        /// </summary>
-        /// <returns>Tarea que representa el refresco del listado de proveedores.</returns>
+ /// <summary>
+ /// Deselecciona el producto elegido, limpia la captura prellenada y refresca
+ /// el listado de proveedores sin contexto de producto. No toca al proveedor
+ /// elegido, los textos de búsqueda, las casillas ni las líneas.
+ /// </summary>
+ /// <returns>Tarea que representa el refresco del listado de proveedores.</returns>
         private async Task QuitarProductoAsync()
         {
             _idProductoElegido = null;
@@ -983,10 +992,10 @@ namespace CapaPresentacion.Compras
             await RefrescarProveedoresAsync();
         }
 
-        /// <summary>
-        /// Quita la fila marcada de una grilla sin disparar su manejador de selección.
-        /// </summary>
-        /// <param name="grilla">Grilla cuya marca se quita.</param>
+ /// <summary>
+ /// Quita la fila marcada de una grilla sin disparar su manejador de selección.
+ /// </summary>
+ /// <param name="grilla">Grilla cuya marca se quita.</param>
         private void QuitarMarcaDeGrilla(DataGridView grilla)
         {
             using (SuspenderSeleccion())
@@ -996,17 +1005,14 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        // =====================================================================
-        // 4b. ACCIÓN «DESELECCIONAR» DENTRO DE LA FILA ELEGIDA
-        // =====================================================================
 
         private const string TextoDeseleccionarProveedor = "Deseleccionar proveedor";
         private const string TextoDeseleccionarProducto = "Deseleccionar producto";
 
-        /// <summary>
-        /// Estado del puntero sobre el botón de una grilla: fila con el puntero sobre el
-        /// botón y fila con el botón presionado (<c>-1</c> si no hay ninguna).
-        /// </summary>
+ /// <summary>
+ /// Estado del puntero sobre el botón de una grilla: fila con el puntero sobre el
+ /// botón y fila con el botón presionado (<c>-1</c> si no hay ninguna).
+ /// </summary>
         private sealed class EstadoAccionGrilla
         {
             public int FilaSobreBoton { get; set; } = -1;
@@ -1017,11 +1023,11 @@ namespace CapaPresentacion.Compras
         private readonly EstadoAccionGrilla _accionProveedores = new();
         private readonly EstadoAccionGrilla _accionProductos = new();
 
-        /// <summary>
-        /// Conecta a una grilla de selección los eventos que dibujan y operan el botón
-        /// «Deseleccionar» de su última columna.
-        /// </summary>
-        /// <param name="grilla">Grilla de proveedores o de productos.</param>
+ /// <summary>
+ /// Conecta a una grilla de selección los eventos que dibujan y operan el botón
+ /// «Deseleccionar» de su última columna.
+ /// </summary>
+ /// <param name="grilla">Grilla de proveedores o de productos.</param>
         private void ConectarAccionDeFila(DataGridView grilla)
         {
             grilla.CellPainting += gridAccion_CellPainting;
@@ -1040,28 +1046,28 @@ namespace CapaPresentacion.Compras
         private DataGridViewColumn ColumnaAccionDe(DataGridView grilla)
             => ReferenceEquals(grilla, gridProveedores) ? colProveedorAccion : colProductoAccion;
 
-        /// <summary>
-        /// Indica si la sesión puede operar el módulo y no hay un registro en curso.
-        /// </summary>
+ /// <summary>
+ /// Indica si la sesión puede operar el módulo y no hay un registro en curso.
+ /// </summary>
         private bool PuedeOperarSelectores
             => PoliticaAcceso.PuedeOperarCompras(_rolActual) && !_registrando;
 
         private bool PuedeDeseleccionarProveedor()
             => PuedeOperarSelectores && _idProveedorElegido.HasValue;
 
-        /// <summary>
-        /// «Deseleccionar producto» no se ofrece mientras se edita una línea.
-        /// </summary>
+ /// <summary>
+ /// «Deseleccionar producto» no se ofrece mientras se edita una línea.
+ /// </summary>
         private bool PuedeDeseleccionarProducto()
             => PuedeOperarSelectores && _idProductoElegido.HasValue && !_indiceEdicion.HasValue;
 
-        /// <summary>
-        /// Obtiene el identificador de la entidad que muestra una fila leyendo la lista
-        /// enlazada, sin tocar <c>Rows[i]</c>: así el dibujo no desacopla filas compartidas.
-        /// </summary>
-        /// <param name="grilla">Grilla de proveedores o de productos.</param>
-        /// <param name="indiceFila">Índice de la fila en la grilla.</param>
-        /// <returns>El identificador o <see langword="null"/> si la fila no existe.</returns>
+ /// <summary>
+ /// Obtiene el identificador de la entidad que muestra una fila leyendo la lista
+ /// enlazada, sin tocar <c>Rows[i]</c>: así el dibujo no desacopla filas compartidas.
+ /// </summary>
+ /// <param name="grilla">Grilla de proveedores o de productos.</param>
+ /// <param name="indiceFila">Índice de la fila en la grilla.</param>
+ /// <returns>El identificador o <see langword="null"/> si la fila no existe.</returns>
         private int? ObtenerIdDeFila(DataGridView grilla, int indiceFila)
         {
             if (grilla.DataSource is not IList lista || indiceFila < 0 || indiceFila >= lista.Count)
@@ -1083,11 +1089,11 @@ namespace CapaPresentacion.Compras
                 : null;
         }
 
-        /// <summary>
-        /// Indica si la entidad elegida de la grilla figura en su listado vigente
-        /// (comparación por identificador).
-        /// </summary>
-        /// <param name="grilla">Grilla de proveedores o de productos.</param>
+ /// <summary>
+ /// Indica si la entidad elegida de la grilla figura en su listado vigente
+ /// (comparación por identificador).
+ /// </summary>
+ /// <param name="grilla">Grilla de proveedores o de productos.</param>
         private bool ElegidoEstaEnGrilla(DataGridView grilla)
         {
             int? idElegido = ReferenceEquals(grilla, gridProveedores)
@@ -1110,13 +1116,13 @@ namespace CapaPresentacion.Compras
             return false;
         }
 
-        /// <summary>
-        /// Indica si el botón de la columna de acción de una fila debe mostrarse: la
-        /// columna cabe en la grilla, se puede operar y la fila es la de la entidad elegida
-        /// (por identificador, nunca por posición ni por <c>Selected</c>).
-        /// </summary>
-        /// <param name="grilla">Grilla de proveedores o de productos.</param>
-        /// <param name="indiceFila">Índice de la fila en la grilla.</param>
+ /// <summary>
+ /// Indica si el botón de la columna de acción de una fila debe mostrarse: la
+ /// columna cabe en la grilla, se puede operar y la fila es la de la entidad elegida
+ /// (por identificador, nunca por posición ni por <c>Selected</c>).
+ /// </summary>
+ /// <param name="grilla">Grilla de proveedores o de productos.</param>
+ /// <param name="indiceFila">Índice de la fila en la grilla.</param>
         private bool EsAccionVisibleEnFila(DataGridView grilla, int indiceFila)
         {
             bool esProveedores = ReferenceEquals(grilla, gridProveedores);
@@ -1129,13 +1135,13 @@ namespace CapaPresentacion.Compras
                 && ObtenerIdDeFila(grilla, indiceFila) == idElegido;
         }
 
-        /// <summary>
-        /// Refresca todo lo que depende de qué está elegido y de si se puede operar: invalida
-        /// la columna de acción de ambas grillas, restablece el hover y el cursor y muestra el
-        /// enlace «Deseleccionar» de respaldo solo cuando hay algo para deseleccionar y su
-        /// botón no está disponible en la grilla (el elegido no figura en el listado o la
-        /// columna no cabe).
-        /// </summary>
+ /// <summary>
+ /// Refresca todo lo que depende de qué está elegido y de si se puede operar: invalida
+ /// la columna de acción de ambas grillas, restablece el hover y el cursor y muestra el
+ /// enlace «Deseleccionar» de respaldo solo cuando hay algo para deseleccionar y su
+ /// botón no está disponible en la grilla (el elegido no figura en el listado o la
+ /// columna no cabe).
+ /// </summary>
         private void ActualizarAccionesDeSeleccion()
         {
             RestablecerEstadoAccion(gridProveedores);
@@ -1165,13 +1171,13 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        /// <summary>
-        /// Muestra u oculta la columna de acción según el ancho disponible: cabe si, con la
-        /// barra vertical, quedan los anchos mínimos de las demás columnas y el ancho fijo del
-        /// botón. Si no cabe, la acción queda en el enlace de respaldo en lugar de recortarse.
-        /// </summary>
-        /// <param name="grilla">Grilla de proveedores o de productos.</param>
-        /// <returns><see langword="true"/> si cambió la visibilidad de la columna.</returns>
+ /// <summary>
+ /// Muestra u oculta la columna de acción según el ancho disponible: cabe si, con la
+ /// barra vertical, quedan los anchos mínimos de las demás columnas y el ancho fijo del
+ /// botón. Si no cabe, la acción queda en el enlace de respaldo en lugar de recortarse.
+ /// </summary>
+ /// <param name="grilla">Grilla de proveedores o de productos.</param>
+ /// <returns><see langword="true"/> si cambió la visibilidad de la columna.</returns>
         private bool AjustarVisibilidadAccion(DataGridView grilla)
         {
             DataGridViewColumn accion = ColumnaAccionDe(grilla);
@@ -1205,10 +1211,10 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        /// <summary>
-        /// Dibuja la columna de acción: siempre el fondo y el borde de la celda y, solo en
-        /// la fila de la entidad elegida, el botón «Deseleccionar» con el estado del puntero.
-        /// </summary>
+ /// <summary>
+ /// Dibuja la columna de acción: siempre el fondo y el borde de la celda y, solo en
+ /// la fila de la entidad elegida, el botón «Deseleccionar» con el estado del puntero.
+ /// </summary>
         private void gridAccion_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
         {
             if (sender is not DataGridView grilla
@@ -1244,10 +1250,10 @@ namespace CapaPresentacion.Compras
                 e.Graphics, e.CellBounds, estadoBoton, e.CellStyle?.Font ?? grilla.Font, grilla.DeviceDpi / 96F);
         }
 
-        /// <summary>
-        /// Indica si el puntero está sobre el botón visible de una fila (hit-test con el mismo
-        /// rectángulo que usa el dibujo).
-        /// </summary>
+ /// <summary>
+ /// Indica si el puntero está sobre el botón visible de una fila (hit-test con el mismo
+ /// rectángulo que usa el dibujo).
+ /// </summary>
         private bool EstaSobreBotonVisible(DataGridView grilla, DataGridViewCellMouseEventArgs e)
         {
             if (e.RowIndex < 0
@@ -1327,10 +1333,10 @@ namespace CapaPresentacion.Compras
             InvalidarCeldaDeAccion(grilla, filaPrevia);
         }
 
-        /// <summary>
-        /// Deselecciona la entidad elegida al hacer clic sobre el botón de su fila. Un clic
-        /// fuera del botón o en la celda de acción de una fila no elegida no deselecciona.
-        /// </summary>
+ /// <summary>
+ /// Deselecciona la entidad elegida al hacer clic sobre el botón de su fila. Un clic
+ /// fuera del botón o en la celda de acción de una fila no elegida no deselecciona.
+ /// </summary>
         private async void gridAccion_CellMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
         {
             if (sender is not DataGridView grilla
@@ -1363,9 +1369,9 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        /// <summary>
-        /// Invalida solo la celda de acción de una fila (no toda la grilla).
-        /// </summary>
+ /// <summary>
+ /// Invalida solo la celda de acción de una fila (no toda la grilla).
+ /// </summary>
         private void InvalidarCeldaDeAccion(DataGridView grilla, int indiceFila)
         {
             DataGridViewColumn columna = ColumnaAccionDe(grilla);
@@ -1392,19 +1398,16 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        // =====================================================================
-        // 5. PRESENTACIÓN DE LOS LISTADOS Y DATOS SELECCIONADOS
-        // =====================================================================
 
-        /// <summary>
-        /// Vuelve a enlazar el listado de productos sin disparar la selección
-        /// automática de la primera fila. El enlace usa siempre una copia nueva de
-        /// los resultados, de modo que vaciar la lista de campo no altera el
-        /// <c>DataSource</c> ni deja el <c>CurrencyManager</c> en una fila inválida.
-        /// Admite tanto la búsqueda global como los habituales del proveedor
-        /// (RF-15 y RF-66).
-        /// </summary>
-        /// <param name="origen">Lista de resultados o <see langword="null"/> para vaciarlo.</param>
+ /// <summary>
+ /// Vuelve a enlazar el listado de productos sin disparar la selección
+ /// automática de la primera fila. El enlace usa siempre una copia nueva de
+ /// los resultados, de modo que vaciar la lista de campo no altera el
+ /// <c>DataSource</c> ni deja el <c>CurrencyManager</c> en una fila inválida.
+ /// Admite tanto la búsqueda global como los habituales del proveedor
+ ///.
+ /// </summary>
+ /// <param name="origen">Lista de resultados o <see langword="null"/> para vaciarlo.</param>
         private void MostrarProductos(object? origen)
         {
             object? copia = origen switch
@@ -1426,13 +1429,13 @@ namespace CapaPresentacion.Compras
             ActualizarAccionesDeSeleccion();
         }
 
-        /// <summary>
-        /// Vuelve a enlazar el listado de proveedores sin disparar la selección
-        /// automática de la primera fila. El enlace usa siempre una copia nueva de
-        /// los resultados, de modo que vaciar la lista de campo no altera el
-        /// <c>DataSource</c> ni deja el <c>CurrencyManager</c> en una fila inválida.
-        /// </summary>
-        /// <param name="origen">Lista de resultados o <see langword="null"/> para vaciarlo.</param>
+ /// <summary>
+ /// Vuelve a enlazar el listado de proveedores sin disparar la selección
+ /// automática de la primera fila. El enlace usa siempre una copia nueva de
+ /// los resultados, de modo que vaciar la lista de campo no altera el
+ /// <c>DataSource</c> ni deja el <c>CurrencyManager</c> en una fila inválida.
+ /// </summary>
+ /// <param name="origen">Lista de resultados o <see langword="null"/> para vaciarlo.</param>
         private void MostrarProveedores(object? origen)
         {
             object? copia = origen switch
@@ -1473,7 +1476,6 @@ namespace CapaPresentacion.Compras
                 ? $"CUIT: {_documentoProveedor}"
                 : TextoDocumentoSinElegir;
 
-            // RF-58: sin proveedor elegido la acción primaria queda deshabilitada.
             ActualizarEstadoAcciones();
             ActualizarAccionesDeSeleccion();
         }
@@ -1508,13 +1510,13 @@ namespace CapaPresentacion.Compras
             ActualizarAccionesDeSeleccion();
         }
 
-        /// <summary>
-        /// Restituye por identificador la fila del producto elegido en el listado
-        /// vigente, sin disparar el manejador de selección. Si el producto no está
-        /// en el listado no se toca la selección: sus rótulos y la captura siguen
-        /// intactos (RF-66 y RNF-11).
-        /// </summary>
-        /// <param name="idProducto">Producto elegido o <see langword="null"/>.</param>
+ /// <summary>
+ /// Restituye por identificador la fila del producto elegido en el listado
+ /// vigente, sin disparar el manejador de selección. Si el producto no está
+ /// en el listado no se toca la selección: sus rótulos y la captura siguen
+ /// intactos.
+ /// </summary>
+ /// <param name="idProducto">Producto elegido o <see langword="null"/>.</param>
         private void SeleccionarProductoEnGrilla(int? idProducto)
         {
             if (idProducto is null || IsDisposed || !IsHandleCreated || gridProductos.IsDisposed)
@@ -1599,9 +1601,6 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        // =====================================================================
-        // 6. FORMATO DE PRESENTACIÓN (RNF-12)
-        // =====================================================================
 
         private void gridLineas_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
@@ -1640,29 +1639,15 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        // =====================================================================
-        // 7. ADAPTACIÓN AL DPI Y AL ANCHO DISPONIBLE
-        // =====================================================================
 
-        // Valores lógicos (96 DPI). Los píxeles que no escalan solos (alto de
-        // cabeceras y filas de las grillas, anchos de columna, alto mínimo de
-        // desplazamiento y relleno de celda) se calculan aquí con el factor de
-        // escala actual; los tamaños del diseñador sí los escala AutoScaleMode.Dpi.
         private const float UmbralApiladoLogico = 840F;
 
-        // A 100 % el título «1 · Proveedor» y el checkbox de 140 px ya no caben en la columna
-        // del catálogo con 840 lógicos de ancho: la disposición apilada empieza antes.
         private const float UmbralApiladoCienPorCientoLogico = 950F;
         private const int AltoMinimoDosColumnasLogico = 456;
         private const int AltoMinimoApiladoLogico = 1080;
         private const int AltoCatalogoApiladoLogico = 460;
         private const int SeparacionLogica = 6;
 
-        // El MaterialCheckbox dibuja su caja y su texto sin escalar con el DPI: centrados a
-        // 15 px del borde superior (se recorta con menos de 30 px de alto) y ocupando unos
-        // 140 px de ancho con «Mostrar todos». La fila del título de cada tarjeta no baja de
-        // 30 px y el checkbox no baja de 140 px: a 150 % (24 y 124 lógicos = 36 y 186 px) no
-        // cambia nada y a 100 % la fila pasa de 24 a 30 px y el ancho de 124 a 140 px.
         private const int AltoMinimoFilaTituloPx = 30;
         private const int AnchoMinimoCheckboxPx = 140;
 
@@ -1678,12 +1663,12 @@ namespace CapaPresentacion.Compras
             AplicarEscalaYDisposicion();
         }
 
-        /// <summary>
-        /// Ajusta lo que depende del DPI y elige la disposición: dos columnas
-        /// (catálogo a la izquierda, compra actual a la derecha) o una sola columna
-        /// apilada cuando el ancho lógico no alcanza. El desplazamiento es solo
-        /// vertical y vive en <c>pnlContenedor</c>.
-        /// </summary>
+ /// <summary>
+ /// Ajusta lo que depende del DPI y elige la disposición: dos columnas
+ /// (catálogo a la izquierda, compra actual a la derecha) o una sola columna
+ /// apilada cuando el ancho lógico no alcanza. El desplazamiento es solo
+ /// vertical y vive en <c>pnlContenedor</c>.
+ /// </summary>
         private void AplicarEscalaYDisposicion()
         {
             if (IsDisposed || ClientSize.Width <= 0 || ClientSize.Height <= 0)
@@ -1704,15 +1689,15 @@ namespace CapaPresentacion.Compras
                 Escalar(apilar ? AltoMinimoApiladoLogico : AltoMinimoDosColumnasLogico, factor));
         }
 
-        /// <summary>
-        /// Garantiza que la fila del título de las dos tarjetas del catálogo, que aloja el
-        /// checkbox «Mostrar todos», mida al menos <see cref="AltoMinimoFilaTituloPx"/> píxeles
-        /// reales y que el checkbox mida al menos <see cref="AnchoMinimoCheckboxPx"/> de ancho. Al cargar, el escalado automático del diseñador todavía no se aplicó a las
-        /// filas, así que se fija el valor lógico que, ya escalado, cumple el mínimo (24 a
-        /// 150 %, 30 a 100 %); tras un cambio de DPI las filas ya están escaladas y se fijan
-        /// en píxeles reales.
-        /// </summary>
-        /// <param name="yaEscalado">Indica si las filas ya reflejan el DPI actual.</param>
+ /// <summary>
+ /// Garantiza que la fila del título de las dos tarjetas del catálogo, que aloja el
+ /// checkbox «Mostrar todos», mida al menos <see cref="AltoMinimoFilaTituloPx"/> píxeles
+ /// reales y que el checkbox mida al menos <see cref="AnchoMinimoCheckboxPx"/> de ancho. Al cargar, el escalado automático del diseñador todavía no se aplicó a las
+ /// filas, así que se fija el valor lógico que, ya escalado, cumple el mínimo (24 a
+ /// 150 %, 30 a 100 %); tras un cambio de DPI las filas ya están escaladas y se fijan
+ /// en píxeles reales.
+ /// </summary>
+ /// <param name="yaEscalado">Indica si las filas ya reflejan el DPI actual.</param>
         private void AjustarFilaTitulo(bool yaEscalado)
         {
             float factor = DeviceDpi / 96F;
@@ -1786,12 +1771,12 @@ namespace CapaPresentacion.Compras
             tblPrincipal.ResumeLayout(true);
         }
 
-        /// <summary>
-        /// Fija en píxeles reales las medidas de las grillas que
-        /// <c>AutoScaleMode</c> no escala (cabeceras sin recorte de descendentes,
-        /// filas, anchos mínimos y relleno de celda).
-        /// </summary>
-        /// <param name="factor">Factor de escala (DPI actual / 96).</param>
+ /// <summary>
+ /// Fija en píxeles reales las medidas de las grillas que
+ /// <c>AutoScaleMode</c> no escala (cabeceras sin recorte de descendentes,
+ /// filas, anchos mínimos y relleno de celda).
+ /// </summary>
+ /// <param name="factor">Factor de escala (DPI actual / 96).</param>
         private void AjustarGrillas(float factor)
         {
             if (_escalaGrillas == factor)
@@ -1805,20 +1790,12 @@ namespace CapaPresentacion.Compras
             AjustarGrilla(gridProductos, 30, 26, factor);
             AjustarGrilla(gridLineas, 32, 32, factor);
 
-            // Con los mínimos ajustados al ancho disponible, el relleno horizontal de
-            // esta grilla baja a 4 (celdas) y 3 (cabeceras) lógicos para que los textos
-            // de las cabeceras no se trunquen.
             Padding rellenoCelda = new(Escalar(4, factor), 0, Escalar(4, factor), 0);
             gridLineas.DefaultCellStyle.Padding = rellenoCelda;
             gridLineas.AlternatingRowsDefaultCellStyle.Padding = rellenoCelda;
             gridLineas.ColumnHeadersDefaultCellStyle.Padding =
                 new Padding(Escalar(3, factor), 0, Escalar(3, factor), 0);
 
-            // Anchos de la grilla de proveedores (lógicos). El CUIT formateado mide 95 px a
-            // 100 % de DPI y con el relleno reducido necesita 103-104; la columna de acción
-            // («Deseleccionar» mide 89 px) es fija. Razón social 80 + CUIT 104 + acción 104 +
-            // barra vertical 17 = 305, que cabe en el ancho de diseño (309). Con menos ancho
-            // la columna de acción se oculta (AjustarVisibilidadAccion) y queda el enlace.
             colProveedorRazonSocial.MinimumWidth = Escalar(80, factor);
             colProveedorDocumento.MinimumWidth = Escalar(104, factor);
             gridProveedores.DefaultCellStyle.Padding = rellenoCelda;
@@ -1828,7 +1805,6 @@ namespace CapaPresentacion.Compras
             colProductoCodigo.MinimumWidth = Escalar(80, factor);
             colProductoNombre.MinimumWidth = Escalar(90, factor);
 
-            // Columna del botón «Deseleccionar»: ancho fijo y estable, escalado con el DPI.
             int anchoAccion = Escalar(PintorAccionFila.AnchoColumnaLogico, factor);
             colProveedorAccion.MinimumWidth = anchoAccion;
             colProveedorAccion.Width = anchoAccion;
@@ -1840,8 +1816,6 @@ namespace CapaPresentacion.Compras
                 ActualizarAccionesDeSeleccion();
             }
 
-            // Suma de mínimos = 544 lógicos: con la barra vertical (~17) cabe en la
-            // grilla en el umbral de apilado (≈563) y a 1366x768 a 150 % (≈579).
             colLineaProducto.MinimumWidth = Escalar(114, factor);
             colLineaCantidad.MinimumWidth = Escalar(70, factor);
             colLineaPrecioCompra.MinimumWidth = Escalar(100, factor);
@@ -1873,10 +1847,10 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        /// <summary>
-        /// Alinea a la derecha las cabeceras de las columnas numéricas para que
-        /// coincidan con sus importes (desktop-ux-patterns §2).
-        /// </summary>
+ /// <summary>
+ /// Alinea a la derecha las cabeceras de las columnas numéricas para que
+ /// coincidan con sus importes .
+ /// </summary>
         private void AlinearCabecerasNumericas()
         {
             colLineaCantidad.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
@@ -1885,59 +1859,56 @@ namespace CapaPresentacion.Compras
             colLineaSubtotal.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
         }
 
-        // =====================================================================
-        // 8. AYUDA COMÚN DE LOS MANEJADORES
-        // =====================================================================
 
-        /// <summary>
-        /// Indica si la respuesta de una búsqueda llegó tarde: la pantalla ya se
-        /// liberó o el texto consultado ya no es el que está escrito. La respuesta
-        /// obsoleta se descarta sin tocar la grilla (RF-10, RF-16, RNF-11).
-        /// </summary>
-        /// <param name="textoConsultado">Texto con el que se hizo la consulta.</param>
-        /// <param name="textoActual">Texto vigente en el cuadro de búsqueda.</param>
-        /// <returns><see langword="true"/> si la respuesta debe descartarse.</returns>
+ /// <summary>
+ /// Indica si la respuesta de una búsqueda llegó tarde: la pantalla ya se
+ /// liberó o el texto consultado ya no es el que está escrito. La respuesta
+ /// obsoleta se descarta sin tocar la grilla.
+ /// </summary>
+ /// <param name="textoConsultado">Texto con el que se hizo la consulta.</param>
+ /// <param name="textoActual">Texto vigente en el cuadro de búsqueda.</param>
+ /// <returns><see langword="true"/> si la respuesta debe descartarse.</returns>
         private bool EsRespuestaObsoleta(string textoConsultado, string textoActual)
             => IsDisposed || !string.Equals(textoConsultado, textoActual, StringComparison.Ordinal);
 
-        /// <summary>
-        /// Indica si la respuesta de una consulta por proveedor llegó tarde: la
-        /// pantalla ya se liberó o el proveedor vigente ya no es el consultado.
-        /// </summary>
-        /// <param name="idConsultado">Proveedor con el que se hizo la consulta.</param>
-        /// <param name="idVigente">Proveedor elegido actualmente.</param>
-        /// <returns><see langword="true"/> si la respuesta debe descartarse.</returns>
+ /// <summary>
+ /// Indica si la respuesta de una consulta por proveedor llegó tarde: la
+ /// pantalla ya se liberó o el proveedor vigente ya no es el consultado.
+ /// </summary>
+ /// <param name="idConsultado">Proveedor con el que se hizo la consulta.</param>
+ /// <param name="idVigente">Proveedor elegido actualmente.</param>
+ /// <returns><see langword="true"/> si la respuesta debe descartarse.</returns>
         private bool EsRespuestaObsoleta(int idConsultado, int? idVigente)
             => IsDisposed || idVigente != idConsultado;
 
-        /// <summary>
-        /// Indica si la selección programática de las grillas está en curso. Los
-        /// dos manejadores de selección salen mientras valga <see langword="true"/>,
-        /// de modo que restituir una fila no dispara el flujo inverso.
-        /// </summary>
+ /// <summary>
+ /// Indica si la selección programática de las grillas está en curso. Los
+ /// dos manejadores de selección salen mientras valga <see langword="true"/>,
+ /// de modo que restituir una fila no dispara el flujo inverso.
+ /// </summary>
         private bool SeleccionSuspendida => _actualizandoSeleccion || _nivelActualizando > 0;
 
-        /// <summary>
-        /// Suspende los manejadores de selección mientras dure el rebindeo y la
-        /// restitución de filas. La liberación restaura los valores previos, así
-        /// que las supresiones anidadas no se pisan y nunca se cruza un
-        /// <c>await</c>.
-        /// </summary>
-        /// <returns>Objeto desechable que restaura los valores al liberarse.</returns>
+ /// <summary>
+ /// Suspende los manejadores de selección mientras dure el rebindeo y la
+ /// restitución de filas. La liberación restaura los valores previos, así
+ /// que las supresiones anidadas no se pisan y nunca se cruza un
+ /// <c>await</c>.
+ /// </summary>
+ /// <returns>Objeto desechable que restaura los valores al liberarse.</returns>
         private IDisposable SuspenderSeleccion() => new SuspensionSeleccion(this);
 
-        /// <summary>
-        /// Suspende los manejadores de las grillas mientras dure la mutación de
-        /// datos y el rebindeo. Se apoya en un contador para que las supresiones
-        /// anidadas restauren el nivel previo en lugar de forzarlo a cero.
-        /// </summary>
-        /// <returns>Objeto desechable que restaura el nivel al liberarse.</returns>
+ /// <summary>
+ /// Suspende los manejadores de las grillas mientras dure la mutación de
+ /// datos y el rebindeo. Se apoya en un contador para que las supresiones
+ /// anidadas restauren el nivel previo en lugar de forzarlo a cero.
+ /// </summary>
+ /// <returns>Objeto desechable que restaura el nivel al liberarse.</returns>
         private IDisposable SuspenderEventos() => new Suspension(this);
 
-        /// <summary>
-        /// Restauración de la suspensión de selección al liberar el bloque
-        /// <c>using</c>. Devuelve el contador y la bandera a sus valores previos.
-        /// </summary>
+ /// <summary>
+ /// Restauración de la suspensión de selección al liberar el bloque
+ /// <c>using</c>. Devuelve el contador y la bandera a sus valores previos.
+ /// </summary>
         private sealed class SuspensionSeleccion : IDisposable
         {
             private readonly ComprasForm _formulario;
@@ -1945,10 +1916,10 @@ namespace CapaPresentacion.Compras
             private readonly bool _actualizandoSeleccionPrevio;
             private bool _liberada;
 
-            /// <summary>
-            /// Incrementa el nivel de supresión y activa la bandera de selección.
-            /// </summary>
-            /// <param name="formulario">Formulario que suspende sus manejadores.</param>
+ /// <summary>
+ /// Incrementa el nivel de supresión y activa la bandera de selección.
+ /// </summary>
+ /// <param name="formulario">Formulario que suspende sus manejadores.</param>
             public SuspensionSeleccion(ComprasForm formulario)
             {
                 ArgumentNullException.ThrowIfNull(formulario);
@@ -1960,9 +1931,9 @@ namespace CapaPresentacion.Compras
                 _formulario._actualizandoSeleccion = true;
             }
 
-            /// <summary>
-            /// Restaura los valores previos de la suspensión.
-            /// </summary>
+ /// <summary>
+ /// Restaura los valores previos de la suspensión.
+ /// </summary>
             public void Dispose()
             {
                 if (_liberada)
@@ -1976,18 +1947,18 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        /// <summary>
-        /// Restauración del nivel de supresión al liberar el bloque <c>using</c>.
-        /// </summary>
+ /// <summary>
+ /// Restauración del nivel de supresión al liberar el bloque <c>using</c>.
+ /// </summary>
         private sealed class Suspension : IDisposable
         {
             private readonly ComprasForm _formulario;
             private bool _liberada;
 
-            /// <summary>
-            /// Incrementa el nivel de supresión del formulario.
-            /// </summary>
-            /// <param name="formulario">Formulario que suspende sus manejadores.</param>
+ /// <summary>
+ /// Incrementa el nivel de supresión del formulario.
+ /// </summary>
+ /// <param name="formulario">Formulario que suspende sus manejadores.</param>
             public Suspension(ComprasForm formulario)
             {
                 ArgumentNullException.ThrowIfNull(formulario);
@@ -1996,9 +1967,9 @@ namespace CapaPresentacion.Compras
                 _formulario._nivelActualizando++;
             }
 
-            /// <summary>
-            /// Decrementa el nivel de supresión sin ponerlo nunca por debajo de cero.
-            /// </summary>
+ /// <summary>
+ /// Decrementa el nivel de supresión sin ponerlo nunca por debajo de cero.
+ /// </summary>
             public void Dispose()
             {
                 if (_liberada)
@@ -2015,13 +1986,13 @@ namespace CapaPresentacion.Compras
             }
         }
 
-        /// <summary>
-        /// Ejecuta una operación asíncrona de la pantalla sin bloquear el hilo de
-        /// interfaz y sin propagar una excepción inesperada desde un manejador
-        /// <c>async void</c>.
-        /// </summary>
-        /// <param name="operacion">Operación a ejecutar.</param>
-        /// <returns>Tarea que representa la operación.</returns>
+ /// <summary>
+ /// Ejecuta una operación asíncrona de la pantalla sin bloquear el hilo de
+ /// interfaz y sin propagar una excepción inesperada desde un manejador
+ /// <c>async void</c>.
+ /// </summary>
+ /// <param name="operacion">Operación a ejecutar.</param>
+ /// <returns>Tarea que representa la operación.</returns>
         private async Task EjecutarAsync(Func<Task> operacion)
         {
             try

@@ -41,7 +41,25 @@ namespace CapaPresentacion
                     services.AddTransient<ClienteNegocio>();
                     services.AddTransient<ProductoNegocio>();
                     services.AddTransient<ProveedorNegocio>();
-                    services.AddTransient<CompraNegocio>();
+                    services.AddTransient<CapaNegocio.Compras.IServicioCorreoProveedor>(sp =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        return new CapaNegocio.Compras.ServicioCorreoProveedor(new CapaNegocio.Compras.ConfiguracionSmtp
+                        {
+                            Servidor = config["Smtp:Servidor"] ?? string.Empty,
+                            Puerto = int.TryParse(config["Smtp:Puerto"], out int p) ? p : 587,
+                            HabilitarSsl = !bool.TryParse(config["Smtp:HabilitarSsl"], out bool ssl) || ssl,
+                            Usuario = config["Smtp:Usuario"] ?? string.Empty,
+                            Clave = config["Smtp:Clave"] ?? string.Empty,
+                            Remitente = config["Smtp:Remitente"] ?? "compras@sistemaventa.com",
+                            NombreRemitente = config["Smtp:NombreRemitente"] ?? "Sistema Venta y Stock - Compras",
+                            SimularEnvio = !bool.TryParse(config["Smtp:SimularEnvio"], out bool sim) || sim
+                        });
+                    });
+                    services.AddTransient<CompraNegocio>(sp => new CompraNegocio(
+                        sp.GetRequiredService<AppDbContext>(),
+                        sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
+                        sp.GetRequiredService<CapaNegocio.Compras.IServicioCorreoProveedor>()));
                     services.AddTransient<ConsultaProductosVentaDatos>();
                     services.AddTransient<CarritoVentaNegocio>();
                     services.AddTransient<CapaDatos.IVentaRepositorio>(_ => new CapaDatos.VentaRepositorio(connectionString));
