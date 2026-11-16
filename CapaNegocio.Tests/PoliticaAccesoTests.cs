@@ -17,9 +17,9 @@ public class PoliticaAccesoTests
     [Fact]
     public void TieneAcceso_Encargado_DevuelveSoloModulosOperativos()
     {
-        foreach (string modulo in new[] { "Productos", "Categorías", "Proveedores", "Compras", "Reportes", "Clientes" })
+        foreach (string modulo in new[] { "Productos", "Categorías", "Proveedores", "Compras", "Ventas", "Reportes", "Clientes" })
             Assert.True(PoliticaAcceso.TieneAcceso("Encargado", modulo));
-        foreach (string modulo in new[] { "Usuarios", "Ventas" })
+        foreach (string modulo in new[] { "Usuarios" })
             Assert.False(PoliticaAcceso.TieneAcceso("Encargado", modulo));
     }
 

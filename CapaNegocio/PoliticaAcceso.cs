@@ -14,7 +14,7 @@ public static class PoliticaAcceso
             },
             ["encargado"] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "Productos", "Categorías", "Proveedores", "Compras", "Reportes", "Clientes"
+                "Productos", "Categorías", "Proveedores", "Compras", "Ventas", "Reportes", "Clientes"
             },
             ["vendedor"] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -69,13 +69,14 @@ public static class PoliticaAcceso
     }
 
     /// <summary>
-    /// Determina si un rol tiene autorización para operar el punto de venta (POS).
+    /// Determina si un rol tiene autorización para operar el punto de venta (cobrar y emitir ventas).
     /// </summary>
     /// <param name="rol">Rol del usuario.</param>
-    /// <returns>True si tiene acceso al módulo de ventas; en caso contrario, false.</returns>
+    /// <returns>True si el rol es Vendedor; en caso contrario, false.</returns>
     public static bool PuedeOperarVentas(string? rol)
     {
-        return TieneAcceso(rol, "Ventas");
+        return !string.IsNullOrWhiteSpace(rol)
+            && string.Equals(rol.Trim(), "vendedor", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

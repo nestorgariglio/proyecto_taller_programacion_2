@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -142,6 +143,120 @@ public class VentaNegocio
                 MontoPago = solicitud.MontoPago,
                 MontoCambio = montoCambio,
                 Mensaje = "Ocurrió un error inesperado al procesar la venta. Intente nuevamente."
+            };
+        }
+    }
+
+    /// <summary>
+    /// Obtiene el listado histórico de ventas registradas.
+    /// </summary>
+    public async Task<IReadOnlyList<ResumenVentaDatos>> ObtenerHistorialVentasAsync(
+        CancellationToken ct = default)
+    {
+        try
+        {
+            return await _ventaRepositorio.ObtenerHistorialVentasAsync(ct);
+        }
+        catch (Exception)
+        {
+            return Array.Empty<ResumenVentaDatos>();
+        }
+    }
+
+    /// <summary>
+    /// Obtiene los renglones de detalle de una venta específica.
+    /// </summary>
+    public async Task<IReadOnlyList<DetalleLineaVentaDatos>> ObtenerDetalleVentaAsync(
+        int idVenta,
+        CancellationToken ct = default)
+    {
+        if (idVenta <= 0)
+            return Array.Empty<DetalleLineaVentaDatos>();
+
+        try
+        {
+            return await _ventaRepositorio.ObtenerDetalleVentaAsync(idVenta, ct);
+        }
+        catch (Exception)
+        {
+            return Array.Empty<DetalleLineaVentaDatos>();
+        }
+    }
+
+    /// <summary>
+    /// Anula una venta activa restituyendo el stock al inventario (exclusivo para el rol Encargado).
+    /// </summary>
+    public async Task<RespuestaVentaDto> AnularVentaAsync(
+        int idVenta,
+        int idUsuarioAnula,
+        string? rol,
+        string? motivo,
+        CancellationToken ct = default)
+    {
+        if (!PoliticaAcceso.PuedeAnularOperaciones(rol))
+        {
+            return new RespuestaVentaDto
+            {
+                Exito = false,
+                Mensaje = "Solo el Encargado tiene permisos para anular ventas."
+            };
+        }
+
+        if (idVenta <= 0)
+        {
+            return new RespuestaVentaDto
+            {
+                Exito = false,
+                Mensaje = "Seleccione una venta válida para anular."
+            };
+        }
+
+        if (idUsuarioAnula <= 0)
+        {
+            return new RespuestaVentaDto
+            {
+                Exito = false,
+                Mensaje = "No se pudo identificar al usuario responsable de la anulación."
+            };
+        }
+
+        string motivoRecortado = motivo?.Trim() ?? string.Empty;
+        if (motivoRecortado.Length < 3)
+        {
+            return new RespuestaVentaDto
+            {
+                Exito = false,
+                Mensaje = "Ingrese un motivo de anulación de al menos 3 caracteres."
+            };
+        }
+
+        if (motivoRecortado.Length > 300)
+        {
+            return new RespuestaVentaDto
+            {
+                Exito = false,
+                Mensaje = "El motivo de anulación no puede superar los 300 caracteres."
+            };
+        }
+
+        try
+        {
+            var resultado = await _ventaRepositorio.AnularVentaAsync(idVenta, idUsuarioAnula, motivoRecortado, ct);
+            return new RespuestaVentaDto
+            {
+                Exito = resultado.Exito,
+                IdVenta = idVenta,
+                Mensaje = string.IsNullOrWhiteSpace(resultado.Mensaje)
+                    ? (resultado.Exito ? "Venta anulada con éxito." : "No se pudo anular la venta.")
+                    : resultado.Mensaje
+            };
+        }
+        catch (Exception)
+        {
+            return new RespuestaVentaDto
+            {
+                Exito = false,
+                Mensaje = "Ocurrió un error inesperado al intentar anular la venta."
             };
         }
     }
