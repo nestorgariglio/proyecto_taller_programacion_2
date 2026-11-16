@@ -13,7 +13,8 @@ public record ParametrosRegistroVentaDatos(
     decimal MontoPago,
     decimal MontoCambio,
     decimal MontoTotal,
-    IReadOnlyList<LineaDetalleVentaParametro> Detalles);
+    IReadOnlyList<LineaDetalleVentaParametro> Detalles,
+    int? IdUsuario = null);
 
 /// <summary>
 /// Línea de producto enviada al procedimiento almacenado de venta.

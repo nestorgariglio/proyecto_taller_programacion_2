@@ -167,6 +167,7 @@ public class VentaNegocioTests
 
         var solicitud = new SolicitudRegistrarVentaDto
         {
+            IdUsuario = 12,
             IdCliente = 5,
             DocumentoCliente = "30123456",
             NombreCliente = "Ana Pérez",
@@ -191,7 +192,8 @@ public class VentaNegocioTests
         Assert.Equal(500.50m, respuesta.MontoPago);
         Assert.Equal(150.25m, respuesta.MontoCambio);
         Assert.NotNull(repo.UltimosParametros);
-        Assert.Equal(5, repo.UltimosParametros!.IdCliente);
+        Assert.Equal(12, repo.UltimosParametros!.IdUsuario);
+        Assert.Equal(5, repo.UltimosParametros.IdCliente);
         Assert.Equal("30123456", repo.UltimosParametros.DocumentoCliente);
         Assert.Equal("Ana Pérez", repo.UltimosParametros.NombreCliente);
     }

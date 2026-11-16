@@ -55,6 +55,11 @@ public class VentaRepositorio : IVentaRepositorio
                 Value = (object?)parametros.IdTipo ?? DBNull.Value
             });
 
+            comando.Parameters.Add(new SqlParameter("@IdUsuario", SqlDbType.Int)
+            {
+                Value = (object?)parametros.IdUsuario ?? DBNull.Value
+            });
+
             comando.Parameters.Add(new SqlParameter("@MontoPago", SqlDbType.Decimal)
             {
                 Precision = 18,
