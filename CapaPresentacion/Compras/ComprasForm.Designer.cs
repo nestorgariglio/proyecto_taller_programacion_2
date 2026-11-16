@@ -1213,7 +1213,7 @@ namespace CapaPresentacion.Compras
             btnVerHistorial.MinimumSize = new Size(0, 36);
             btnVerHistorial.MouseState = MaterialSkin.MouseState.HOVER;
             btnVerHistorial.Name = "btnVerHistorial";
-            btnVerHistorial.NoAccentTextColor = Color.Empty;
+            btnVerHistorial.NoAccentTextColor = Color.FromArgb(224, 224, 224);
             btnVerHistorial.Padding = new Padding(10, 0, 10, 0);
             btnVerHistorial.Size = new Size(130, 36);
             btnVerHistorial.TabIndex = 0;

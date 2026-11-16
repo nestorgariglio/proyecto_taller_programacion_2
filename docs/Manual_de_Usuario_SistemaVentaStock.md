@@ -29,8 +29,10 @@
    - 6.1. [Padrón de Clientes](#61-padrón-de-clientes)
    - 6.2. [Padrón de Proveedores](#62-padrón-de-proveedores)
 7. [Módulo de Compras y Abastecimiento](#7-módulo-de-compras-y-abastecimiento)
-   - 7.1. [Registro de Facturas de Compra](#71-registro-de-facturas-de-compra)
-   - 7.2. [Actualización Automática de Stock y Precios](#72-actualización-automática-de-stock-y-precios)
+   - 7.1. [Generación y Envío de Solicitudes de Reabastecimiento](#71-generación-y-envío-de-solicitudes-de-reabastecimiento)
+   - 7.2. [Confirmación de Costos Acordados](#72-confirmación-de-costos-acordados)
+   - 7.3. [Recepción de Mercadería y Entrada de Stock](#73-recepción-de-mercadería-y-entrada-de-stock)
+   - 7.4. [Anulación de Compras y Trazabilidad](#74-anulación-de-compras-y-trazabilidad)
 8. [Módulo de Punto de Venta (POS / Facturación)](#8-módulo-de-punto-de-venta-pos--facturación)
    - 8.1. [Búsqueda e Ingreso Manual de Productos](#81-búsqueda-e-ingreso-manual-de-productos)
    - 8.2. [Operación del Carrito de Ventas](#82-operación-del-carrito-de-ventas)
@@ -157,22 +159,41 @@ Administra a los distribuidores mayoristas:
 
 ## 7. Módulo de Compras y Abastecimiento
 
-### 7.1. Registro de Facturas de Compra
-Operación exclusiva del rol **Encargado**; el Administrador técnico y el Vendedor / Cajero no pueden registrar compras.
+Operación exclusiva del rol **Encargado**; el Administrador técnico y el Vendedor / Cajero no pueden operar compras. El circuito comercial sigue un ciclo de vida desacoplado: solicitud inicial sin precio, confirmación de costos unitarios y posterior recepción física de mercadería.
 
-Cuando llega mercadería al depósito:
+### 7.1. Generación y Envío de Solicitudes de Reabastecimiento
 1. Diríjase a la pestaña **Compras**.
-2. Seleccione el **Proveedor** en el desplegable.
-3. Busque el artículo por código o descripción.
-4. Ingrese la **Cantidad recibida**, el **Precio de Compra unitario** facturado y el **Precio de Venta sugerido**.
-5. Presione **Agregar Línea**. Puede añadir tantos productos como contenga el comprobante.
-6. Presione **Confirmar Compra**.
+2. Seleccione el **Proveedor** en la lista de proveedores activos (`Estado = 1`).
+3. Seleccione el artículo en el listado de productos asociados (los artículos con `Stock <= StockMinimo` se destacan visualmente).
+4. Ingrese la **Cantidad** requerida y presione **Agregar producto**. No se requiere ingresar precios de compra ni de venta en esta etapa, ya que la cotización se negocia por correo con el distribuidor.
+5. Presione **ENVIAR SOLICITUD A PROVEEDOR**. El sistema:
+   - Registra el comprobante en estado `Pendiente` sin modificar el stock de inventario.
+   - Envía automáticamente la orden al correo del proveedor vía SMTP (o despliega la vista previa de simulación local si no hay servidor configurado).
 
-### 7.2. Actualización Automática de Stock y Precios
-Al presionar *Confirmar Compra*, el sistema ejecuta una transacción atómica:
-- Incrementa inmediatamente el stock físico de cada producto sumando las cantidades ingresadas.
-- Actualiza el `Precio de Compra` y el `Precio de Venta` en el catálogo de productos con los nuevos valores vigentes.
-- Guarda la cabecera y el detalle de la compra para auditoría histórica.
+### 7.2. Confirmación de Costos Acordados
+Cuando el proveedor responda la cotización informando los precios de la mercadería:
+1. Desde la pantalla de compras, presione **Ver Historial** para abrir el detalle de comprobantes.
+2. Seleccione la solicitud en estado `Pendiente`. Puede consultar el pedido original mediante el botón **VER SOLICITUD**.
+3. Presione **CONFIRMAR SOLICITUD**. Se abrirá la ventana modal de confirmación de costos.
+4. Ingrese en la columna **Costo unitario ($)** el importe neto acordado por unidad para cada artículo cotizado. Opcionalmente puede registrar el número de presupuesto o remito en el campo de observaciones.
+5. Presione **CONFIRMAR**. El sistema valida que todos los costos sean mayores a cero, recalcula subtotales y el monto total, y pasa el comprobante al estado `Confirmada`. El stock físico continúa sin alteraciones hasta la llegada efectiva de los bultos.
+
+### 7.3. Recepción de Mercadería y Entrada de Stock
+Al arribar físicamente los productos al local:
+1. En la ventana de detalle de compras, seleccione la orden (en estado `Pendiente` o `Confirmada`).
+2. Presione **RECIBIR MERCADERÍA**.
+3. El sistema ejecuta una transacción atómica:
+   - Suma inmediatamente las cantidades recibidas a las existencias físicas (`PRODUCTO.Stock`).
+   - Actualiza el costo de reposición (`PRODUCTO.precio_compra`) con los valores acordados.
+   - Cambia el estado del comprobante a `Recibida` y congela la fecha de recepción.
+   - El precio de venta al público permanece inalterado, gestionándose de forma independiente desde el catálogo de Productos.
+
+### 7.4. Anulación de Compras y Trazabilidad
+El Encargado puede anular solicitudes u órdenes registradas:
+1. Ingrese obligatoriamente el **Motivo de anulación** (mínimo 3 caracteres).
+2. Presione **ANULAR**.
+3. Si la orden estaba en estado `Pendiente` o `Confirmada`, se anula lógicamente (`Estado = 0`) sin alterar el stock.
+4. Si la compra ya había sido `Recibida`, el sistema verifica previamente que `Stock >= Cantidad` para cada ítem. Si hubo ventas posteriores que dejaron stock insuficiente, rechaza la anulación para proteger la consistencia física; si hay existencias suficientes, deduce las cantidades del inventario y registra la auditoría completa.
 
 ---
 

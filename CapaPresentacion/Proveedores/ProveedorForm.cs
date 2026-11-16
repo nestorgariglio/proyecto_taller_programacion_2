@@ -130,6 +130,7 @@ namespace CapaPresentacion.Proveedores
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Height = 36,
                 Type = MaterialButton.MaterialButtonType.Outlined,
+                NoAccentTextColor = Color.FromArgb(224, 224, 224),
                 HighEmphasis = true,
                 UseAccentColor = false,
                 Depth = 0,

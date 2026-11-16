@@ -1,10 +1,5 @@
 namespace CapaNegocio.DTOs.Compras;
 
-/// <summary>
-/// Compra recuperada con todas sus líneas como fuente de datos de Reportes
-/// (RF-53 y RF-54). Mismos datos de cabecera que el historial; el detalle no
-/// incluye el precio de venta, que no se persiste (D-2 y D-17).
-/// </summary>
 public class CompraConDetalleDto
 {
 	public int IdCompra { get; set; }
@@ -17,8 +12,19 @@ public class CompraConDetalleDto
 
 	public decimal MontoTotal { get; set; }
 
-	/// <summary><see langword="true"/> = activa; <see langword="false"/> = inactiva.</summary>
 	public bool Estado { get; set; }
+
+	public string EstadoSolicitud { get; set; } = "Recibida";
+
+	public DateTime? FechaConfirmacion { get; set; }
+
+	public DateTime? FechaRecepcion { get; set; }
+
+	public DateTime? FechaAnulacion { get; set; }
+
+	public string? MotivoAnulacion { get; set; }
+
+	public string? Observaciones { get; set; }
 
 	public IReadOnlyList<LineaCompraDetalleDto> Lineas { get; set; } = Array.Empty<LineaCompraDetalleDto>();
 }
