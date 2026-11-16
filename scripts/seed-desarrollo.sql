@@ -576,18 +576,30 @@ BEGIN TRY
     DECLARE @idProvMolinos int = (SELECT TOP 1 id_proveedor FROM dbo.PROVEEDOR WHERE cuit = N'30711000002');
     DECLARE @idProvFrutas int = (SELECT TOP 1 id_proveedor FROM dbo.PROVEEDOR WHERE cuit = N'30711000007');
 
-    DECLARE @idProdCola int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000010');
-    DECLARE @idProdArroz int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000027');
-    DECLARE @idProdLeche int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000034');
-    DECLARE @idProdDetergente int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000041');
-    DECLARE @idProdManzana int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000058');
-    DECLARE @idProdAceite int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000065');
-    DECLARE @idProdFideos int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000072');
-    DECLARE @idProdYogur int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000089');
-    DECLARE @idProdJabon int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000096');
-    DECLARE @idProdBanana int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000102');
-    DECLARE @idProdAgua int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000119');
-    DECLARE @idProdGalletitas int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000126');
+    DECLARE @idProdCola int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000011');
+    DECLARE @idProdAgua int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000028');
+    DECLARE @idProdHarina int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000035');
+    DECLARE @idProdAceite int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000042');
+    DECLARE @idProdAzucar int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000059');
+    DECLARE @idProdLeche int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000073');
+    DECLARE @idProdQueso int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000080');
+    DECLARE @idProdYogur int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000097');
+    DECLARE @idProdDetergente int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000103');
+    DECLARE @idProdLavandina int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000110');
+    DECLARE @idProdBanana int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000127');
+    DECLARE @idProdTomate int = (SELECT TOP 1 id_producto FROM dbo.PRODUCTO WHERE codigo = N'7790001000134');
+
+    -- Mapeo semántico para compatibilidad de variables de compra y venta
+    DECLARE @idProdArroz int = @idProdHarina;
+    DECLARE @idProdManzana int = @idProdTomate;
+    DECLARE @idProdFideos int = @idProdAzucar;
+    DECLARE @idProdJabon int = @idProdLavandina;
+    DECLARE @idProdGalletitas int = @idProdQueso;
+
+    IF @idProdCola IS NULL OR @idProdAgua IS NULL OR @idProdHarina IS NULL OR @idProdAceite IS NULL 
+       OR @idProdAzucar IS NULL OR @idProdLeche IS NULL OR @idProdQueso IS NULL OR @idProdYogur IS NULL 
+       OR @idProdDetergente IS NULL OR @idProdLavandina IS NULL OR @idProdBanana IS NULL OR @idProdTomate IS NULL
+        THROW 51015, N'No se pudieron resolver los IDs de los 12 productos base de la seed.', 1;
 
     DECLARE @idCliCF int = (SELECT TOP 1 id_cliente FROM dbo.CLIENTE WHERE dni = N'0' OR (nombre = N'Consumidor' AND apellido = N'Final'));
     DECLARE @idCli1 int = (SELECT TOP 1 id_cliente FROM dbo.CLIENTE WHERE dni = N'CLI0000001');
