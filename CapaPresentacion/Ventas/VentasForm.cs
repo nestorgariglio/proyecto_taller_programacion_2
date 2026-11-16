@@ -53,6 +53,12 @@ namespace CapaPresentacion.Ventas
 
         private bool _ocupadoCarrito;
         private bool _pintandoCarrito;
+        private int _idUsuarioActual;
+
+        public void AplicarSesion(int idUsuario)
+        {
+            _idUsuarioActual = idUsuario;
+        }
 
         public VentasForm(
             CarritoVentaNegocio carritoVentaNegocio,
@@ -748,6 +754,7 @@ namespace CapaPresentacion.Ventas
             {
                 var solicitud = new SolicitudRegistrarVentaDto
                 {
+                    IdUsuario = _idUsuarioActual > 0 ? _idUsuarioActual : null,
                     IdCliente = _clienteSeleccionado?.IdCliente,
                     DocumentoCliente = _clienteSeleccionado?.Documento ?? "0",
                     NombreCliente = _clienteSeleccionado?.NombreCompleto ?? "Consumidor Final",

@@ -25,14 +25,38 @@ namespace CapaEntidad
         [Column("estado")]
         public bool Estado { get; set; } = true;
 
+        [Column("estado_solicitud")]
+        public string EstadoSolicitud { get; set; } = "Recibida";
+
+        [Column("observaciones")]
+        public string? Observaciones { get; set; }
+
         [Column("fecha_registro")]
         public DateTime FechaRegistro { get; set; } = DateTime.Now;
+
+        [Column("fecha_confirmacion")]
+        public DateTime? FechaConfirmacion { get; set; }
+
+        [Column("fecha_recepcion")]
+        public DateTime? FechaRecepcion { get; set; }
+
+        [Column("id_usuario_anula")]
+        public int? IdUsuarioAnula { get; set; }
+
+        [Column("fecha_anulacion")]
+        public DateTime? FechaAnulacion { get; set; }
+
+        [Column("motivo_anulacion")]
+        public string? MotivoAnulacion { get; set; }
 
         [ForeignKey("IdUsuario")]
         public virtual Usuario? Usuario { get; set; }
 
         [ForeignKey("IdProveedor")]
         public virtual Proveedor? Proveedor { get; set; }
+
+        [ForeignKey("IdUsuarioAnula")]
+        public virtual Usuario? UsuarioAnula { get; set; }
 
         public virtual List<DetalleCompra>? Detalles { get; set; }
     }

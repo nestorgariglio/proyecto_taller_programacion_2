@@ -30,5 +30,7 @@ namespace CapaEntidad
 
         [Column("fecha_registro")]
         public DateTime FechaRegistro { get; set; } = DateTime.Now;
+
+        public virtual List<ProveedorProducto>? ProductosProveedor { get; set; }
     }
 }

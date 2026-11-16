@@ -396,6 +396,7 @@ namespace CapaPresentacion
                 // RF-8/RF-59: la pantalla de compras recibe el usuario responsable y
                 // el rol; solo Administrador y Encargado tienen acciones habilitadas.
                 _comprasForm.AplicarSesion(_usuarioActual?.IdUsuario ?? 0, rol);
+                _ventasForm.AplicarSesion(_usuarioActual?.IdUsuario ?? 0);
 
                 TabPage? pestañaASeleccionar = _pestañaAnterior;
                 if (pestañaASeleccionar == null ||

@@ -100,7 +100,8 @@ public class VentaNegocio
             solicitud.MontoPago,
             montoCambio,
             montoTotal,
-            detallesParametro
+            detallesParametro,
+            solicitud.IdUsuario
         );
 
         try

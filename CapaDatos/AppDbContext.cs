@@ -30,6 +30,7 @@ namespace CapaDatos
         public DbSet<DetalleCompra> DetallesCompra { get; set; }
         public DbSet<Venta> Ventas { get; set; }
         public DbSet<DetalleVenta> DetallesVenta { get; set; }
+        public DbSet<ProveedorProducto> ProveedoresProductos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -142,6 +143,12 @@ namespace CapaDatos
                 entity.Property(producto => producto.Descripcion)
                     .HasMaxLength(300);
 
+                entity.Property(producto => producto.Marca)
+                    .HasMaxLength(100);
+
+                entity.Property(producto => producto.StockMinimo)
+                    .HasDefaultValue(5);
+
                 entity.Property(producto => producto.MotivoAjusteStock)
                     .HasMaxLength(300);
 
@@ -174,14 +181,76 @@ namespace CapaDatos
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            modelBuilder.Entity<ProveedorProducto>(entity =>
+            {
+                entity.HasKey(pp => new { pp.IdProveedor, pp.IdProducto });
+
+                entity.Property(pp => pp.FechaRegistro)
+                    .HasDefaultValueSql("GETDATE()");
+
+                entity.HasOne(pp => pp.Proveedor)
+                    .WithMany(p => p.ProductosProveedor)
+                    .HasForeignKey(pp => pp.IdProveedor)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(pp => pp.Producto)
+                    .WithMany(p => p.ProveedoresProducto)
+                    .HasForeignKey(pp => pp.IdProducto)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<Compra>(entity =>
+            {
+                entity.Property(compra => compra.EstadoSolicitud)
+                    .HasMaxLength(20)
+                    .IsUnicode(false)
+                    .HasDefaultValue("Recibida")
+                    .IsRequired();
+
+                entity.Property(compra => compra.Observaciones)
+                    .HasMaxLength(300);
+
+                entity.Property(compra => compra.MotivoAnulacion)
+                    .HasMaxLength(300);
+
+                entity.HasOne(compra => compra.UsuarioAnula)
+                    .WithMany()
+                    .HasForeignKey(compra => compra.IdUsuarioAnula)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
             modelBuilder.Entity<Venta>(entity =>
             {
+                entity.Property(venta => venta.NroComprobante)
+                    .HasMaxLength(20)
+                    .IsUnicode(false);
+
                 entity.Property(venta => venta.DocumentoCliente)
                     .HasMaxLength(20)
                     .IsUnicode(false);
 
                 entity.Property(venta => venta.NombreCliente)
                     .HasMaxLength(200);
+
+                entity.Property(venta => venta.MotivoAnulacion)
+                    .HasMaxLength(300);
+
+                entity.HasOne(venta => venta.Usuario)
+                    .WithMany()
+                    .HasForeignKey(venta => venta.IdUsuario)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(venta => venta.UsuarioAnula)
+                    .WithMany()
+                    .HasForeignKey(venta => venta.IdUsuarioAnula)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<DetalleVenta>(entity =>
+            {
+                entity.Property(detalle => detalle.PrecioCompra)
+                    .HasColumnType("decimal(18,2)")
+                    .HasDefaultValue(0m);
             });
 
         }

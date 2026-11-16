@@ -5,6 +5,7 @@ namespace CapaNegocio.DTOs.Ventas;
 /// </summary>
 public record SolicitudRegistrarVentaDto
 {
+    public int? IdUsuario { get; init; }
     public int? IdCliente { get; init; }
     public string? DocumentoCliente { get; init; }
     public string? NombreCliente { get; init; }
