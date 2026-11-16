@@ -27,6 +27,7 @@ CREATE OR ALTER PROCEDURE dbo.sp_RegistrarVenta
     @DocumentoCliente VARCHAR(20) = NULL,
     @NombreCliente NVARCHAR(200) = NULL,
     @IdTipo INT = NULL,
+    @IdUsuario INT = NULL,
     @MontoPago DECIMAL(18,2),
     @MontoCambio DECIMAL(18,2),
     @MontoTotal DECIMAL(18,2),
@@ -161,6 +162,16 @@ BEGIN
             THROW 50005, @MsgStock, 1;
         END
 
+        DECLARE @TipoLetra NVARCHAR(10);
+        DECLARE @NroActual INT;
+        SELECT TOP 1
+            @TipoLetra = COALESCE(NULLIF(LTRIM(RTRIM(tipo_factura)), N''), N'B'),
+            @NroActual = nro_factura
+        FROM dbo.TIPO_FACTURA WITH (UPDLOCK, HOLDLOCK)
+        WHERE id_tipo = @IdTipo;
+
+        DECLARE @NroComprobante VARCHAR(20) = CAST(@TipoLetra AS VARCHAR(5)) + '-' + RIGHT('00000000' + CAST(COALESCE(@NroActual, 1) AS VARCHAR(8)), 8);
+
         UPDATE p
         SET p.stock = p.stock - d.Cantidad
         FROM dbo.PRODUCTO p
@@ -169,6 +180,8 @@ BEGIN
         INSERT INTO dbo.VENTA (
             id_cliente,
             id_tipo,
+            id_usuario,
+            nro_comprobante,
             documento_cliente,
             nombre_cliente,
             monto_pago,
@@ -180,6 +193,8 @@ BEGIN
         VALUES (
             @IdCliente,
             @IdTipo,
+            @IdUsuario,
+            @NroComprobante,
             @DocumentoCliente,
             @NombreCliente,
             @MontoPago,
@@ -191,9 +206,10 @@ BEGIN
 
         SET @IdVentaGenerada = SCOPE_IDENTITY();
 
-        INSERT INTO dbo.DETALLE_VENTA (id_venta, id_producto, precio_venta, cantidad, subtotal)
-        SELECT @IdVentaGenerada, IdProducto, PrecioVenta, Cantidad, Subtotal
-        FROM @Detalles;
+        INSERT INTO dbo.DETALLE_VENTA (id_venta, id_producto, precio_compra, precio_venta, cantidad, subtotal)
+        SELECT @IdVentaGenerada, d.IdProducto, p.precio_compra, d.PrecioVenta, d.Cantidad, d.Subtotal
+        FROM @Detalles d
+        INNER JOIN dbo.PRODUCTO p ON p.id_producto = d.IdProducto;
 
         UPDATE dbo.TIPO_FACTURA
         SET nro_factura = nro_factura + 1

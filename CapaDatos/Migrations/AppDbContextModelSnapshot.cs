@@ -123,6 +123,27 @@ namespace CapaDatos.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("estado");
 
+                    b.Property<string>("EstadoSolicitud")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("Recibida")
+                        .HasColumnName("estado_solicitud");
+
+                    b.Property<DateTime?>("FechaAnulacion")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_anulacion");
+
+                    b.Property<DateTime?>("FechaConfirmacion")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_confirmacion");
+
+                    b.Property<DateTime?>("FechaRecepcion")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_recepcion");
+
                     b.Property<DateTime>("FechaRegistro")
                         .HasColumnType("datetime2")
                         .HasColumnName("fecha_registro");
@@ -135,15 +156,31 @@ namespace CapaDatos.Migrations
                         .HasColumnType("int")
                         .HasColumnName("id_usuario");
 
+                    b.Property<int?>("IdUsuarioAnula")
+                        .HasColumnType("int")
+                        .HasColumnName("id_usuario_anula");
+
                     b.Property<decimal>("MontoTotal")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("monto_total");
+
+                    b.Property<string>("MotivoAnulacion")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("motivo_anulacion");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("observaciones");
 
                     b.HasKey("IdCompra");
 
                     b.HasIndex("IdProveedor");
 
                     b.HasIndex("IdUsuario");
+
+                    b.HasIndex("IdUsuarioAnula");
 
                     b.ToTable("COMPRA");
                 });
@@ -206,6 +243,12 @@ namespace CapaDatos.Migrations
                     b.Property<int>("IdVenta")
                         .HasColumnType("int")
                         .HasColumnName("id_venta");
+
+                    b.Property<decimal>("PrecioCompra")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("precio_compra");
 
                     b.Property<decimal>("PrecioVenta")
                         .HasColumnType("decimal(18,2)")
@@ -270,6 +313,11 @@ namespace CapaDatos.Migrations
                         .HasColumnType("int")
                         .HasColumnName("id_usuario_modifica");
 
+                    b.Property<string>("Marca")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("marca");
+
                     b.Property<string>("MotivoAjusteStock")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)")
@@ -291,6 +339,12 @@ namespace CapaDatos.Migrations
                     b.Property<int>("Stock")
                         .HasColumnType("int")
                         .HasColumnName("stock");
+
+                    b.Property<int>("StockMinimo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(5)
+                        .HasColumnName("stock_minimo");
 
                     b.HasKey("IdProducto");
 
@@ -366,6 +420,29 @@ namespace CapaDatos.Migrations
                         .HasFilter("[cuit] IS NOT NULL");
 
                     b.ToTable("PROVEEDOR");
+                });
+
+            modelBuilder.Entity("CapaEntidad.ProveedorProducto", b =>
+                {
+                    b.Property<int>("IdProveedor")
+                        .HasColumnType("int")
+                        .HasColumnName("id_proveedor");
+
+                    b.Property<int>("IdProducto")
+                        .HasColumnType("int")
+                        .HasColumnName("id_producto");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_registro")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.HasKey("IdProveedor", "IdProducto");
+
+                    b.HasIndex("IdProducto");
+
+                    b.ToTable("PROVEEDOR_PRODUCTO");
                 });
 
             modelBuilder.Entity("CapaEntidad.Rol", b =>
@@ -503,6 +580,10 @@ namespace CapaDatos.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("estado");
 
+                    b.Property<DateTime?>("FechaAnulacion")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_anulacion");
+
                     b.Property<DateTime>("FechaRegistro")
                         .HasColumnType("datetime2")
                         .HasColumnName("fecha_registro");
@@ -514,6 +595,14 @@ namespace CapaDatos.Migrations
                     b.Property<int>("IdTipo")
                         .HasColumnType("int")
                         .HasColumnName("id_tipo");
+
+                    b.Property<int?>("IdUsuario")
+                        .HasColumnType("int")
+                        .HasColumnName("id_usuario");
+
+                    b.Property<int?>("IdUsuarioAnula")
+                        .HasColumnType("int")
+                        .HasColumnName("id_usuario_anula");
 
                     b.Property<decimal>("MontoCambio")
                         .HasColumnType("decimal(18,2)")
@@ -527,16 +616,31 @@ namespace CapaDatos.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("monto_total");
 
+                    b.Property<string>("MotivoAnulacion")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("motivo_anulacion");
+
                     b.Property<string>("NombreCliente")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("nombre_cliente");
+
+                    b.Property<string>("NroComprobante")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("nro_comprobante");
 
                     b.HasKey("IdVenta");
 
                     b.HasIndex("IdCliente");
 
                     b.HasIndex("IdTipo");
+
+                    b.HasIndex("IdUsuario");
+
+                    b.HasIndex("IdUsuarioAnula");
 
                     b.ToTable("VENTA");
                 });
@@ -555,9 +659,16 @@ namespace CapaDatos.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("CapaEntidad.Usuario", "UsuarioAnula")
+                        .WithMany()
+                        .HasForeignKey("IdUsuarioAnula")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Proveedor");
 
                     b.Navigation("Usuario");
+
+                    b.Navigation("UsuarioAnula");
                 });
 
             modelBuilder.Entity("CapaEntidad.DetalleCompra", b =>
@@ -620,6 +731,25 @@ namespace CapaDatos.Migrations
                     b.Navigation("Categoria");
                 });
 
+            modelBuilder.Entity("CapaEntidad.ProveedorProducto", b =>
+                {
+                    b.HasOne("CapaEntidad.Producto", "Producto")
+                        .WithMany("ProveedoresProducto")
+                        .HasForeignKey("IdProducto")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CapaEntidad.Proveedor", "Proveedor")
+                        .WithMany("ProductosProveedor")
+                        .HasForeignKey("IdProveedor")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Producto");
+
+                    b.Navigation("Proveedor");
+                });
+
             modelBuilder.Entity("CapaEntidad.Usuario", b =>
                 {
                     b.HasOne("CapaEntidad.Rol", "Rol")
@@ -645,14 +775,38 @@ namespace CapaDatos.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("CapaEntidad.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("IdUsuario")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CapaEntidad.Usuario", "UsuarioAnula")
+                        .WithMany()
+                        .HasForeignKey("IdUsuarioAnula")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Cliente");
 
                     b.Navigation("TipoFactura");
+
+                    b.Navigation("Usuario");
+
+                    b.Navigation("UsuarioAnula");
                 });
 
             modelBuilder.Entity("CapaEntidad.Compra", b =>
                 {
                     b.Navigation("Detalles");
+                });
+
+            modelBuilder.Entity("CapaEntidad.Producto", b =>
+                {
+                    b.Navigation("ProveedoresProducto");
+                });
+
+            modelBuilder.Entity("CapaEntidad.Proveedor", b =>
+                {
+                    b.Navigation("ProductosProveedor");
                 });
 
             modelBuilder.Entity("CapaEntidad.Venta", b =>

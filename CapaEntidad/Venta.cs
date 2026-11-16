@@ -19,6 +19,12 @@ namespace CapaEntidad
         [Column("id_tipo")]
         public int IdTipo { get; set; }
 
+        [Column("id_usuario")]
+        public int? IdUsuario { get; set; }
+
+        [Column("nro_comprobante")]
+        public string? NroComprobante { get; set; }
+
         [Column("documento_cliente")]
         public string? DocumentoCliente { get; set; }
 
@@ -40,11 +46,26 @@ namespace CapaEntidad
         [Column("fecha_registro")]
         public DateTime FechaRegistro { get; set; } = DateTime.Now;
 
+        [Column("id_usuario_anula")]
+        public int? IdUsuarioAnula { get; set; }
+
+        [Column("fecha_anulacion")]
+        public DateTime? FechaAnulacion { get; set; }
+
+        [Column("motivo_anulacion")]
+        public string? MotivoAnulacion { get; set; }
+
         [ForeignKey("IdCliente")]
         public virtual Cliente? Cliente { get; set; }
 
         [ForeignKey("IdTipo")]
         public virtual TipoFactura? TipoFactura { get; set; }
+
+        [ForeignKey("IdUsuario")]
+        public virtual Usuario? Usuario { get; set; }
+
+        [ForeignKey("IdUsuarioAnula")]
+        public virtual Usuario? UsuarioAnula { get; set; }
 
         public virtual List<DetalleVenta>? Detalles { get; set; }
     }

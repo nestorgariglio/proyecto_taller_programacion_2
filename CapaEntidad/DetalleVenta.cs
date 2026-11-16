@@ -19,6 +19,9 @@ namespace CapaEntidad
         [Column("id_producto")]
         public int IdProducto { get; set; }
 
+        [Column("precio_compra")]
+        public decimal PrecioCompra { get; set; }
+
         [Column("precio_venta")]
         public decimal PrecioVenta { get; set; }
 

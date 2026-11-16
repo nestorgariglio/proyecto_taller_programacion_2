@@ -25,8 +25,14 @@ namespace CapaEntidad
         [Column("descripcion")]
         public string? Descripcion { get; set; }
 
+        [Column("marca")]
+        public string? Marca { get; set; }
+
         [Column("stock")]
         public int Stock { get; set; }
+
+        [Column("stock_minimo")]
+        public int StockMinimo { get; set; } = 5;
 
         [Column("precio_compra")]
         public decimal PrecioCompra { get; set; }
@@ -54,5 +60,7 @@ namespace CapaEntidad
 
         [ForeignKey("IdCategoria")]
         public virtual Categoria? Categoria { get; set; }
+
+        public virtual List<ProveedorProducto>? ProveedoresProducto { get; set; }
     }
 }
