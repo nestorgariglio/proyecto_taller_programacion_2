@@ -3,10 +3,10 @@
 
 ## 1. Alcance del modelo de datos
 
-Este documento describe el esquema relacional de la base de datos `DB_SISTEMA_VENTA` definido a través de las nueve migraciones de Entity Framework Core del proyecto (hasta `20261116054510_EnriquecerModeloDatosYProveedorProducto`).
+Este documento describe el esquema relacional de la base de datos `DB_SISTEMA_VENTA` definido a través de las diez migraciones de Entity Framework Core del proyecto (hasta `20261116193554_AddVistasReportes`).
 
 - **Fuente del modelo**: `CapaDatos/AppDbContext.cs`, `CapaDatos/Migrations/AppDbContextModelSnapshot.cs` y las migraciones ubicadas en `CapaDatos/Migrations/`.
-- **Objetos de motor incluidos**: Tablas, claves primarias y foráneas, índices únicos filtrados, restricciones `CHECK`, el trigger de auditoría de productos (`TR_PRODUCTO_FECHA_MODIFICACION`), el tipo de tabla `dbo.TipoDetalleVenta` y el procedimiento almacenado transaccional `dbo.sp_RegistrarVenta`.
+- **Objetos de motor incluidos**: Tablas, claves primarias y foráneas, índices únicos filtrados, restricciones `CHECK`, el trigger de auditoría de productos (`TR_PRODUCTO_FECHA_MODIFICACION`), el tipo de tabla `dbo.TipoDetalleVenta`, el procedimiento almacenado transaccional `dbo.sp_RegistrarVenta` y las vistas de reportes `dbo.vw_ResumenDiarioVentas` y `dbo.vw_ParticipacionCategorias`.
 
 ## 2. Diagrama del esquema existente
 
@@ -409,9 +409,20 @@ Incorporados en la migración `20261111223022_AddSpRegistrarVenta` (y en `script
   - Inserta los renglones en `DETALLE_VENTA` e incrementa el contador `nro_factura` en `TIPO_FACTURA`.
   - Confirma con `COMMIT TRANSACTION` o revierte con `ROLLBACK TRANSACTION` ante cualquier error, devolviendo el resultado por parámetros `OUTPUT` (`@IdVentaGenerada`, `@CodigoResultado`, `@MensajeResultado`).
 
+### 6.5. Vistas de reportes
+
+La migración `20261116193554_AddVistasReportes` incorpora dos vistas mediante `CREATE OR ALTER VIEW`. Ambas consultan únicamente ventas activas (`VENTA.estado = 1`):
+
+| Vista | Fuentes y agrupación | Columnas expuestas |
+| --- | --- | --- |
+| `dbo.vw_ResumenDiarioVentas` | `VENTA` y `DETALLE_VENTA`, agrupadas por la fecha de registro de la venta | `fecha`, `comprobantes_emitidos`, `total_ventas`, `ganancia_total`, `ticket_promedio` |
+| `dbo.vw_ParticipacionCategorias` | `DETALLE_VENTA`, `VENTA`, `PRODUCTO` y `CATEGORIA`, agrupadas por identificador y descripción de categoría | `id_categoria`, `categoria`, `total_transacciones`, `unidades_vendidas`, `monto_total` |
+
+Son objetos de consulta, no tablas adicionales ni nuevas relaciones del diagrama. La ganancia diaria utiliza el costo histórico almacenado en `DETALLE_VENTA.precio_compra`. La operación `Down` de la migración elimina ambas vistas mediante `DROP VIEW IF EXISTS`.
+
 ## 7. Notas sobre el diseño actual
 
-- **Detalle de compras**: `DETALLE_COMPRA` almacena `precio_compra`, `cantidad` y `subtotal`; el precio de venta informado durante la carga de una compra actualiza directamente `PRODUCTO.precio_venta`.
+- **Detalle de compras**: `DETALLE_COMPRA` almacena `precio_compra`, `cantidad` y `subtotal`. La recepción de mercadería actualiza `PRODUCTO.stock` y `PRODUCTO.precio_compra`, pero no modifica `PRODUCTO.precio_venta`; el precio de venta se gestiona de forma independiente desde el catálogo de Productos.
 - **Inmutabilidad de datos del cliente en ventas**: `VENTA` conserva tanto la clave foránea `id_cliente` como los snapshots `documento_cliente` y `nombre_cliente` para preservar los datos vigentes al momento de la facturación.
 - **Numeración de comprobantes**: `TIPO_FACTURA.nro_factura` lleva el correlativo por tipo de comprobante y es incrementado en cada venta confirmada.
 - **Control de acceso por rol**: Los permisos operativos de cada perfil se gestionan en la capa de negocio (`PoliticaAcceso`) a partir del rol asociado al usuario autenticado (`USUARIO.id_rol`).
@@ -429,3 +440,4 @@ El esquema se construye aplicando en orden las siguientes migraciones de `CapaDa
 7. `20261029005147_AddProveedorConstraints`: Restricciones e índices únicos filtrados en `PROVEEDOR`.
 8. `20261111223022_AddSpRegistrarVenta`: Columnas snapshot (`documento_cliente`, `nombre_cliente`) en `VENTA`, tipo de tabla `dbo.TipoDetalleVenta` y procedimiento almacenado `dbo.sp_RegistrarVenta`.
 9. `20261116054510_EnriquecerModeloDatosYProveedorProducto`: Tabla puente `PROVEEDOR_PRODUCTO`, `marca` y `stock_minimo` en `PRODUCTO`, `precio_compra` en `DETALLE_VENTA`, operador/comprobante/auditoría de anulación en `VENTA`, ciclo de 4 estados/fechas/auditoría de anulación en `COMPRA` y actualización de `dbo.sp_RegistrarVenta`.
+10. `20261116193554_AddVistasReportes`: Vistas `dbo.vw_ResumenDiarioVentas` y `dbo.vw_ParticipacionCategorias` para consultas agregadas de ventas activas y participación por categoría.

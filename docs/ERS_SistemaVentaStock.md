@@ -67,7 +67,7 @@ Se aplicó la técnica de la Pirámide Invertida a través de entrevistas semies
    - *Hallazgos*: Se identificó la falta de sincronización entre el stock real y el registrado, la tardanza en el cobro en caja en momentos de alta concurrencia y la desactualización de precios de venta tras la entrada de nueva mercadería.
 2. **Fase de Profundización (Preguntas Semiestructuradas)**:
    - *Objetivo*: Detallar los mecanismos de control, el comportamiento esperado del sistema ante excepciones y la definición de roles.
-   - *Hallazgos*: Se especificó que al registrar una compra a proveedor debían actualizarse de forma simultánea el stock y los precios de costo/venta. Para la venta en el POS, se determinó la necesidad del cálculo automático del vuelto (`MontoCambio`), la consulta instantánea de productos por código de producto y la resolución fluida de ventas a *Consumidor Final*.
+   - *Hallazgos*: Se especificó que al recibir la mercadería de una compra debían actualizarse de forma simultánea el stock y el costo de compra, manteniendo el precio de venta bajo gestión independiente del catálogo. Para la venta en el POS, se determinó la necesidad del cálculo automático del vuelto (`MontoCambio`), la consulta instantánea de productos por código de producto y la resolución fluida de ventas a *Consumidor Final*.
 3. **Fase de Validación (Preguntas Cerradas)**:
    - *Objetivo*: Confirmar restricciones técnicas, políticas de auditoría, comportamiento de persistencia y planes de recuperación.
    - *Hallazgos*: Se acordó de manera categórica que el sistema no permitirá borrados físicos (`DELETE`), reemplazándolos por bajas lógicas mediante la columna `Estado = 0`. Asimismo, se ratificó el bloqueo estricto de ventas si el stock es insuficiente (`Stock < Cantidad`), la copia inmutable de los datos del cliente (`DocumentoCliente`, `NombreCliente`) en la cabecera de la venta, la ejecución del registro en caja mediante un Stored Procedure con Transacción SQL pura, y la inclusión de herramientas de backup/restore exclusivo para el Administrador.
@@ -81,7 +81,7 @@ Las funcionalidades del sistema se agrupan en 7 Épicas globales:
 - **EP-01: Seguridad, Autenticación y Gestión de Roles**: Gestión de identidades, autenticación segura con hash BCrypt y filtrado dinámico de interfaces según los roles (*Administrador*, *Encargado*, *Vendedor*).
 - **EP-02: Gestión de Catálogos Maestros e Inventario**: Administración de rubros (categorías) y productos, ingreso manual de códigos de producto mediante teclado, monitoreo en tiempo real de stock y umbral de inventario crítico.
 - **EP-03: Gestión de Terceros**: Administración de los padrones de clientes y proveedores para su vinculación con transacciones comerciales.
-- **EP-04: Gestión de Abastecimiento y Compras**: Recepción de facturas de proveedores, carga del detalle de compra, incremento atómico de existencias y actualización automática de la estructura de precios.
+- **EP-04: Gestión de Abastecimiento y Compras**: Recepción de facturas de proveedores, carga del detalle de compra, incremento atómico de existencias y actualización automática del costo de compra, sin modificar el precio de venta.
 - **EP-05: Punto de Venta (POS) y Facturación Transaccional**: Procesamiento de ventas en caja con carrito en memoria, validación de existencias, cálculo automático de vuelto en vivo, persistencia atómica mediante Procedimiento Almacenado propio (`sp_RegistrarVenta`) con transacción SQL pura, descuento de stock e inmutabilidad de datos de cliente.
 - **EP-06: Anulaciones, Trazabilidad y Reportes**: Cancelación controlada de operaciones con reversión automática de stock, consulta de históricos con filtros por fechas/comprobantes y resumen ejecutivo de métricas en el Home.
 - **EP-07: Resiliencia, Continuidad y Resguardo de Datos**: Generación manual de copias de seguridad (`.bak`) y restauración de base de datos exclusiva para el rol Administrador, con bloqueo de concurrencia y validaciones de ruta.
@@ -177,14 +177,14 @@ Las funcionalidades del sistema se agrupan en 7 Épicas globales:
   - Permite seleccionar un proveedor activo (`Estado = 1`), asociar el operador responsable y elegir productos del catálogo (destacando aquellos con `Stock <= StockMinimo`).
   - Al emitir el pedido con las cantidades requeridas, registra la solicitud en estado **`Pendiente`** (`EstadoSolicitud = 'Pendiente'`) sin modificar aún las existencias de `PRODUCTO`.
   - Despacha la solicitud al correo electrónico del proveedor mediante SMTP configurable en `appsettings.json` (con modo simulación/vista previa local cuando se opere sin conectividad SMTP).
-  - Permite pasar el pedido al estado **`Confirmada`** cuando el proveedor responde confirmando disponibilidad y precios (`PrecioCompra` y `PrecioVenta` sugerido), recalculando subtotales y `MontoTotal`.
+  - Permite pasar el pedido al estado **`Confirmada`** cuando el proveedor responde confirmando disponibilidad y costos unitarios (`PrecioCompra`), recalculando subtotales y `MontoTotal`. El precio de venta se gestiona de forma independiente en el catálogo de Productos.
 
-#### HU-10: Recepción de Mercadería y Actualización Automática de Stock y Precios
+#### HU-10: Recepción de Mercadería y Actualización Automática de Stock y Costo
 - **Actor**: Encargado de Compras / Sistema.
-- **Descripción**: Como encargado de compras, quiero cambiar el estado del pedido a **`Recibida`** al ingresar la mercadería al local para que el sistema actualice automáticamente las existencias y los precios del catálogo.
+- **Descripción**: Como encargado de compras, quiero cambiar el estado del pedido a **`Recibida`** al ingresar la mercadería al local para que el sistema actualice automáticamente las existencias y el costo de compra, sin modificar el precio de venta del catálogo.
 - **Criterios de Aceptación**:
   - Al cambiar el estado de la compra a **`Recibida`**, incrementa de forma atómica `PRODUCTO.Stock` sumando las cantidades adquiridas en cada línea de `DETALLE_COMPRA`.
-  - Sobrescribe `PrecioCompra` y actualiza `PrecioVenta` en `PRODUCTO` según los valores confirmados en la solicitud.
+  - Actualiza `PrecioCompra` en `PRODUCTO` según los costos confirmados en la solicitud. Conserva `PrecioVenta`, que se modifica exclusivamente desde el catálogo de Productos.
 
 ---
 
